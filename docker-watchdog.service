@@ -1,0 +1,16 @@
+[Unit]
+Description=Docker Daemon and Containers Watchdog
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /root/docker-watchdog.sh
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=docker-watchdog
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,48 @@
+# config/alerts.yml
+groups:
+  - name: infra_alerts
+    rules:
+      - alert: ContainerDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Contenedor {{ $labels.instance }} caido"
+          description: "El contenedor de la instancia {{ $labels.instance }} no responde hace mas de 1 minuto."
+
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_user_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso de CPU > 80% en {{ $labels.name }}"
+          description: "El contenedor {{ $labels.name }} esta utilizando mas del 80% de CPU."
+
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Uso de memoria > 90% en {{ $labels.name }}"
+          description: "El contenedor {{ $labels.name }} esta cerca del limite de memoria (especificacion > 90%)."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Espacio en disco < 10%"
+          description: "El espacio libre en disco en {{ $labels.device }} es menor al 10%."
+
+      - alert: LiteLLMFallbackActivated
+        expr: increase(litellm_fallback_count[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LiteLLM activo fallback hacia proveedor secundario"
+          description: "Se detecto un incremento en fallas del proveedor principal de LLM. Enrutado al fallback."

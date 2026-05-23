@@ -1,0 +1,217 @@
+version: "3.8"
+
+networks:
+  backend:
+    driver: bridge
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  litellm_data:
+  whisper_cache:
+
+services:
+  # ============================================
+  # LITELLM PROXY - Router de LLMs
+  # ============================================
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm-router
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      REDIS_HOST: redis
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    volumes:
+      - litellm_data:/app/data:rw
+      - ./config/litellm.yaml:/app/config.yaml:ro
+    networks:
+      - backend
+    ports:
+      - "127.0.0.1:4000:4000" # Solo localhost
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request, os, sys; req = urllib.request.Request('http://localhost:4000/health'); key = os.environ.get('LITELLM_MASTER_KEY', ''); req.add_header('Authorization', f'Bearer {key}') if key else None; urllib.request.urlopen(req)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ============================================
+  # REDIS - Cache de LiteLLM
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    tmpfs:
+      - /tmp:size=32M,noexec,nosuid
+    networks:
+      - backend
+
+  # ============================================
+  # WHISPER - Transcripcion Local
+  # ============================================
+  whisper-stt:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-stt
+    restart: unless-stopped
+    environment:
+      ASR_MODEL: base
+      ASR_ENGINE: openai_whisper
+    volumes:
+      - whisper_cache:/root/.cache/whisper
+    networks:
+      - backend
+    ports:
+      - "127.0.0.1:9000:9000" # Solo localhost
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ============================================
+  # HERMES - Agente Autonomo
+  # ============================================
+  hermes:
+    build:
+      context: ./hermes
+      dockerfile: Dockerfile
+    container_name: hermes-agent
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /app/tmp:size=64M,noexec,nosuid
+    environment:
+      LITELLM_URL: "http://litellm:4000"
+      LITELLM_KEY: ${LITELLM_MASTER_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID}
+    volumes:
+      - ./hermes/skills:/app/skills:rw
+      - ./hermes/data:/app/data:rw
+      - ./hermes/logs:/app/logs:rw
+    networks:
+      - backend
+      - monitoring
+    ports:
+      - "127.0.0.1:8080:8080" # Solo localhost
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ============================================
+  # PROMETHEUS - Recoleccion de Metricas
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus:rw
+    ports:
+      - "127.0.0.1:9090:9090" # Solo localhost
+    networks:
+      - monitoring
+      - backend
+
+  # ============================================
+  # GRAFANA - Visualizacion de Metricas
+  # ============================================
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: grafana
+    restart: unless-stopped
+    user: "472:472"
+    volumes:
+      - grafana_data:/var/lib/grafana:rw
+    ports:
+      - "127.0.0.1:3000:3000" # Solo localhost
+    networks:
+      - monitoring
+
+  # ============================================
+  # CADVISOR - Metricas de Contenedores
+  # ============================================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true # cAdvisor requiere acceso al host kernel para leer cgroups
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring
+
+  # ============================================
+  # NODE EXPORTER - Metricas del Host
+  # ============================================
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+
+  # ============================================
+  # AUTOHEAL - Reinicios Automaticos
+  # ============================================
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: "autoheal.enabled=true"
+      AUTOHEAL_INTERVAL: 30
+      AUTOHEAL_START_PERIOD: 60
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 10
+      AUTOHEAL_ONLY_MONITOR_RUNNING: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+    labels:
+      autoheal.enabled: "true"

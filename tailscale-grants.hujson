@@ -1,0 +1,55 @@
+// tailscale-grants.hujson - Politica de acceso unificada
+// Grants reemplazan a las ACLs legacy con sintaxis mejorada
+{
+  "grants": [
+    // Admin: acceso total a todos los recursos
+    {
+      "src": ["group:admin"],
+      "dst": ["tag:infra:*"],
+      "app": {
+        "tailscale": true
+      }
+    },
+    // Hermes: acceso solo al router LLM y a Whisper
+    {
+      "src": ["tag:hermes"],
+      "dst": ["tag:litellm:4000", "tag:whisper:9000"],
+      "app": {
+        "tailscale": true
+      }
+    },
+    // 9remote: acceso SSH solo al host Docker
+    {
+      "src": ["tag:9remote"],
+      "dst": ["tag:host:22"],
+      "app": {
+        "tailscale": true
+      }
+    },
+    // Monitoreo: acceso a metricas de Prometheus y Grafana
+    {
+      "src": ["tag:monitoring"],
+      "dst": ["tag:prometheus:9090", "tag:grafana:3000"],
+      "app": {
+        "tailscale": true
+      }
+    }
+  ],
+  "nodeAttrs": [
+    {
+      "target": ["tag:infra"],
+      "attr": ["funnel", "https"]
+    }
+  ],
+  "tagOwners": {
+    "tag:infra":      ["group:admin"],
+    "tag:hermes":     ["group:admin"],
+    "tag:litellm":    ["group:admin"],
+    "tag:9remote":    ["group:admin"],
+    "tag:host":       ["group:admin"],
+    "tag:monitoring": ["group:admin"],
+    "tag:prometheus": ["group:admin"],
+    "tag:grafana":    ["group:admin"],
+    "tag:whisper":    ["group:admin"]
+  }
+}

@@ -1,0 +1,52 @@
+# config/litellm.yaml - Configuracion de produccion con OpenRouter y Gemini
+model_list:
+  # === TIER PREMIUM: Modelos de alta capacidad (Via OpenRouter) ===
+  - model_name: gpt-4o
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 200
+      timeout: 30
+      model_info:
+        access_groups: ["premium"]
+  - model_name: claude-sonnet
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4.6
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 150
+      timeout: 30
+      model_info:
+        access_groups: ["premium"]
+  
+  # === TIER ECONOMICO: Modelos rapidos y baratos (Via OpenRouter) ===
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openrouter/openai/gpt-4o-mini
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 500
+      timeout: 15
+      model_info:
+        access_groups: ["basic", "premium"]
+  - model_name: llama-3-1-70b
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.1-70b-instruct
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 1000
+      timeout: 10
+      model_info:
+        access_groups: ["basic", "premium"]
+
+  # === EMBEDDINGS (Via Gemini) ===
+  - model_name: embeddings
+    litellm_params:
+      model: gemini/text-embedding-004
+      api_key: os.environ/GEMINI_API_KEY
+
+# === CONFIGURACION DEL ROUTER ===
+router_settings:
+  routing_strategy: latency-based-routing
+  allowed_fails: 2
+  cooldown_time: 60
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

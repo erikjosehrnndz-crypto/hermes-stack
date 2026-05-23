@@ -1,0 +1,91 @@
+name: CI/CD Pipeline - Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # =========================================================================
+  # ETAPA 1: Validaciones, Estilo y Tipado
+  # =========================================================================
+  lint-and-test:
+    name: Lint & Validation
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar herramientas de calidad
+        run: |
+          pip install ruff black mypy aiohttp websockets tenacity prometheus_client
+
+      - name: Ruff Lint Check
+        run: ruff check ./hermes
+
+      - name: Black Format Check
+        run: black --check ./hermes
+
+      - name: MyPy Type Checking
+        run: mypy ./hermes --ignore-missing-imports
+
+  # =========================================================================
+  # ETAPA 2: Despliegue en Servidor de Produccion (Solo al unir a 'main')
+  # =========================================================================
+  deploy:
+    name: Deploy to VPS
+    needs: [lint-and-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar llave SSH SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Agregar Host a Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.VPS_PORT || '22' }} -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Desplegar en VPS via SSH
+        run: |
+          ssh -p ${{ secrets.VPS_PORT || '22' }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            cd /opt/infra-stack || (mkdir -p /opt/infra-stack && cd /opt/infra-stack)
+            
+            # Sincronizar codigo del repositorio (ejemplo basico via git pull si esta configurado, o copiado de archivos directos)
+            if [ -d .git ]; then
+              git pull origin main
+            else
+              # Clonar por primera vez si no existe en el host (requiere credenciales del repo configuradas en el VPS)
+              git clone https://github.com/${{ github.repository }}.git .
+            fi
+            
+            # Recrear contenedores y actualizar configuracion
+            docker compose up -d --build
+            
+            # Validar salud de LiteLLM y Hermes Agent
+            echo 'Esperando arranque de servicios...'
+            sleep 15
+            
+            # Health check de LiteLLM
+            curl -f http://127.0.0.1:4000/health || (echo 'LiteLLM no saludable! Deshaciendo cambios...' && git checkout HEAD~1 && docker compose up -d --build && exit 1)
+            
+            # Health check del Agente
+            curl -f http://127.0.0.1:8080/health || (echo 'Hermes no saludable! Deshaciendo cambios...' && git checkout HEAD~1 && docker compose up -d --build && exit 1)
+            
+            echo 'Despliegue exitoso sin downtime.'
+          "

@@ -1,0 +1,12 @@
+[Unit]
+Description=Docker Tailscale IPTables Rules
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /root/docker-tailscale-iptables.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
