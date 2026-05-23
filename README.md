@@ -20,64 +20,33 @@ Concebido bajo principios de **producción robusta y seguridad militar**, el sis
 
 ## 🗺️ Mapa de Arquitectura General
 
-El siguiente diagrama ilustra cómo fluyen las peticiones de los usuarios externos y cómo se aíslan los servicios internos de la máquina VPS:
+El siguiente diagrama detalla cómo fluyen las peticiones de los usuarios externos y cómo interactúan las capas del sistema de forma limpia y lineal:
 
 ```mermaid
-flowchart TB
-    %% Definición de Estilos
-    classDef client fill:#eef,stroke:#33f,stroke-width:2px,color:#000;
-    classDef security fill:#fee,stroke:#f33,stroke-width:2px,color:#000;
-    classDef internal fill:#efe,stroke:#3a3,stroke-width:2px,color:#000;
-    classDef storage fill:#fff,stroke:#666,stroke-width:2px,color:#000;
-    classDef monitoring fill:#ffa,stroke:#aa3,stroke-width:2px,color:#000;
+flowchart TD
+    %% Elementos de Entrada
+    User([🎙️ Usuario Final]) -- HTTPS / WebSockets --> Caddy[🔒 Caddy Proxy Inverso]
+    VPN([🔑 Tailscale VPN Admin]) -- SSH Privado --> Host[🖥️ VPS Host]
 
-    %% Elementos Externos
-    User([🎙️ Usuario Final]) -- HTTPS / WebSockets --> Caddy:::security
-    VPN([🔑 Tailscale VPN Admin]) -- SSH Privado --> Host:::security
+    %% Flujos del Proxy Inverso
+    Caddy -- Redirección local --> Hermes[🧠 Agente Hermes]
+    Caddy -- Redirección local --> LiteLLM[🔀 LiteLLM Router]
+    Caddy -- Redirección local --> Grafana[📊 Grafana Dashboards]
 
-    %% Servidor VPS
-    subgraph Host [🖥️ VPS Host: 172.236.102.166]
-        Caddy[🔒 Caddy Reverse Proxy\nPuertos: 80 / 443]:::security
-        Watchdog[🐕 docker-watchdog.service\nSystemd Daemon]:::security
-    end
+    %% Flujos de Ejecución Core
+    Hermes -- Transcripción local --> Whisper[👂 Whisper STT Local]
+    Hermes -- Streaming de Voz --> ElevenLabs[[🗣️ ElevenLabs API]]
+    Hermes -- Consulta LLM --> LiteLLM
 
-    %% Capa Docker (Redes backend y monitoring)
-    subgraph DockerNet [🐳 Red Interna de Contenedores]
-        %% Servicios Core
-        Hermes[🧠 Agente Hermes\n127.0.0.1:8080]:::internal
-        Whisper[👂 Whisper STT\n127.0.0.1:9000]:::internal
-        LiteLLM[🔀 LiteLLM Router\n127.0.0.1:4000]:::internal
-        Redis[(💾 Redis Cache)]:::storage
-        
-        %% Conexiones Externas de Contenedores
-        ElevenLabs[[🗣️ ElevenLabs API\nWebSockets asíncronos]]:::client
-        LLMProviders[[🤖 OpenRouter / Gemini API\nModelos de IA]]:::client
-        
-        %% Capa de Monitoreo
-        Prometheus[📈 Prometheus Server\n127.0.0.1:9090]:::monitoring
-        Grafana[📊 Grafana Dashboards\n127.0.0.1:3000]:::monitoring
-        cAdvisor[🐳 cAdvisor\nMétricas Docker]:::monitoring
-        NodeExporter[🖥️ Node Exporter\nMétricas VPS]:::monitoring
-        Autoheal[🩺 Autoheal\nAuto-Recuperación]:::security
-    end
+    %% Flujos del Enrutador
+    LiteLLM -- Caché y Latencias --> Redis[(💾 Redis Cache)]
+    LiteLLM -- Múltiples Proveedores --> IA[[🤖 OpenRouter / Gemini]]
 
-    %% Flujos de Red
-    Caddy -- Redirección local --> Hermes
-    Caddy -- Redirección local --> LiteLLM
-    Caddy -- Redirección local --> Grafana
-    
-    Hermes -- API Call --> LiteLLM
-    Hermes -- Transcripción local --> Whisper
-    Hermes -- Stream de Audio --> ElevenLabs
-    
-    LiteLLM -- Caché y Latencias --> Redis
-    LiteLLM -- Consulta redundante --> LLMProviders
-    
-    Prometheus --> Hermes & LiteLLM & NodeExporter & cAdvisor
-    Grafana --> Prometheus
-    Autoheal -. Reinicia si están caídos .-> Hermes & LiteLLM
-
-    class Host internal;
+    %% Flujos de Monitoreo
+    Prometheus[📈 Prometheus Server] -- Recolecta métricas --> Hermes & LiteLLM
+    NodeExporter[🖥️ Node Exporter Host] -- Métricas --> Prometheus
+    cAdvisor[🐳 cAdvisor Contenedores] -- Métricas --> Prometheus
+    Grafana -- Consulta métricas --> Prometheus
 ```
 
 ---
@@ -141,37 +110,25 @@ El stack operativo se divide en tres subsistemas claramente diferenciados para g
 
 ## 🗃️ Estructura Completa de Archivos del Proyecto
 
-```
-/root/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml               # Pipeline CI/CD automatizado para despliegues seguros
-├── config/
-│   ├── litellm.yaml                # Mapeo de modelos IA (Claude, GPT, Llama) y reglas de latencia
-│   ├── prometheus.yml              # Targets de extracción de métricas de Prometheus
-│   └── alerts.yml                  # Reglas de alertas críticas del sistema
-├── hermes/
-│   ├── api/
-│   │   └── health.py               # Endpoint de salud del Agente (/health)
-│   ├── core/
-│   │   └── agent.py                # Lógica del ciclo de vida conversacional de Hermes
-│   ├── voice/
-│   │   ├── elevenlabs_ws.py        # Cliente WebSockets de ElevenLabs para streaming de audio
-│   │   └── resilient_ws.py         # Manejador tolerante a fallas con redirección geográfica
-│   ├── Dockerfile                  # Contenedor del Agente Hermes con hardening no-root
-│   ├── main.py                     # Punto de entrada de la API y exportador de métricas
-│   └── requirements.txt            # Dependencias del backend
-├── .env                            # Archivo con credenciales de APIs (Ignorado en Git)
-├── .gitignore                      # Reglas de exclusión de Git
-├── bootstrap-server.sh             # Script de aprovisionamiento inicial de Linux
-├── setup-caddy.sh                  # Script de instalación y configuración de Caddy
-├── docker-compose.yml              # Definición multi-contenedor endurecida
-├── docker-tailscale-iptables.sh    # Script de inyección de reglas de IPTables
-├── docker-iptables.service         # Servicio Systemd para inyectar IPTables al iniciar
-├── docker-watchdog.sh              # Script daemon del watchdog de Docker
-├── docker-watchdog.service         # Servicio Systemd del watchdog de Docker
-└── tailscale-grants.hujson         # Definición de políticas ACL para la VPN de Tailscale
-```
+*   [.github/workflows/deploy.yml](.github/workflows/deploy.yml) - Pipeline CI/CD automatizado para despliegues seguros.
+*   [config/litellm.yaml](config/litellm.yaml) - Mapeo de modelos IA (Claude, GPT, Llama) y reglas de latencia.
+*   [config/prometheus.yml](config/prometheus.yml) - Targets de extracción de métricas de Prometheus.
+*   [config/alerts.yml](config/alerts.yml) - Reglas de alertas críticas del sistema.
+*   [hermes/api/health.py](hermes/api/health.py) - Endpoint de salud del Agente (/health).
+*   [hermes/core/agent.py](hermes/core/agent.py) - Lógica del ciclo de vida conversacional de Hermes.
+*   [hermes/voice/elevenlabs_ws.py](hermes/voice/elevenlabs_ws.py) - Cliente WebSockets de ElevenLabs para streaming de audio.
+*   [hermes/voice/resilient_ws.py](hermes/voice/resilient_ws.py) - Manejador tolerante a fallas con redirección geográfica.
+*   [hermes/Dockerfile](hermes/Dockerfile) - Contenedor del Agente Hermes con hardening no-root.
+*   [hermes/main.py](hermes/main.py) - Punto de entrada de la API y exportador de métricas.
+*   [hermes/requirements.txt](hermes/requirements.txt) - Dependencias del backend.
+*   [bootstrap-server.sh](bootstrap-server.sh) - Script de aprovisionamiento inicial de Linux.
+*   [setup-caddy.sh](setup-caddy.sh) - Script de instalación y configuración de Caddy.
+*   [docker-compose.yml](docker-compose.yml) - Definición de la stack multi-contenedor.
+*   [docker-tailscale-iptables.sh](docker-tailscale-iptables.sh) - Script de inyección de reglas de IPTables.
+*   [docker-iptables.service](docker-iptables.service) - Servicio Systemd para inyectar IPTables al iniciar.
+*   [docker-watchdog.sh](docker-watchdog.sh) - Script daemon del watchdog de Docker.
+*   [docker-watchdog.service](docker-watchdog.service) - Servicio Systemd del watchdog de Docker.
+*   [tailscale-grants.hujson](tailscale-grants.hujson) - Definición de políticas ACL para la VPN de Tailscale.
 
 ---
 
