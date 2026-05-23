@@ -1,170 +1,140 @@
-# Stack Operativo Hermes: Arquitectura de Ultra-Baja Latencia (Voz a Voz)
+# 🎙️ Hermes Stack: El Mensajero Ultra-Rápido de la IA
 
-Este repositorio contiene la arquitectura completa, segura y automatizada para desplegar el **Agente de Inteligencia Artificial Hermes** con canal de comunicación por voz de ultra-baja latencia (menor a 700ms).
+> **"Hermes: El dios griego mensajero de la velocidad, la elocuencia y el habla. Este stack es el canal más rápido y seguro entre el pensamiento de la IA y la voz humana."**
 
-El sistema está diseñado bajo principios de **defensa en profundidad**, alta disponibilidad, monitoreo en tiempo real y exposición segura a través de HTTPS automático.
+[![Docker - 9 Containers](https://img.shields.io/badge/Docker-9%20Containers-blue?style=for-the-badge&logo=docker)](https://github.com/erikjosehrnndz-crypto/hermes-stack)
+[![Latency - Under 700ms](https://img.shields.io/badge/Latency-%3C%20700ms-brightgreen?style=for-the-badge&logo=speedtest)](https://github.com/erikjosehrnndz-crypto/hermes-stack)
+[![Security - Hardened](https://img.shields.io/badge/Security-Hardened%20%26%20Isolated-red?style=for-the-badge&logo=shield)](https://github.com/erikjosehrnndz-crypto/hermes-stack)
+[![SSL - Caddy HTTPS](https://img.shields.io/badge/SSL-Automatic%20HTTPS-orange?style=for-the-badge&logo=letsencrypt)](https://github.com/erikjosehrnndz-crypto/hermes-stack)
+
+Este repositorio contiene la arquitectura operativa de **ultra-baja latencia** diseñada para soportar comunicación bidireccional por voz con Inteligencia Artificial. Alcanza tiempos de respuesta de **voz a voz en menos de 700ms** combinando enrutamiento inteligente, caché de latencia y servicios locales.
 
 ---
 
-## 🗺️ Mapa de la Arquitectura del Sistema
+## ⚡ El Viaje de tu Voz (Flujo en < 700ms)
 
-El flujo de información y conexión entre los componentes del sistema se organiza de la siguiente manera:
+¿Cómo procesa el sistema tu voz tan rápido? Aquí está el recorrido simplificado de una consulta:
+
+```
+  🎙️ TU VOZ ➔ [ 1. Oído: Whisper STT ] ➔ Transcribe el audio a texto localmente
+                                    ↓
+  🧠 TEXTO   ➔ [ 2. Cerebro: Agente Hermes ] ➔ Lógica del negocio y contexto
+                                    ↓
+  🔀 DECISIÓN➔ [ 3. Enrutador: LiteLLM ] ➔ Elige el modelo de IA más rápido (Claude 4.6)
+                                    ↓
+  🗣️ RESPUESTA ➔ [ 4. Voz: ElevenLabs ] ➔ Genera y transmite audio por streaming WebSocket
+```
+
+---
+
+## 🗺️ Mapa Visual de Conexiones (Arquitectura)
+
+Así es como se comunican todos los componentes del sistema dentro de tu servidor VPS:
 
 ```mermaid
 flowchart TD
-    %% Clientes Externos
-    Usuario([Usuario / Cliente Voz]) -- HTTPS / WSS --> Caddy[Caddy Reverse Proxy\nPuertos: 80 / 443]
+    %% Estilos de Nodos
+    classDef external fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
+    classDef security fill:#f96,stroke:#333,stroke-width:2px,color:#000;
+    classDef core fill:#69c,stroke:#333,stroke-width:2px,color:#fff;
+    classDef monitoring fill:#9c6,stroke:#333,stroke-width:2px,color:#000;
 
-    %% Capa de Proxy Inverso (Host)
-    subgraph Host [VPS Host - Red Física]
-        Caddy -- Exposición segura --> Hermes[Agente Hermes\n127.0.0.1:8080]
-        Caddy -- Proxy seguro --> LiteLLM[LiteLLM Router\n127.0.0.1:4000]
-        Caddy -- Dashboard HTTPS --> Grafana[Grafana Dashboard\n127.0.0.1:3000]
+    %% Clientes y Entrada
+    Usuario([🎙️ Usuario / Cliente de Voz]) -- HTTPS / WSS --> Caddy[🔒 Caddy Reverse Proxy\nPuertos: 80 / 443]
+    Tailscale([🔑 Tailscale VPN\nAcceso Admin]) -. Conexión Segura .-> Host
+
+    %% Host VPS
+    subgraph Host [🖥️ VPS Host: 172.236.102.166]
+        Caddy:::security --> Hermes[🧠 Agente Hermes\n127.0.0.1:8080]:::core
+        Caddy:::security --> LiteLLM[🔀 LiteLLM Router\n127.0.0.1:4000]:::core
+        Caddy:::security --> Grafana[📊 Grafana Dashboards\n127.0.0.1:3000]:::monitoring
     end
 
-    %% Capa Docker (Redes Aisladas)
-    subgraph DockerNet [Red Docker: backend & monitoring]
-        Hermes -- Lógica central --> LiteLLM
-        Hermes -- STT Local --> Whisper[Whisper ASR\nPuerto: 9000]
-        Hermes -- Streaming de Voz --> ElevenLabs[ElevenLabs API\nWebSocket Externo]
+    %% Capa Docker Aislada
+    subgraph DockerNet [🐳 Red Docker Interna e Aislada]
+        Hermes --> LiteLLM
+        Hermes --> Whisper[👂 Whisper STT Local\nPuerto: 9000]:::core
+        Hermes -- Streaming de Audio --> ElevenLabs[[🗣️ ElevenLabs WS\nAPI Externa]]:::external
         
-        LiteLLM -- Caching & Latency --> Redis[(Redis Cache)]
-        LiteLLM -- Rutas Inteligentes --> OpenRouter[OpenRouter / Gemini API\nModelos Externos]
+        LiteLLM --> Redis[(💾 Redis Cache\nVelocidad)]:::core
+        LiteLLM --> IAExternas[[🤖 OpenRouter / Gemini\nModelos de IA]]:::external
         
         %% Monitoreo
-        Prometheus[Prometheus Server\nPuerto: 9090] -- Scrape Metricas --> Hermes
-        Prometheus -- Scrape Metricas --> LiteLLM
-        Prometheus -- Métricas Host --> NodeExporter[Node Exporter]
-        Prometheus -- Métricas Contenedores --> cAdvisor[cAdvisor]
-        Grafana -- Consulta --> Prometheus
+        Prometheus[📈 Prometheus Server\nPuerto: 9090]:::monitoring --> Hermes
+        Prometheus --> LiteLLM
+        Prometheus --> NodeExporter[🖥️ Node Exporter\nMétricas Host]:::monitoring
+        Prometheus --> cAdvisor[🐳 cAdvisor\nMétricas Contenedores]:::monitoring
+        Grafana --> Prometheus
         
-        %% Auto-recuperación
-        Autoheal[Autoheal Container] -- Monitorea salud --> DockerSock[Docker Daemon]
+        %% Guardianes
+        Autoheal[🩺 Autoheal\nAuto-Reinicio]:::security -. Monitorea salud .-> Hermes & LiteLLM
+        Watchdog[🐕 Systemd Watchdog]:::security -. Vigila daemon Docker .-> DockerNet
     end
 
-    %% Seguridad Perimetral
-    Tailscale([Tailscale VPN]) -- Acceso Privado --> Host
-    IPTables[IPTables / Firewall] -- Bloquea tráfico público --> DockerNet
+    %% Aplicar clases
+    class Usuario,ElevenLabs,IAExternas external;
 ```
 
 ---
 
-## 📦 Componentes del Sistema
+## 🛠️ ¿Qué compone el Sistema? (Los 3 Pilares)
 
-El stack está compuesto por 9 servicios integrados en Docker y 3 servicios nativos en el sistema operativo del VPS:
+### 🧱 Pilar 1: Procesamiento e Inteligencia
+| Servicio | Ícono | Nombre Técnico | ¿Qué hace? (Explicado Simple) |
+| :--- | :---: | :--- | :--- |
+| **El Cerebro** | 🧠 | `hermes-agent` | Procesa lo que dices, maneja la memoria de la conversación y envía el texto limpio para ser sintetizado a voz. |
+| **El Oído** | 👂 | `whisper-stt` | Transcribe tu voz a texto de forma 100% local en tu servidor (cero costo de red). |
+| **El Enrutador** | 🔀 | `litellm-router` | Elige inteligentemente qué IA responde (Claude 4.6 Sonnet, GPT-4o, etc.) basándose en cuál es más rápida en ese instante. |
+| **La Memoria Flash** | 💾 | `redis-cache` | Guarda en caché respuestas anteriores para responder al instante sin consultar a la IA. |
 
-### 1. El Cerebro: Agente Hermes (`hermes-agent`)
-* **Qué hace:** Es la aplicación central escrita en Python. Maneja la lógica conversacional, mantiene el historial de diálogos de los usuarios y pre-procesa el texto (limpiando markdown y formateando números) para que sea óptimo para la síntesis de voz.
-* **Canal de Voz:** Se conecta a **ElevenLabs Flash v2.5** mediante WebSockets asíncronos y resilientes con retroceso exponencial (en caso de desconexión, reintenta y redirige a la región de respaldo `api.us.elevenlabs.io` automáticamente).
-* **Seguridad:** Corre con un usuario de bajos privilegios (`hermes:hermesgrp`) y el sistema de archivos del contenedor está bloqueado como **solo lectura** (`read_only`).
+### 🛡️ Pilar 2: Seguridad y Redes
+| Servicio | Ícono | Nombre Técnico | ¿Qué hace? (Explicado Simple) |
+| :--- | :---: | :--- | :--- |
+| **El Portero** | 🔒 | `Caddy` | Servidor web que recibe a los usuarios en `el80.space`, les da certificados SSL (HTTPS) y los conecta de forma segura hacia el agente. |
+| **La Muralla** | 🧱 | `IPTables` | Bloquea que cualquier persona en internet acceda directamente a las bases de datos o servicios internos de Docker. |
+| **El Túnel Privado** | 🔑 | `Tailscale` | Una red privada (VPN) para que tú y tu equipo accedan de forma segura a la administración del servidor. |
 
-### 2. Enrutador LLM Inteligente: LiteLLM (`litellm-router`)
-* **Qué hace:** Actúa como un proxy unificado para todos los modelos de Inteligencia Artificial.
-* **Modelo Premium Principal:** Enruta las solicitudes a **Claude 4.6 Sonnet** y **GPT-4o** a través de OpenRouter.
-* **Modelo Económico Rápido:** Usa **GPT-4o-mini** y **Llama 3.1 70B**.
-* **Estrategia de Enrutamiento:** Calcula la latencia de respuesta de los proveedores en tiempo real y dirige las solicitudes al modelo más rápido y saludable de forma automática. Si un proveedor falla, redirige la solicitud inmediatamente (Fallback).
-
-### 3. Base de Datos en Memoria: Redis (`redis-cache`)
-* **Qué hace:** Almacena en caché las respuestas de los modelos de LiteLLM para evitar llamadas redundantes de API y guarda el historial de latencias para la toma de decisiones del router.
-
-### 4. Transcripción Local: Whisper STT (`whisper-stt`)
-* **Qué hace:** Convierte la voz del usuario a texto de forma totalmente local en el VPS usando el modelo `base` optimizado para CPU, eliminando costos y latencias de red externos.
-
-### 5. Monitoreo en Tiempo Real (`prometheus` & `grafana`)
-* **Prometheus:** Recolecta métricas de rendimiento del Agente Hermes, LiteLLM, uso de hardware del VPS (`node-exporter`) y consumo de recursos de los contenedores (`cadvisor`) de forma continua.
-* **Grafana:** Visualiza estas métricas en dashboards dinámicos. Puedes acceder a tus métricas en tiempo real bajo HTTPS seguro.
-
-### 6. Auto-recuperación y Vigilancia (`autoheal` & `docker-watchdog`)
-* **Autoheal (Contenedor):** Monitorea los contenedores de Docker. Si detecta que `litellm` o `hermes` reportan estado "unhealthy" (no saludable), los reinicia de manera inmediata.
-* **Watchdog del Host (Systemd):** Script bash corriendo como servicio nativo de Linux. Monitorea que el servicio de Docker mismo esté respondiendo. Si Docker se cae, lo reinicia y levanta todo el stack de contenedores desde `/root`.
-
-### 7. Seguridad de Red (`caddy`, `tailscale` & `iptables`)
-* **Caddy:** Servidor web inverso en el Host. Escucha en los puertos públicos `80` y `443`, recibe las solicitudes dirigidas a `el80.space` y gestiona automáticamente los certificados SSL seguros con Let's Encrypt.
-* **Tailscale:** Permite el acceso seguro y administrativo al servidor mediante una red privada cifrada.
-* **IPTables (Firewall):** Bloquea todo el tráfico público entrante directo a los puertos de los contenedores Docker (como Redis, Whisper o Prometheus). Solo permite conexiones locales desde Caddy (`127.0.0.1`) o desde tu red privada de Tailscale.
+### 📈 Pilar 3: Monitoreo y Recuperación
+| Servicio | Ícono | Nombre Técnico | ¿Qué hace? (Explicado Simple) |
+| :--- | :---: | :--- | :--- |
+| **El Inspector** | 📈 | `prometheus` | Recolecta estadísticas de velocidad, CPU, memoria y errores del sistema cada segundo. |
+| **El Panel de Control** | 📊 | `grafana` | Dibuja gráficos bonitos en tiempo real de cómo se comporta tu servidor. |
+| **El Médico** | 🩺 | `autoheal` | Si detecta que el agente Hermes o LiteLLM se traban, los reinicia automáticamente. |
+| **El Perro Guardián** | 🐕 | `docker-watchdog` | Servicio de Linux que vigila que Docker esté corriendo bien en el servidor. |
 
 ---
 
-## 🛠️ Gestión y Operación del Sistema
+## 🕹️ Guía de Comandos Rápidos (Operaciones)
 
-Todos los comandos deben ejecutarse desde la carpeta raíz del proyecto (`/root`).
+Ejecuta estos comandos en la terminal de tu VPS (`/root`):
 
-### Comandos de Docker Compose
+### 🟢 Encender el Stack
 ```bash
-# Iniciar todo el sistema en segundo plano
 docker compose up -d
-
-# Detener todos los servicios
-docker compose down
-
-# Ver el estado de salud de los contenedores
-docker ps
-
-# Ver logs en tiempo real de un servicio específico (ej. hermes)
-docker compose logs -f hermes
-
-# Reiniciar un contenedor específico
-docker compose restart litellm
 ```
 
-### Comandos de Servicios del Sistema (Systemd)
+### 🔴 Apagar el Stack
 ```bash
-# Verificar estado del Proxy Inverso Caddy
-systemctl status caddy
-
-# Verificar el Watchdog automático del servidor
-systemctl status docker-watchdog
-
-# Verificar el firewall de aislamiento de Docker
-systemctl status docker-iptables
-
-# Verificar conexión a la VPN de Tailscale
-tailscale status
+docker compose down
 ```
+
+### 🔄 Reiniciar un Componente (Ej: El Cerebro)
+```bash
+docker compose restart hermes
+```
+
+### 🩺 Ver si todo está Saludable
+```bash
+docker ps
+```
+*(Verás la palabra `(healthy)` al lado de cada servicio).*
 
 ---
 
-## 🔗 Endpoints del Sistema en Producción
+## 🌍 Acceso a tus Servicios en Producción
 
-Tus servicios están expuestos de forma pública y protegidos por SSL (HTTPS) bajo tu dominio:
+Todos tus servicios están protegidos bajo tu dominio público con certificados de seguridad HTTPS:
 
-* 🧠 **Agente Hermes (API del Agente):** `https://hermes.el80.space`
-* 🔀 **LiteLLM Proxy (Router de LLMs):** `https://litellm.el80.space` *(Requiere Bearer Token)*
-* 📊 **Métricas del Sistema (Grafana):** `https://grafana.el80.space`
-
-### Pruebas de Salud y Funcionamiento (desde cualquier consola externa)
-
-1. **Verificar que el Agente y todas sus conexiones (LiteLLM, ElevenLabs) están OK:**
-   ```bash
-   curl -s https://hermes.el80.space/health
-   ```
-   *Respuesta esperada:*
-   `{"status": "healthy", "checks": {"litellm": true, "elevenlabs": true, "disk": true, "skills": true}}`
-
-2. **Probar el procesamiento conversacional del Agente (Prueba de Latencia):**
-   ```bash
-   curl -X POST -H "Content-Type: application/json" \
-        -d '{"text": "Hola, registra la mesa 4 con dos sodas"}' \
-        https://hermes.el80.space/process
-   ```
-   *Respuesta esperada:*
-   `{"text": "Entendido. He registrado dos sodas en la mesa 4.", "model_used": "gpt-4o-mini", "latency_ms": 685.4}`
-
----
-
-## 🔐 Archivo de Configuración de Secretos (`.env`)
-
-Las llaves del sistema se administran de manera centralizada en el archivo oculto `/root/.env`. **Este archivo nunca se sube a GitHub por seguridad**. Las variables clave son:
-
-```ini
-# Llave maestra para hablar con el enrutador LiteLLM
-LITELLM_MASTER_KEY=sk-litellm-master-key-12345
-
-# API Key de ElevenLabs para el canal de voz
-ELEVENLABS_API_KEY=sk_cc113f694ba75...
-ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
-
-# Llaves de Proveedores de IA (utilizadas por LiteLLM)
-OPENROUTER_API_KEY=sk-or-v1-7b7c57d71...
-GEMINI_API_KEY=AIzaSyDtZwK5Qo...
-```
+* 🧠 **API del Agente:** [https://hermes.el80.space/health](https://hermes.el80.space/health)
+* 🔀 **Router LiteLLM:** [https://litellm.el80.space](https://litellm.el80.space)
+* 📊 **Estadísticas Grafana:** [https://grafana.el80.space](https://grafana.el80.space)
