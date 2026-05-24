@@ -1,0 +1,192 @@
+% ─────────────────────────────────────────────────────────────────────────────
+% CAPÍTULO 1 — Arquitectura General y Topología de Red
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Arquitectura General del Sistema}
+
+\section{Resumen Ejecutivo}
+
+El \textbf{Hermes Stack} es una plataforma de agente conversacional IA
+completamente autohospedada, desplegada en un único VPS y accesible
+públicamente a través de subdominios HTTPS con certificados renovados
+automáticamente.
+
+\begin{infobox}[Propuesta de valor clave]
+Soberanía total sobre los datos · Coste mensual fijo predecible ·
+Latencia end-to-end de voz menor a 500 ms · Zero-downtime deployment
+automatizado desde GitHub.
+\end{infobox}
+
+\subsection{Métricas objetivo}
+
+\begin{table}[h]
+\centering
+\caption{KPIs del Hermes Stack}
+\begin{tabularx}{\textwidth}{lXr}
+\toprule
+\textbf{Métrica} & \textbf{Descripción} & \textbf{Objetivo} \\
+\midrule
+Latencia E2E voz & Audio entrada → Audio salida & $<$ 500 ms \\
+Uptime mensual   & Disponibilidad del servicio Hermes & $\geq$ 99.5\% \\
+TTFB LLM         & Primer token desde LiteLLM & $<$ 150 ms \\
+Health check     & Ciclo de auto-curación Autoheal & 30 s \\
+Deploy time      & Push a main → servicio actualizado & $<$ 3 min \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Diagrama General del Sistema}
+
+El diagrama siguiente muestra los tres planos del sistema: el plano de
+\textit{usuario} (clientes externos), el plano de \textit{control}
+(Caddy + GitHub Actions) y el plano de \textit{datos} (servicios internos).
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=0.8cm and 1.4cm,
+  svc/.style={draw=hermesblue,fill=hermeslight,rounded corners=6pt,
+              minimum width=2.4cm,minimum height=0.9cm,
+              font=\sffamily\small\bfseries,align=center},
+  ext/.style={draw=hermesaccent,fill=hermesaccent!10,rounded corners=6pt,
+              minimum width=2.4cm,minimum height=0.9cm,
+              font=\sffamily\small,align=center},
+  cloud/.style={draw=gray,fill=gray!10,ellipse,
+                minimum width=2.6cm,minimum height=1cm,
+                font=\sffamily\small,align=center},
+  arr/.style={->,>=Stealth,thick,hermesblue},
+  label/.style={font=\sffamily\tiny,gray}
+]
+
+%% — Capa usuario
+\node[cloud] (user)  {Navegador /\\App Android};
+\node[cloud,right=2cm of user] (gh) {GitHub\\Actions};
+
+%% — Caddy
+\node[svc,below=1.2cm of user,fill=hermesblue!30] (caddy)
+  {Caddy\\\small HTTPS + TLS};
+
+%% — Servicios internos (fila 1)
+\node[svc,below left=1.2cm and 0.6cm of caddy]  (hermes)   {Hermes\\Agent :8080};
+\node[svc,below=1.2cm of caddy]                 (litellm)  {LiteLLM\\ :4000};
+\node[svc,below right=1.2cm and 0.6cm of caddy] (grafana)  {Grafana\\ :3000};
+\node[svc,right=0.5cm of grafana]               (website)  {Website\\ :3001};
+
+%% — Servicios internos (fila 2)
+\node[svc,below=1.0cm of hermes]  (whisper) {Whisper\\STT :9000};
+\node[svc,below=1.0cm of litellm] (redis)   {Redis\\Cache};
+\node[svc,below=1.0cm of grafana] (prom)    {Prometheus\\ :9090};
+
+%% — APIs externas
+\node[ext,right=1.5cm of litellm] (openrouter) {OpenRouter\\/ Gemini};
+\node[ext,below right=0.4cm and 1.5cm of hermes] (elevenlabs) {ElevenLabs\\Flash v2.5};
+
+%% — Flechas
+\draw[arr] (user)    -- node[label,right]{HTTPS} (caddy);
+\draw[arr] (caddy)   -- (hermes);
+\draw[arr] (caddy)   -- (litellm);
+\draw[arr] (caddy)   -- (grafana);
+\draw[arr] (caddy)   -- (website);
+\draw[arr] (hermes)  -- node[label,left]{STT} (whisper);
+\draw[arr] (hermes)  -- (litellm);
+\draw[arr] (hermes)  -- node[label,right]{TTS WS} (elevenlabs);
+\draw[arr] (litellm) -- (redis);
+\draw[arr] (litellm) -- node[label,above]{LLM API} (openrouter);
+\draw[arr] (prom)    edge[bend left=20] (hermes);
+\draw[arr,dashed,gray] (gh) -- node[label,right]{SSH deploy} (caddy);
+
+\end{tikzpicture}
+\caption{Arquitectura general del Hermes Stack}
+\end{figure}
+
+\section{Principios Arquitectónicos}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Soberanía de datos:} Todos los datos de usuario transitan
+    por el VPS propio. Sólo salen peticiones a APIs externas (LLM, TTS).
+
+  \item \textbf{Red en capas:} Dos redes Docker aisladas (\code{backend},
+    \code{monitoring}). Ningún contenedor de datos está expuesto al host.
+
+  \item \textbf{Secretos en fichero .env:} El servidor jamás expone claves
+    en variables de entorno del sistema operativo ni en el repositorio.
+
+  \item \textbf{Inmutabilidad de contenedores:} Todos los servicios tienen
+    \code{restart: unless-stopped} y healthchecks declarativos.
+
+  \item \textbf{Auto-curación:} Autoheal monitoriza cada 30 s y reinicia
+    cualquier contenedor con healthcheck fallido.
+\end{enumerate}
+
+\section{Topología de Red Docker}
+
+El stack utiliza dos redes bridge internas:
+
+\begin{table}[h]
+\centering
+\caption{Redes Docker del Hermes Stack}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Red} & \textbf{Driver} & \textbf{Miembros} \\
+\midrule
+\code{backend}    & bridge & litellm, redis, whisper-stt, hermes, website, autoheal, filebrowser \\
+\code{monitoring} & bridge & prometheus, grafana, cadvisor, node-exporter, hermes \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{infobox}[Aislamiento de red]
+Los contenedores de \textit{monitoring} no pueden iniciar conexiones
+hacia los contenedores de \textit{backend} (salvo Hermes y LiteLLM que
+pertenecen a ambas redes para exponer métricas a Prometheus).
+\end{infobox}
+
+\subsection{Puertos expuestos al host}
+
+Todos los puertos están ligados a \code{127.0.0.1} (loopback). Caddy
+actúa como único punto de entrada público en los puertos 80/443.
+
+\begin{table}[h]
+\centering
+\caption{Mapa de puertos del stack}
+\begin{tabularx}{\textwidth}{llXl}
+\toprule
+\textbf{Servicio}  & \textbf{Puerto host} & \textbf{Subdominio público}          & \textbf{Proto} \\
+\midrule
+hermes-agent       & 127.0.0.1:8080 & \domain{hermes.el80.space}    & HTTP/WS \\
+litellm-router     & 127.0.0.1:4000 & \domain{litellm.el80.space}   & HTTP    \\
+grafana            & 127.0.0.1:3000 & \domain{grafana.el80.space}   & HTTP    \\
+hermes-website     & 127.0.0.1:3001 & \domain{docs.el80.space}      & HTTP    \\
+whisper-stt        & 127.0.0.1:9000 & — (interno)                   & HTTP    \\
+prometheus         & 127.0.0.1:9090 & — (interno)                   & HTTP    \\
+filebrowser        & 127.0.0.1:8095 & \domain{files.el80.space}     & HTTP    \\
+syncthing (opt.)   & 127.0.0.1:8384 & \domain{syncthing.el80.space} & HTTP    \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Hardening de Seguridad en Contenedores}
+
+Cada servicio aplica el principio de mínimo privilegio:
+
+\begin{lstlisting}[language=yaml,caption=Configuración de seguridad base (docker-compose.yml)]
+security_opt:
+  - no-new-privileges:true
+cap_drop:
+  - ALL
+cap_add:
+  - CHOWN     # Solo cuando es necesario
+  - SETGID
+  - SETUID
+tmpfs:
+  - /app/tmp:size=64M,noexec,nosuid
+\end{lstlisting}
+
+Las excepciones justificadas son:
+\begin{itemize}
+  \item \service{cAdvisor}: requiere \code{privileged: true} para leer
+    cgroups del kernel del host.
+  \item \service{filebrowser}: corre como \code{user: "0:0"} para
+    gestionar archivos de root con permisos completos.
+  \item \service{autoheal}: monta \code{docker.sock} en modo read-only
+    para detectar el estado de los contenedores.
+\end{itemize}

@@ -1,0 +1,206 @@
+% ─────────────────────────────────────────────────────────────────────────────
+% CAPÍTULO 2 — Pipeline de Voz e Inventario de Servicios
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Pipeline de Voz e Inventario de Servicios}
+
+\section{Pipeline End-to-End de Voz}
+
+El objetivo central del Hermes Stack es procesar voz en tiempo real con
+una latencia total menor a 500 ms. El pipeline consta de cinco etapas
+secuenciales:
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=0cm and 0.3cm,
+  stage/.style={draw=hermesblue,fill=hermeslight,rounded corners=5pt,
+                minimum width=2.5cm,minimum height=1.2cm,
+                font=\sffamily\small\bfseries,align=center},
+  lat/.style={font=\sffamily\tiny\color{greenok},below=2pt},
+  arr/.style={->,>=Stealth,very thick,hermesblue}
+]
+\node[stage] (mic)    {Micrófono\\\small Audio PCM};
+\node[stage,right=0.5cm of mic]     (wsp)  {Whisper\\STT};
+\node[stage,right=0.5cm of wsp]     (hrm)  {Hermes\\Agent};
+\node[stage,right=0.5cm of hrm]     (llm)  {LiteLLM\\→ LLM};
+\node[stage,right=0.5cm of llm]     (tts)  {ElevenLabs\\Flash v2.5};
+\node[stage,right=0.5cm of tts,fill=hermesblue!30] (out) {Audio\\Salida};
+
+\draw[arr] (mic) -- (wsp);
+\draw[arr] (wsp) -- (hrm);
+\draw[arr] (hrm) -- (llm);
+\draw[arr] (llm) -- (tts);
+\draw[arr] (tts) -- (out);
+
+\node[lat] at ($(mic)!0.5!(wsp)+(0,-0.7)$) {$\sim$80--120 ms};
+\node[lat] at ($(wsp)!0.5!(hrm)+(0,-0.7)$) {$\sim$5 ms};
+\node[lat] at ($(hrm)!0.5!(llm)+(0,-0.7)$) {$\sim$100--180 ms};
+\node[lat] at ($(llm)!0.5!(tts)+(0,-0.7)$) {$\sim$150--220 ms};
+\end{tikzpicture}
+\caption{Pipeline de voz end-to-end (latencia total objetivo: $<$500 ms)}
+\end{figure}
+
+\subsection{Latencias por etapa}
+
+\begin{table}[h]
+\centering
+\caption{Desglose de latencias en el pipeline de voz}
+\begin{tabularx}{\textwidth}{llXl}
+\toprule
+\textbf{Etapa} & \textbf{Servicio} & \textbf{Descripción} & \textbf{Latencia} \\
+\midrule
+1. STT        & Whisper (base) & Transcripción audio $\to$ texto      & 80--120 ms \\
+2. Routing    & Hermes Agent   & Parsing + selección de skill          & 3--8 ms    \\
+3. LLM        & LiteLLM        & Primer token (TTFB) desde OpenRouter  & 100--180 ms \\
+4. TTS        & ElevenLabs WS  & Streaming Flash v2.5 WebSocket        & 150--220 ms \\
+5. Red/Buffer & VPS $\to$ cliente & Transmisión y buffering de audio   & 10--30 ms  \\
+\midrule
+\textbf{Total E2E} & & & \textbf{343--558 ms} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Optimizaciones de latencia}
+
+\begin{itemize}
+  \item \textbf{WebSocket persistente con ElevenLabs:} Se reutiliza la
+    conexión WS entre peticiones para eliminar el handshake TLS ($\sim$50 ms
+    de ahorro por turno).
+  \item \textbf{Streaming de tokens LLM:} LiteLLM reenvía tokens en
+    cuanto llegan; Hermes inicia la llamada TTS con el primer fragmento
+    coherente, no al finalizar la respuesta completa.
+  \item \textbf{Modelo Whisper base:} Elegido sobre \code{small} o
+    \code{medium} para garantizar transcripción en $<$120 ms en CPU.
+  \item \textbf{Redis como caché semántico:} LiteLLM usa Redis para
+    respuestas exactamente repetidas (saludos, comandos frecuentes).
+\end{itemize}
+
+\subsection{Política de fallback en LiteLLM}
+
+\begin{lstlisting}[language=yaml,caption=Fragmento de config/litellm.yaml — fallback]
+router_settings:
+  routing_strategy: latency-based-routing
+  fallbacks:
+    - model: openrouter/meta-llama/llama-3.1-70b-instruct
+      fallback_models:
+        - gemini/gemini-flash-1.5
+        - openrouter/mistralai/mistral-7b-instruct
+  timeout: 10
+  num_retries: 2
+\end{lstlisting}
+
+\section{Inventario Detallado de Servicios}
+
+\subsection{LiteLLM Router (:4000)}
+
+\service{LiteLLM} actúa como proxy inteligente entre Hermes y los
+proveedores de LLM externos. Centraliza la autenticación, el enrutamiento
+basado en latencia y el caché Redis.
+
+\begin{lstlisting}[language=yaml,caption=docker-compose.yml — servicio litellm]
+litellm:
+  image: ghcr.io/berriai/litellm:main-latest
+  environment:
+    LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+    REDIS_HOST: redis
+    OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    GEMINI_API_KEY: ${GEMINI_API_KEY}
+  volumes:
+    - ./config/litellm.yaml:/app/config.yaml:ro
+  ports:
+    - "127.0.0.1:4000:4000"
+\end{lstlisting}
+
+\begin{table}[h]
+\centering
+\caption{Variables de entorno requeridas por LiteLLM}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Variable} & \textbf{Descripción} \\
+\midrule
+\envvar{LITELLM\_MASTER\_KEY} & Clave maestra para autenticar peticiones al proxy \\
+\envvar{OPENROUTER\_API\_KEY} & Clave de OpenRouter para acceso a múltiples LLMs \\
+\envvar{GEMINI\_API\_KEY}     & Clave de Google Gemini como fallback primario \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Hermes Agent (:8080)}
+
+\service{Hermes Agent} es el núcleo del sistema. Implementado en Python,
+expone una API HTTP/WebSocket que orquesta el pipeline completo de voz.
+
+Responsabilidades principales:
+\begin{itemize}
+  \item Recibir audio del cliente vía WebSocket
+  \item Llamar a Whisper STT para transcripción
+  \item Enrutar la petición a LiteLLM con el prompt de sistema adecuado
+  \item Transmitir la respuesta de texto a ElevenLabs Flash v2.5
+  \item Hacer streaming del audio de vuelta al cliente
+  \item Exponer métricas Prometheus en \code{/metrics}
+\end{itemize}
+
+\begin{lstlisting}[language=python,caption=Fragmento ilustrativo — pipeline de voz]
+async def voice_pipeline(ws: WebSocket):
+    audio_bytes = await ws.recv()
+    transcript  = await whisper.transcribe(audio_bytes)
+    llm_stream  = litellm.stream(transcript)
+    async for chunk in elevenlabs.tts_stream(llm_stream):
+        await ws.send_bytes(chunk)
+\end{lstlisting}
+
+\subsection{Whisper STT (:9000)}
+
+\service{Whisper STT} corre el modelo \code{base} de OpenAI Whisper
+localmente, garantizando privacidad total de audio.
+
+\begin{infobox}[Configuración recomendada]
+Usar \code{ASR\_MODEL: base} para latencia $<$120 ms en CPU de 2 vCPU.
+Para CPU de 4+ vCPU, \code{small} puede usarse con latencia de $\sim$200 ms
+pero mejor precisión en acentos.
+\end{infobox}
+
+\subsection{Redis Cache}
+
+\service{Redis} 7 Alpine corre con capacidades mínimas:
+
+\begin{lstlisting}[language=yaml,caption=Redis hardening]
+redis:
+  image: redis:7-alpine
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETGID, SETUID]
+  tmpfs:
+    - /tmp:size=32M,noexec,nosuid
+\end{lstlisting}
+
+\subsection{Hermes Website (:3001)}
+
+\service{Hermes Website} es una SPA React/Vite con backend Express
+que sirve la interfaz web del proyecto en \domain{docs.el80.space}.
+
+\begin{table}[h]
+\centering
+\caption{Stack tecnológico del sitio web}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Capa} & \textbf{Tecnología} \\
+\midrule
+Frontend & React 18 + Vite + TypeScript + Tailwind CSS \\
+Backend  & Express (Node 22) — proxy y endpoint \code{/api/tree} \\
+Build    & Docker multi-stage (builder + runner), imagen Alpine \\
+Assets   & Framer Motion para animaciones, Heroicons para iconos \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{File Browser (:8095)}
+
+\service{File Browser} es una interfaz web para gestión de archivos del
+servidor, accesible en \domain{files.el80.space}. Monta \code{/root}
+como raíz del filesystem navegable.
+
+\begin{warnbox}[Seguridad — File Browser]
+File Browser corre como root (\code{user: "0:0"}) con acceso de escritura
+total a \code{/root}. Debe protegerse con contraseña fuerte en la UI y
+acceso SSH-only al VPS.
+\end{warnbox}

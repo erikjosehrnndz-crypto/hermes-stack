@@ -1,0 +1,238 @@
+% ─────────────────────────────────────────────────────────────────────────────
+% CAPÍTULO 3 — CI/CD, Frontend y Aplicación Android
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{CI/CD, Despliegue y App Android}
+
+\section{Pipeline CI/CD — GitHub Actions}
+
+El repositorio incluye un workflow completo en
+\code{.github/workflows/deploy.yml} que cubre dos etapas: validación de
+calidad y despliegue zero-downtime al VPS.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=0.5cm and 1.0cm,
+  box/.style={draw=hermesdark,fill=hermeslight,rounded corners=5pt,
+              minimum width=3.2cm,minimum height=1.0cm,
+              font=\sffamily\small,align=center},
+  good/.style={draw=greenok,fill=greenok!10,rounded corners=5pt,
+               minimum width=3.2cm,minimum height=1.0cm,
+               font=\sffamily\small,align=center},
+  bad/.style={draw=redalert,fill=redalert!10,rounded corners=5pt,
+              minimum width=3.2cm,minimum height=1.0cm,
+              font=\sffamily\small,align=center},
+  arr/.style={->,>=Stealth,thick,hermesblue},
+  rarr/.style={->,>=Stealth,thick,redalert,dashed}
+]
+\node[box]  (push)   {Git push\\a \texttt{main}};
+\node[box,right=of push]   (lint)   {Etapa 1\\ruff · black · mypy};
+\node[good,right=of lint]  (deploy) {Etapa 2\\SSH → VPS\\docker compose up};
+\node[good,right=of deploy](health) {Health check\\LiteLLM + Hermes};
+\node[good,below=1cm of health](ok) {\textbf{ÉXITO}\\Producción actualizada};
+\node[bad, below=1cm of deploy](rb) {\textbf{ROLLBACK}\\git checkout HEAD\textasciitilde1\\docker compose up};
+
+\draw[arr]  (push)   -- (lint);
+\draw[arr]  (lint)   -- node[above,font=\tiny\sffamily]{pass} (deploy);
+\draw[arr]  (deploy) -- (health);
+\draw[arr]  (health) -- node[right,font=\tiny\sffamily]{OK} (ok);
+\draw[rarr] (health) -- node[left,font=\tiny\sffamily\color{redalert}]{FAIL} (rb);
+\draw[rarr] (lint)   |- node[below,font=\tiny\sffamily\color{redalert}]{fail} ++(0,-1.8) -- ($(push)+(0,-1.8)$);
+\end{tikzpicture}
+\caption{Pipeline CI/CD del Hermes Stack}
+\end{figure}
+
+\subsection{Etapa 1 — Lint \& Validation}
+
+Se ejecuta en todo PR y push. Nunca accede al servidor de producción.
+
+\begin{lstlisting}[language=yaml,caption=Jobs de validación en deploy.yml]
+lint-and-test:
+  runs-on: ubuntu-24.04
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: pip
+    - run: pip install ruff black mypy aiohttp websockets tenacity prometheus_client
+    - run: ruff check ./hermes
+    - run: black --check ./hermes
+    - run: mypy ./hermes --ignore-missing-imports
+\end{lstlisting}
+
+\subsection{Etapa 2 — Despliegue al VPS}
+
+Solo se ejecuta en push a \code{main} y requiere que Etapa 1 pase.
+
+\begin{lstlisting}[language=yaml,caption=Despliegue SSH con rollback automático]
+deploy:
+  needs: [lint-and-test]
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  steps:
+    - name: Deploy via SSH
+      run: |
+        ssh $VPS_USER@$VPS_HOST "
+          cd /root
+          git pull origin main
+          docker compose up -d --build
+          sleep 15
+
+          # Health check autenticado LiteLLM
+          (source .env && curl -f \
+            -H 'Authorization: Bearer $LITELLM_MASTER_KEY' \
+            http://127.0.0.1:4000/health) \
+          || (git checkout HEAD~1 && docker compose up -d --build && exit 1)
+
+          # Health check Hermes Agent
+          curl -f http://127.0.0.1:8080/health \
+          || (git checkout HEAD~1 && docker compose up -d --build && exit 1)
+        "
+\end{lstlisting}
+
+\subsection{Secretos requeridos en GitHub}
+
+\begin{table}[h]
+\centering
+\caption{GitHub Actions Secrets (Settings → Secrets and variables → Actions)}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Secret}    & \textbf{Valor} \\
+\midrule
+\envvar{VPS\_HOST}    & IP pública del servidor (\code{172.236.x.x}) \\
+\envvar{VPS\_USER}    & Usuario SSH (\code{root}) \\
+\envvar{VPS\_SSH\_KEY}& Clave privada SSH (su pública en \code{/root/.ssh/authorized\_keys}) \\
+\envvar{VPS\_PORT}    & Puerto SSH (default \code{22}) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Variables en \texttt{/root/.env} del VPS (nunca salen del servidor)}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Variable}               & \textbf{Descripción} \\
+\midrule
+\envvar{LITELLM\_MASTER\_KEY}   & Clave maestra del proxy LiteLLM \\
+\envvar{OPENROUTER\_API\_KEY}   & API key de OpenRouter \\
+\envvar{GEMINI\_API\_KEY}       & API key de Google Gemini \\
+\envvar{ELEVENLABS\_API\_KEY}   & API key de ElevenLabs \\
+\envvar{ELEVENLABS\_VOICE\_ID}  & ID de voz seleccionada en ElevenLabs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Watchdog del Docker Daemon}
+
+\code{docker-watchdog.sh} es un servicio systemd que supervisa el daemon
+de Docker y los contenedores críticos cada 60 segundos, independientemente
+de Autoheal:
+
+\begin{lstlisting}[language=bash,caption=Lógica central del watchdog]
+for item in "litellm-router:litellm" "hermes-agent:hermes" "whisper-stt:whisper-stt"; do
+  container="${item%%:*}"
+  service="${item#*:}"
+  status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null \
+           || echo "missing")
+  if [ "$status" != "running" ]; then
+    log "Contenedor $container caido. Levantando servicio $service..."
+    cd "$STACK_DIR" && docker compose up -d --no-deps "$service"
+  fi
+done
+\end{lstlisting}
+
+\section{Configuración Caddy y TLS Automático}
+
+\service{Caddy} gestiona los certificados TLS mediante el protocolo ACME
+(Let's Encrypt) automáticamente. Solo requiere que los puertos 80 y 443
+estén abiertos en el firewall.
+
+\begin{lstlisting}[caption=/etc/caddy/Caddyfile completo]
+{
+    email erikjosehernandez@gmail.com
+}
+
+hermes.el80.space    { reverse_proxy 127.0.0.1:8080 }
+litellm.el80.space   { reverse_proxy 127.0.0.1:4000 }
+grafana.el80.space   { reverse_proxy 127.0.0.1:3000 }
+docs.el80.space      { reverse_proxy 127.0.0.1:3001 }
+syncthing.el80.space { reverse_proxy 127.0.0.1:8384 }
+files.el80.space     { reverse_proxy 127.0.0.1:8095 }
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption=Instalación de Caddy (setup-caddy.sh)]
+# Repositorio oficial
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+  | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+# Firewall
+ufw allow 80/tcp && ufw allow 443/tcp
+
+# Habilitar y arrancar
+systemctl enable caddy && systemctl restart caddy
+\end{lstlisting}
+
+\section{Blueprint de App Nativa Android}
+
+La hoja de ruta incluye una app Android nativa que se conecta directamente
+al Hermes Stack como cliente de voz y control.
+
+\subsection{Stack tecnológico recomendado}
+
+\begin{table}[h]
+\centering
+\caption{Stack tecnológico de la app Android}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Capa} & \textbf{Tecnología} \\
+\midrule
+Lenguaje      & Kotlin + Coroutines + Flow \\
+UI Framework  & Jetpack Compose (Material 3) \\
+Audio         & MediaRecorder / AudioRecord → PCM 16 kHz mono \\
+Red           & OkHttp WebSocket para streaming de voz \\
+LLM directo   & Google AI Studio SDK (Gemini Flash en el device) \\
+Persistencia  & Room DB para historial de conversaciones \\
+DI            & Hilt \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Secuencia de voz en la app Android}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=0.4cm and 0.8cm,
+  comp/.style={draw=hermesdark,fill=hermeslight,rounded corners=4pt,
+               minimum width=2.8cm,minimum height=0.8cm,
+               font=\sffamily\scriptsize,align=center},
+  arr/.style={->,>=Stealth,thick,hermesblue}
+]
+\node[comp] (mic)  {Micrófono\\Android};
+\node[comp,right=of mic]  (buf)  {Buffer PCM\\16 kHz};
+\node[comp,right=of buf]  (ws)   {WebSocket\\hermes.el80.space};
+\node[comp,right=of ws]   (hrm)  {Hermes\\Agent};
+\node[comp,right=of hrm]  (ll)   {LiteLLM\\→ LLM};
+\node[comp,below=1cm of ll](tts) {ElevenLabs\\TTS WS};
+\node[comp,left=of tts]   (sp)   {Speaker\\Android};
+
+\draw[arr] (mic) -- (buf);
+\draw[arr] (buf) -- (ws);
+\draw[arr] (ws)  -- (hrm);
+\draw[arr] (hrm) -- (ll);
+\draw[arr] (ll)  |- (tts);
+\draw[arr] (tts) -- (sp);
+\end{tikzpicture}
+\caption{Flujo de voz en la app Android}
+\end{figure}
+
+\subsection{Roadmap mobile}
+
+\begin{enumerate}[label=\textbf{Fase \arabic*:}]
+  \item Autenticación con \envvar{LITELLM\_MASTER\_KEY} vía HTTPS
+  \item WebSocket de voz bidireccional con Hermes Agent
+  \item Dashboard de health (pull de \domain{docs.el80.space/api/health})
+  \item Llamadas REST directas a LiteLLM para chat sin voz
+  \item Integración de Gemini on-device vía Google AI Studio SDK
+\end{enumerate}

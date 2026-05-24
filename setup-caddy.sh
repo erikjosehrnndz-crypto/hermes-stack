@@ -15,6 +15,10 @@ apt-get install -y caddy
 
 echo "==> 4. Configurando Caddyfile para el80.space..."
 cat > /etc/caddy/Caddyfile <<'EOF'
+{
+    email erikjosehernandez@gmail.com
+}
+
 # Configuración de subdominios para el80.space
 # Caddy gestionará los certificados SSL (HTTPS) automáticamente con Let's Encrypt
 
@@ -28,6 +32,18 @@ litellm.el80.space {
 
 grafana.el80.space {
     reverse_proxy 127.0.0.1:3000
+}
+
+docs.el80.space {
+    reverse_proxy 127.0.0.1:3001
+}
+
+syncthing.el80.space {
+    reverse_proxy 127.0.0.1:8384
+}
+
+files.el80.space {
+    reverse_proxy 127.0.0.1:8095
 }
 EOF
 
@@ -46,4 +62,7 @@ echo "Servicios expuestos en:"
 echo "- https://hermes.el80.space  (Hermes Agent)"
 echo "- https://litellm.el80.space (LiteLLM Router)"
 echo "- https://grafana.el80.space (Grafana Metrics)"
+echo "- https://docs.el80.space    (Hermes Website)"
+echo "- https://syncthing.el80.space (Syncthing GUI)"
+echo "- https://files.el80.space     (File Browser Web)"
 echo "================================================================"

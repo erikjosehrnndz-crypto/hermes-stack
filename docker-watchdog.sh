@@ -42,7 +42,9 @@ while true; do
     fi
   else
     # 2. Verificar contenedores criticos si el daemon esta saludable
-    for container in litellm-router hermes-agent whisper-stt; do
+    for item in "litellm-router:litellm" "hermes-agent:hermes" "whisper-stt:whisper-stt"; do
+      container="${item%%:*}"
+      service="${item#*:}"
       # Comprobamos si el contenedor existe y esta corriendo
       status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "missing")
       if [ "$status" != "running" ]; then
@@ -50,8 +52,8 @@ while true; do
         
         # En caso de estar caido o faltante, podemos intentar levantarlo si el directorio existe
         if [ -d "$STACK_DIR" ]; then
-          log "Intentando levantar/recrear $container..."
-          cd "$STACK_DIR" && docker compose up -d --no-deps "$container" || log "Fallo al levantar $container"
+          log "Intentando levantar/recrear $container usando el servicio $service..."
+          cd "$STACK_DIR" && docker compose up -d --no-deps "$service" || log "Fallo al levantar el servicio $service"
         fi
       fi
     done

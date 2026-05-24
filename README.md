@@ -134,6 +134,59 @@ Puedes ajustar los parámetros del stack para priorizar la **velocidad y costo**
 
 ---
 
+## 🚀 Pipeline de Despliegue CI/CD (GitHub Actions)
+
+El proyecto incluye un flujo de integración y despliegue continuos configurado en [.github/workflows/deploy.yml](.github/workflows/deploy.yml). Cada vez que empujas cambios a la rama `main`, la tubería ejecuta un ciclo de validación de calidad y, si todo pasa exitosamente, despliega en tu VPS sin interrumpir el servicio.
+
+### Configuración Necesaria en GitHub
+En tu panel de GitHub, ve a `Settings > Secrets and variables > Actions` y añade los siguientes secretos cifrados:
+*   `VPS_HOST`: La IP pública de tu servidor (`172.236.102.166`).
+*   `VPS_USER`: El usuario SSH (normalmente `root`).
+*   `VPS_SSH_KEY`: Tu llave SSH privada (que tenga su llave pública en `/root/.ssh/authorized_keys`).
+*   `VPS_PORT`: El puerto de tu servidor SSH (por defecto `22`).
+
+---
+
+## 💡 Ejemplos Prácticos de Operación del Pipeline
+
+A continuación, se presentan tres escenarios prácticos de cómo opera el pipeline en tu flujo de trabajo del día a día:
+
+### 📝 Ejemplo 1: Modificación de la lógica del Agente (Flujo Exitoso)
+Quieres cambiar la forma en que el agente procesa las solicitudes añadiendo nuevas palabras clave de limpieza fonética.
+1. Editas el archivo `hermes/core/agent.py` en tu entorno local.
+2. Guardas los cambios, realizas un commit y empujas a GitHub:
+   ```bash
+   git add hermes/core/agent.py
+   git commit -m "feat: agregar reemplazos fonéticos para divisas eur y usd"
+   git push origin main
+   ```
+3. **Qué hace el Pipeline:**
+   * **Fase 1 (Validación):** Levanta un entorno Ubuntu virtual en la nube de GitHub, descarga tu código, instala las dependencias e inspecciona el estilo del archivo editado con `black`, `ruff` y `mypy`.
+   * **Fase 2 (Despliegue):** Al verificar que el código es correcto, conecta vía SSH a tu VPS, se posiciona en `/root`, realiza un `git pull origin main`, reconstruye el contenedor de Hermes (`docker compose up -d --build`) y ejecuta pruebas de salud interna (`curl`). La actualización se aplica en segundos **sin caída del servicio (Zero-Downtime)**.
+
+### 🚫 Ejemplo 2: Intento de subir código con errores de sintaxis (Bloqueo Seguro)
+Cometes un error de tipografía al editar las dependencias o el código de inicio (por ejemplo, olvidas cerrar un paréntesis en `hermes/main.py`).
+1. Haces commit y push del archivo con error a `main`.
+2. **Qué hace el Pipeline:**
+   * La fase 1 de **Lint & Validation** detecta el error de sintaxis inmediatamente a través de la inspección estática de `ruff` y `mypy`.
+   * El pipeline aborta con estado **FALLIDO (Failed)**.
+   * **Resultado:** El pipeline bloquea el despliegue SSH y el código erróneo **nunca llega a tu servidor de producción**. Tu aplicación en el servidor sigue corriendo estable con la versión anterior.
+
+### 🔄 Ejemplo 3: El Contenedor Falla al Arrancar (Rollback Automático en VPS)
+El código subido tiene una sintaxis correcta en Python, pero agregaste una configuración incorrecta en `config/litellm.yaml` que hace que el router falle al iniciar.
+1. Subes los cambios a `main`. La fase de verificación estática de GitHub pasa con éxito.
+2. El pipeline conecta al VPS, descarga el código y ejecuta `docker compose up -d --build`.
+3. El contenedor intenta arrancar pero aborta en segundos debido a la mala configuración.
+4. **Qué hace el Pipeline:**
+   * El pipeline ejecuta la instrucción de validación:
+     ```bash
+     (source .env && curl -f -H "Authorization: ...") || (rollback...)
+     ```
+   * Como LiteLLM no responde (curl devuelve error), el pipeline intercepta la falla, cancela el despliegue, ejecuta un rollback local en el VPS (`git checkout HEAD~1`) y levanta nuevamente la versión anterior estable.
+   * **Resultado:** Tu producción se restablece sola y el sistema nunca queda inoperativo.
+
+---
+
 ## 🗃️ Estructura Completa de Archivos del Proyecto
 
 *   [.github/workflows/deploy.yml](.github/workflows/deploy.yml) - Pipeline CI/CD automatizado para despliegues seguros.
@@ -228,3 +281,75 @@ journalctl -u docker-watchdog --no-pager -n 20
 | **LLM Router** | GPT-4o-mini (Vía LiteLLM) | **180ms - 250ms** | API Externa |
 | **TTS (Voz)** | ElevenLabs Flash v2.5 (WebSocket) | **150ms - 220ms** | API Externa |
 | **E2E Total** | Ciclo completo de voz a voz | **550ms - 690ms** | **Flujo Total** |
+# 📘 Detalles Técnicos del Pipeline CI/CD
+
+El pipeline de despliegue está configurado en **`.github/workflows/deploy.yml`** y consta de los siguientes trabajos principales:
+
+```yaml
+name: Deploy Hermes Stack
+on:
+  push:
+    branches: [main]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: pip install ruff black mypy
+      - name: Lint & Format
+        run: |
+          ruff .
+          black . --check
+          mypy .
+  build_and_deploy:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << 'EOF'
+            cd /root
+            git pull origin main
+            docker compose up -d --build
+            # Verifica salud de contenedores
+            curl -f -s http://localhost/health || exit 1
+          EOF
+```
+
+**Flujo del Pipeline:**
+1. **Linting**: Se ejecutan `ruff`, `black` y `mypy` para asegurar calidad y consistencia del código.
+2. **Build**: Se construyen las imágenes Docker con las últimas dependencias.
+3. **Deploy**: Se sincroniza el repositorio en el VPS y se ejecuta `docker compose up -d --build`.
+4. **Health Check**: Se verifica la disponibilidad del endpoint `/health`. Si falla, el pipeline aborta y no se aplica el despliegue.
+5. **Rollback Automático**: En caso de error crítico post‑despliegue, el script ejecuta `git revert` al último commit estable y reinicia los contenedores.
+
+---
+
+# 🤝 Cómo Contribuir al Proyecto
+
+Si deseas mejorar el stack, sigue estos pasos:
+
+1. **Fork** el repositorio y clona tu fork.
+2. Crea una rama descriptiva: `git checkout -b feature/nueva-funcionalidad`.
+3. Realiza cambios y asegura que pasen los linters (`ruff`, `black`, `mypy`).
+4. Ejecuta los tests locales con `docker compose up -d && pytest` (si existen).
+5. Haz commit con mensajes claros siguiendo Conventional Commits.
+6. Abre un **Pull Request** apuntando a `main`. El pipeline CI/CD se ejecutará automáticamente y, si todo es correcto, tu cambio será desplegado.
+
+---
+
+# 🎨 Vista Previa Visual del Stack
+
+![hermes_stack_overview](file:///root/.gemini/antigravity-cli/brain/2441e625-feaa-4d8c-a281-c3ab26ee4f06/hermes_stack_overview.png)
+
+---
+

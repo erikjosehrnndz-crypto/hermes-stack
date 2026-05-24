@@ -64,15 +64,10 @@ jobs:
       - name: Desplegar en VPS via SSH
         run: |
           ssh -p ${{ secrets.VPS_PORT || '22' }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
-            cd /opt/infra-stack || (mkdir -p /opt/infra-stack && cd /opt/infra-stack)
+            cd /root
             
-            # Sincronizar codigo del repositorio (ejemplo basico via git pull si esta configurado, o copiado de archivos directos)
-            if [ -d .git ]; then
-              git pull origin main
-            else
-              # Clonar por primera vez si no existe en el host (requiere credenciales del repo configuradas en el VPS)
-              git clone https://github.com/${{ github.repository }}.git .
-            fi
+            # Sincronizar codigo del repositorio
+            git pull origin main
             
             # Recrear contenedores y actualizar configuracion
             docker compose up -d --build
@@ -81,8 +76,8 @@ jobs:
             echo 'Esperando arranque de servicios...'
             sleep 15
             
-            # Health check de LiteLLM
-            curl -f http://127.0.0.1:4000/health || (echo 'LiteLLM no saludable! Deshaciendo cambios...' && git checkout HEAD~1 && docker compose up -d --build && exit 1)
+            # Health check de LiteLLM (Autenticado con Master Key de .env)
+            (source .env && curl -f -H \"Authorization: Bearer \$LITELLM_MASTER_KEY\" http://127.0.0.1:4000/health) || (echo 'LiteLLM no saludable! Deshaciendo cambios...' && git checkout HEAD~1 && docker compose up -d --build && exit 1)
             
             # Health check del Agente
             curl -f http://127.0.0.1:8080/health || (echo 'Hermes no saludable! Deshaciendo cambios...' && git checkout HEAD~1 && docker compose up -d --build && exit 1)
