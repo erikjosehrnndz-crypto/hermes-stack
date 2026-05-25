@@ -167,9 +167,68 @@ Previene: consumo de tokens del orquestador en trabajo que fue delegado.
 Asignar el modelo mínimo suficiente por fase:
 - **Haiku:** lectura de archivos, extracción de datos, mapeo estructural
 - **Sonnet:** síntesis, redacción técnica, generación de documentos
-- **Opus:** solo si el usuario lo activa explícitamente
+- **Opus:** orquestador raíz SIEMPRE (ver siguiente regla), o sub-agente si el usuario lo activa explícitamente
 
 En sesión 2026-05-23, 4 agentes Haiku produjeron ~3400 líneas estructuradas. Usar Sonnet/Opus hubiera costado 3-5x más para el mismo resultado.
+
+---
+
+## Orquestación jerárquica con Opus 4.7
+
+### El orquestador raíz SIEMPRE usa el mejor modelo disponible
+
+Cualquier `/gg`, `/swarm`, plan multi-agente o tarea con sub-agentes **debe** ser orquestado por el modelo más potente disponible. **Actualmente: Opus 4.7** (`claude-opus-4-7`).
+
+**Verificación al inicio de cualquier orquestación:**
+1. Si el modelo activo no es Opus 4.7 (o el más potente del momento), avisar al usuario y sugerir `/model` antes de proceder.
+2. El orquestador raíz **nunca** se degrada a Sonnet/Haiku — los modelos pequeños son SOLO para sub-agentes.
+
+**Por qué:** el orquestador toma decisiones de alto impacto (descomposición, autorización de swarms anidados, síntesis final). Un modelo débil orquestando agentes fuertes produce decomposiciones torpes y pierde dinero en re-trabajo. Un modelo fuerte orquestando agentes Haiku produce decomposiciones óptimas con coste mínimo.
+
+### Sub-agentes pueden lanzar sub-swarms — solo con autorización del padre
+
+Un sub-agente **puede** solicitar lanzar su propio swarm si su tarea es demasiado amplia para un único hilo. Patrón obligatorio:
+
+1. El sub-agente detecta que necesita paralelizar.
+2. **Retorna su respuesta sin lanzar nada todavía**, incluyendo:
+   ```
+   SOLICITUD_SUB_SWARM:
+   - Razón: <por qué un hilo no basta>
+   - Agentes propuestos: <N>, modelos: <Haiku/Sonnet>
+   - Estimación de tokens: <total aproximado>
+   - Outputs esperados: <archivos a /tmp/<task_id>/...>
+   ```
+3. El orquestador padre evalúa la solicitud, la aprueba o la rechaza explícitamente, y solo entonces re-invoca al sub-agente con permiso concedido.
+4. Profundidad máxima recomendada: **3 niveles** (orquestador → sub-agente → sub-sub-agente). Cualquier nivel adicional requiere aprobación explícita del usuario.
+
+**Por qué:** previene explosión combinatoria de costes y pérdida de control jerárquico. Si un sub-agente Haiku lanza unilateralmente 5 sub-agentes Sonnet, el coste se dispara sin que el orquestador raíz pueda intervenir. Toda autorización fluye top-down.
+
+### Sub-agentes de larga duración → `run_in_background: true`
+
+Cualquier sub-agente cuya tarea estimada exceda **60 segundos** debe lanzarse con `run_in_background: true`. El orquestador recibe notificación automática al completar, no debe `sleep` ni hacer polling.
+
+**Regla práctica:**
+- Lectura/extracción simple (< 60 s) → foreground
+- Investigación, redacción, generación de múltiples archivos → background
+- Síntesis final que depende de TODOS los outputs previos → foreground (porque ya no hay paralelismo que aprovechar)
+
+Previene: el orquestador esperando inactivo mientras consume tokens de contexto. En sesión 2026-05-25 wiki-swarm, agentes background liberaron al orquestador para validar outputs intermedios sin bloquear.
+
+### Plan jerárquico explícito al inicio del swarm
+
+Antes de lanzar agentes, el plan debe documentar la jerarquía:
+
+```
+Orquestador (Opus 4.7)
+├── Agente A — <rol>     (Haiku, background, depende de: —)
+├── Agente B — <rol>     (Sonnet, background, depende de: —)
+├── Agente C — <rol>     (Haiku, background, depende de: A)
+├── Agente D — <rol>     (Sonnet, background, depende de: A)
+└── Agente E — <síntesis> (Sonnet, foreground, depende de: B, C, D)
+```
+
+Cada agente lleva: modelo asignado, modo (background/foreground), dependencias de output.
+Previene: lanzar agentes sin plan claro de dependencias, que termina en agentes esperando inputs que nunca llegan.
 
 ---
 
@@ -440,5 +499,14 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 | `togen` | `tokens` |
 | `pitline` | `pipeline` |
 | `opus 4.7` | el modelo más potente disponible en ese momento |
+| `swcion` / `sewion` | `sesión` |
+| `backgraund` / `bacgraun` | `background` |
+| `swarm` (dictado) | `swarm` (correcto, no normalizar a `enjambre`) |
+| `orwuestador` / `orquertador` | `orquestador` |
+| `caocidad` / `capazidad` | `capacidad` |
+| `lones` / `los nes` | `los` |
+| `suoerior` / `superor` | `superior` |
+| `comaml` / `comoml` | `como` |
+| `jerarqia` / `gerarquia` | `jerarquía` |
 
-Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración.
+Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración. Errores de dictado de la sesión 2026-05-25 confirman: la transcripción es ruidosa pero el sentido siempre es inferible si se mantiene la semántica del stack.
