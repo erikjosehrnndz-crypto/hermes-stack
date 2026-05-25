@@ -49,6 +49,20 @@ Antes de hacer `git add <dir>/`, hacer `ls -la <dir>` e identificar artefactos. 
 
 El `.gitignore` raíz tiene `.*` que ignora todos los dotfiles. Para que los `.gitignore` de subdirectorios funcionen, el raíz debe tener `!.gitignore` como excepción — ya está añadido.
 
+**Consecuencia importante:** `git add` de cualquier dotfile (`.claude/`, `.env`, etc.) falla. Ver sección "`.claude/` está en `.gitignore`" en Claude Code — Configuración de permisos.
+
+### `git add` siempre desde el directorio raíz `/root`
+
+`git add docker-compose.yml` falla si el CWD no es `/root` (el raíz del repo). Patrón obligatorio:
+
+```bash
+cd /root && git add <archivo-relativo-al-repo>
+# o bien usar la ruta desde raíz sin cd:
+git -C /root add <archivo>
+```
+
+**Previene:** `fatal: pathspec 'X' did not match any files` cuando el shell está en un subdirectorio.
+
 ### Archivos que nunca van al repositorio
 
 ```
@@ -370,6 +384,16 @@ fontawesome5                                    ✗  (no instalado)
 
 No usar `\faIcon{}`. Sustituir con texto o Unicode directo.
 
+### `\checkmark` requiere `amssymb`
+
+`\checkmark` no está en el núcleo de LaTeX. Sin el paquete, compila con errores silenciosos y el símbolo queda vacío.
+
+```latex
+\usepackage{amssymb}   % añadir si se usa \checkmark o \square, \triangleright, etc.
+```
+
+**Previene:** error `! Undefined control sequence. \checkmark` en cada fila de tabla con visto bueno. Ocurrido en sesión 2026-05-25 al generar el resumen de auto-mejora.
+
 ### Compilación — 3 pasadas + verificación
 
 ```bash
@@ -466,7 +490,25 @@ Las siguientes reglas en `settings.json` cubren el workflow completo:
 | `Bash(npm *)` | npm install, run build, run dev, list |
 | `Bash(xelatex *)` | Compilación LaTeX 3 pasadas |
 | `Write(/root/website/*)` | Frontend Next.js |
+| `Write(/root/hermes/*)` | Código del agente Python |
+| `Write(/root/config/*)` | litellm.yaml y configs de servicios |
 | `Write(/root/.claude/*)` | Hooks, settings, statusline |
+
+### `.claude/` está en `.gitignore` — settings.json NO va al repositorio
+
+El `.gitignore` raíz contiene `.*`, que ignora **todos los dotfiles**, incluyendo `.claude/`.
+`git add .claude/settings.json` falla silenciosamente o lanza error. Este archivo **vive solo en el VPS**.
+
+```bash
+# Esto FALLA:
+git add .claude/settings.json   # error: pathspec ignored by .gitignore
+
+# Gestión correcta: editar directamente, nunca commitear
+# Las reglas canónicas se documentan en CLAUDE.md (esta sección)
+```
+
+**Consecuencia:** si el VPS se reinicia o se clona el repo en otra máquina, hay que recrear `settings.json` manualmente a partir de la tabla de permisos canónicos de esta sección.
+**Previene:** confusión al intentar `git add` del archivo de permisos (error 2026-05-25).
 
 ### Síntoma de acumulación — cuándo limpiar
 
@@ -675,6 +717,27 @@ app.on_startup.append(lambda app: app["agent"].start())
 app.on_cleanup.append(lambda app: app["agent"].stop())
 ```
 **Previene:** latencia extra por reconexión TCP en cada LLM call. Error cometido en versión original de hermes/core/agent.py.
+
+### Handlers externos también deben usar la sesión compartida del agente
+
+Funciones handler en módulos separados (ej. `api/health.py`) que reciben `request.app["agent"]` **también deben usar `agent._session`**, no crear la suya:
+
+```python
+# health.py — CORRECTO
+async def check_litellm(litellm_url: str, session: aiohttp.ClientSession | None) -> bool:
+    if session is None or session.closed:
+        async with aiohttp.ClientSession() as s:   # fallback limpio
+            async with s.get(...) as resp: ...
+    async with session.get(...) as resp: ...        # ruta normal: sesión compartida
+
+# health_handler — pasar la sesión del agente
+async def health_handler(request):
+    agent = request.app["agent"]
+    session = agent._session
+    ok = await check_litellm(agent.litellm_url, session)
+```
+
+**Previene:** overhead TCP+TLS en cada healthcheck (autoheal cada 30s × 2 checks = 2 conexiones efímeras/30s). Error encontrado en `hermes/api/health.py` en sesión 2026-05-25.
 
 ### orjson en lugar de json stdlib
 
