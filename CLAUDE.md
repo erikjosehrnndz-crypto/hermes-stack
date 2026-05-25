@@ -14,9 +14,57 @@ git status                    # cambios sin commitear
 git log --oneline -5          # commits recientes
 git branch                    # rama activa
 docker compose ps             # estado del stack en producción
+rm -f /tmp/claude_progress    # limpiar barra de progreso stale (evita barra corrupta)
+cat /root/SESSION_HANDOFF.md 2>/dev/null   # handoff de sesión anterior (si existe)
+cat /root/PENDIENTES.md | head -20         # tareas activas
 ```
 
 Si hay cambios sin commitear de una sesión anterior: analizarlos, commitearlos o descartarlos **antes** de empezar trabajo nuevo.
+
+### Protocolo de cierre de sesión
+
+Al finalizar cualquier sesión de trabajo, en orden:
+
+1. **Actualizar PENDIENTES.md** — actualizar `estado` del ítem trabajado; añadir `evidencia` si se resolvió
+2. **Ejecutar `make health-check`** (o `curl -f http://127.0.0.1:8080/health`) — confirmar que el stack sigue sano
+3. **Commitear todo el trabajo** — nunca dejar cambios sin commitear al cerrar
+4. **Si hay trabajo incompleto:** copiar `.claude/templates/session-handoff.md` → `/root/SESSION_HANDOFF.md` y rellenar el "siguiente paso recomendado" con una instrucción concreta
+
+Sin clock-out: cada sesión siguiente empieza diagnosticando el estado desde cero. Con clock-out: la siguiente sesión lee `SESSION_HANDOFF.md` y continúa en 2 minutos.
+
+### Una tarea activa por sesión
+
+Completar el ítem activo antes de empezar el siguiente:
+- Si surge una tarea secundaria durante el trabajo: registrarla en PENDIENTES.md pero **no empezarla**
+- Excepción: si la tarea activa bloquea por dependencia externa, se puede avanzar otro ítem de PENDIENTES.md
+- Excepción 2: dentro de una tarea, lanzar múltiples sub-agentes en paralelo está permitido (ver "Orquestación jerárquica")
+
+Previene: context switching que deja 3 tareas al 70% en lugar de 1 al 100%.
+
+### Definition of Done — toda tarea
+
+Una tarea está **done** cuando se cumplen los 4 criterios:
+
+1. Implementación existe en código
+2. Verificación ejecutada: no "debería funcionar" — correr el comando real de verificación
+3. Evidencia registrada: commit hash o output del comando en PENDIENTES.md o SESSION_HANDOFF.md
+4. Stack reiniciable: `docker compose ps` muestra todos los servicios Up
+
+Si falta cualquier criterio: el ítem no está done aunque el código esté escrito.
+
+### Verificación gate — `make check`
+
+Todos los comandos de verificación están unificados en `/root/Makefile`:
+
+```bash
+make check        # build Next.js + health checks + lint Python
+make build-check  # solo Next.js build
+make health-check # solo health de servicios
+make status       # docker compose ps
+make logs         # logs recientes de hermes, litellm, website
+```
+
+Usar `make check` antes de declarar cualquier tarea completada.
 
 ---
 
@@ -797,3 +845,50 @@ LiteLLM responde 401 cuando recibe una request sin autenticación válida, pero 
 ```typescript
 litellmUp = [200, 401].includes(litellmRes.value.status);
 ```
+
+---
+
+## Harness Engineering — resumen de subsistemas
+
+Estado actual del harness del Hermes Stack (patrón de learn-harness-engineering):
+
+| Subsistema | Artefacto | Estado |
+|---|---|---|
+| Instructions | `CLAUDE.md` (800 líneas) + `AGENTS.md` (100 líneas) | ✅ OK |
+| State | `PENDIENTES.md` + `PENDIENTES.json` (con evidence) | ✅ OK |
+| Verification | `Makefile` con `make check` | ✅ OK |
+| Scope | Regla "una tarea activa" en CLAUDE.md | ✅ OK |
+| Session Lifecycle | Checklist inicio + clock-out + `SESSION_HANDOFF.md` | ✅ OK |
+
+### AGENTS.md — cuándo usarlo
+
+`AGENTS.md` es el entry file de 100 líneas para el agente. CLAUDE.md es el detalle completo.
+- Agente nuevo o context comprimido: leer `AGENTS.md` primero (startup, hard constraints, verification gate)
+- Trabajo detallado: consultar CLAUDE.md para la sección relevante
+
+### MEMORY.md — límite de 200 líneas
+
+El índice de memoria (`memory/MEMORY.md`) tiene un cap efectivo de ~200 líneas. Entradas por encima del cap se truncan silenciosamente.
+
+```bash
+wc -l /root/.claude/projects/-root/memory/MEMORY.md   # verificar tamaño
+```
+
+Consolidar entradas redundantes cuando el índice supere 30 entradas. Los archivos de detalle (ej. `user_profile.md`) no tienen límite.
+
+### Limpieza de /tmp entre sesiones
+
+Al inicio de sesión, si hay archivos de agentes anteriores:
+
+```bash
+ls /tmp/claude_progress /tmp/*.md 2>/dev/null   # detectar leftovers
+```
+
+Si hay archivos de sesiones anteriores: revisar si contienen trabajo no integrado, luego limpiar.
+El startup checklist ya incluye `rm -f /tmp/claude_progress`.
+
+### Escalation de sub-agentes fallidos
+
+- 1 fallo: reintentar con prompt más específico
+- 2 fallos: intentar escritura directa por el orquestador
+- 3 fallos o ambigüedad de scope: escalar al usuario — no continuar quemando tokens

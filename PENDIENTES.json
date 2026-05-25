@@ -1,0 +1,68 @@
+[
+  {
+    "id": "hs-001",
+    "service": "hermes-agent",
+    "priority": "critical",
+    "purpose": "Hermes Agent: 0 requests en 47h — investigar pipeline de voz (Whisper → /process). Verificar que Caddy enruta hermes.el80.space correctamente y que el cliente de voz tiene la URL actualizada.",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "curl -f http://127.0.0.1:8080/health && docker compose logs hermes --tail=20 | grep 'POST /process'",
+    "evidence": "",
+    "notes": "Si no hay logs de /process: el problema está en Whisper→Hermes. Si hay 404: problema en Caddy routing."
+  },
+  {
+    "id": "hs-002",
+    "service": "litellm-router",
+    "priority": "critical",
+    "purpose": "gemini/text-embedding-004 caído en LiteLLM — verificar que GEMINI_API_KEY tiene permiso de embeddings.",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "source /root/.env && curl -H 'Authorization: Bearer $LITELLM_MASTER_KEY' http://127.0.0.1:4000/health | jq '.litellm_apis_healthy'",
+    "evidence": "",
+    "notes": "Probar embedding directamente si el health no lo indica."
+  },
+  {
+    "id": "hs-003",
+    "service": "infra",
+    "priority": "warning",
+    "purpose": "Añadir litellm a red monitoring en docker-compose.yml para que Prometheus pueda scrapearlo y aparezca en Grafana.",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "docker compose ps litellm | grep 'monitoring' && curl -sf http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job==\"litellm\") | .health'",
+    "evidence": "",
+    "notes": ""
+  },
+  {
+    "id": "hs-004",
+    "service": "litellm-router",
+    "priority": "warning",
+    "purpose": "Verificar gemini-flash end-to-end — configurado como modelo por defecto de Hermes pero no aparece en health check de LiteLLM.",
+    "depends_on": ["hs-001"],
+    "status": "not-started",
+    "verification": "source /root/.env && curl -s -X POST http://127.0.0.1:4000/v1/chat/completions -H 'Authorization: Bearer $LITELLM_MASTER_KEY' -H 'Content-Type: application/json' -d '{\"model\":\"gemini-flash\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}],\"max_tokens\":5}' | jq '.choices[0].message.content'",
+    "evidence": "",
+    "notes": ""
+  },
+  {
+    "id": "hs-005",
+    "service": "hermes-agent",
+    "priority": "improvement",
+    "purpose": "Rebuild hermes container para aplicar cambios de sesión 2026-05-25 (gemini-flash default + health.py session compartida).",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "docker compose ps hermes | grep 'Up' && docker compose logs hermes --tail=5 | grep 'Started'",
+    "evidence": "",
+    "notes": "Comando: docker compose up -d --build hermes"
+  },
+  {
+    "id": "hs-006",
+    "service": "infra",
+    "priority": "improvement",
+    "purpose": "Merge feat/nextjs-rocket-compat → main para activar el CD pipeline y desplegar todos los cambios acumulados (12 commits adelante de origin).",
+    "depends_on": ["hs-005"],
+    "status": "not-started",
+    "verification": "git log --oneline main..HEAD | wc -l  # debe ser 0 después del merge",
+    "evidence": "",
+    "notes": "Verificar build antes de crear PR: cd website && npm run build"
+  }
+]
