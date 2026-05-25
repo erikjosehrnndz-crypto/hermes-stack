@@ -22,9 +22,9 @@ Si hay cambios sin commitear de una sesión anterior: analizarlos, commitearlos 
 
 ## Git
 
-### Push HTTPS — requiere token embedido en cada sesión
+### Push HTTPS — ÚNICO método que funciona en este VPS
 
-El remote usa HTTPS, no SSH. `git push` falla con "could not read Username". Patrón obligatorio:
+El remote usa HTTPS, no SSH. El helper de credenciales git **no está configurado** en este VPS, por lo que `git push` falla con "could not read Username" si no se incrusta el token. Patrón obligatorio:
 
 ```bash
 GH_TOKEN=$(gh auth token)
@@ -34,6 +34,8 @@ git remote set-url origin "https://github.com/erikjosehrnndz-crypto/hermes-stack
 ```
 
 Restaurar la URL limpia después de cada push — el token no debe quedar en el remote URL.
+
+**GitHub username:** `erikjosehrnndz-crypto` (con `-crypto`). No usar versiones sin el sufijo.
 
 ### .gitignore antes de `git add` en cualquier directorio nuevo
 
@@ -71,6 +73,13 @@ Previene commits rotos que el CI detecta después. Si el build falla, corregir a
 ### Commit por tarea lógica, no por sesión
 
 Commitear al finalizar cada tarea individual. No acumular cambios de múltiples tareas en un solo commit al final de la sesión — si la sesión cae por rate limit, el trabajo sin commit se pierde.
+
+### Commit ANTES de lanzar orquestación multi-agente
+
+Cualquier trabajo no commiteado antes de lanzar una ronda de sub-agentes se puede perder si el context limit ocurre durante la ejecución paralela.
+
+**Regla:** `git commit` de todo el trabajo en curso ANTES de lanzar agentes de larga duración.
+Previene: pérdida de trabajo entre sesiones por rate limit durante orquestación.
 
 ### Nombramiento de ramas
 
@@ -123,6 +132,35 @@ gh pr create --title "..." --body "..."
 
 **Regla:** Si el contenido fuente ya existe → escribir directo. Solo paralelizar si la investigación genuinamente lo requiere y cada agente escribe su output a disco antes de terminar.
 
+### Checkpointing obligatorio en sub-agentes
+
+Cada sub-agente que produzca contenido debe escribirlo a un archivo en disco (ej. `/tmp/<task_id>.md`) como **última acción antes de terminar** — no solo retornarlo en la respuesta del agente.
+Previene: pérdida del 100% del trabajo cuando el orquestador choca con rate limit antes de recolectar resultados.
+
+### Sub-agentes no heredan permisos Write/Bash del padre
+
+Los sub-agentes lanzados con TaskCreate no heredan permisos Write/Bash del orquestador. Si un agente necesita escribir archivos o ejecutar comandos, el orquestador debe configurar `.claude/settings.json` antes de lanzarlo, o el orquestador debe escribir él mismo los archivos con los resultados.
+Previene: ciclo de bloqueos de permisos que consume rate limit sin producir archivos.
+
+### Síntesis incremental con 4+ agentes en paralelo
+
+Con 4 o más agentes en paralelo, lanzar el agente de síntesis de forma **incremental** a medida que cada investigador completa — no esperar todos los resultados simultáneamente.
+Previene: bloqueo total si el orquestador sufre rate limit esperando al último agente.
+
+### El orquestador no debe investigar trabajo que delegó
+
+Si el usuario delega explícitamente y prohíbe al orquestador hacer Bash/Read, el orquestador debe incrustar el contexto necesario (desde MEMORY.md, CLAUDE.md) en los prompts de los sub-agentes, no leer archivos directamente.
+Previene: consumo de tokens del orquestador en trabajo que fue delegado.
+
+### Economía de modelos en orquestación multi-agente
+
+Asignar el modelo mínimo suficiente por fase:
+- **Haiku:** lectura de archivos, extracción de datos, mapeo estructural
+- **Sonnet:** síntesis, redacción técnica, generación de documentos
+- **Opus:** solo si el usuario lo activa explícitamente
+
+En sesión 2026-05-23, 4 agentes Haiku produjeron ~3400 líneas estructuradas. Usar Sonnet/Opus hubiera costado 3-5x más para el mismo resultado.
+
 ---
 
 ## Dependencias — verificar versión antes de usar features
@@ -136,6 +174,9 @@ npm list <lib>
 ```
 
 **No asumir que la versión instalada soporta las últimas features.** Error cometido en 2026-05-25: se usó `next.config.ts` (feature de Next.js 15+) pero la versión instalada era 14.2.x, que no lo soporta — build roto hasta renombrar a `.mjs`.
+
+**Regla de orden:** el check de versión debe ser el **primer paso** cuando el plan menciona archivos de configuración version-específicos (ej. `next.config.ts`, plugins con breaking changes). Verificar primero, escribir después.
+Previene: el ciclo write→build-error→fix que ya ocurrió.
 
 ---
 
@@ -272,6 +313,47 @@ pdfinfo main.pdf | grep Pages              # verificar página count
 
 ---
 
+## Slash commands globales (`~/.claude/commands/`)
+
+### El directorio no existe en instalaciones limpias
+
+`~/.claude/commands/` debe crearse manualmente antes de escribir el primer slash command global:
+
+```bash
+mkdir -p ~/.claude/commands/
+```
+
+No existe por defecto — escribir un archivo en esa ruta sin crear el directorio primero falla silenciosamente o con error de path.
+
+### /gg es efectivo para la PRÓXIMA sesión, no la actual
+
+Las reglas añadidas con `/gg` al final de una sesión no previenen errores que ya ocurrieron en esa misma sesión — benefician la sesión siguiente. El valor de `/gg` es **prospectivo**.
+
+---
+
+## CI/CD pipeline — referencia
+
+GitHub Actions → SSH al VPS → `git pull /root` → `docker compose up -d --build` → health checks autenticados → **rollback automático a `HEAD~1` si el health check falla**.
+
+Leer `.github/workflows/deploy.yml` antes de:
+- Hacer push a `main`
+- Modificar el workflow de deploy
+- Cambiar health check endpoints
+
+---
+
+## Recursos de referencia del proyecto
+
+### Blueprint PDF
+
+`/root/Hermes_Stack_Blueprint.pdf` (52 páginas) es el documento técnico de referencia del stack completo: arquitectura, diagramas, todos los servicios. Leer antes de tareas que requieran contexto profundo del stack.
+
+### Estructura LaTeX base validada
+
+`main.tex + s1_architecture.tex + s2_services.tex + s3_cicd.tex + s4_observability.tex` compila limpia (24 pp, 0 errores XeLaTeX). Usar como punto de partida para futuros documentos técnicos del proyecto.
+
+---
+
 ## Docker — nombres de servicio vs contenedor
 
 En este proyecto hay una distinción importante para `docker compose up --no-deps`:
@@ -317,3 +399,17 @@ curl -f http://127.0.0.1:8080/health
 ```
 
 Siempre verificar antes de declarar un deploy exitoso.
+
+---
+
+## Sesiones de voz / remote-control
+
+Los prompts dictados por micrófono llegan con errores de transcripción. Normalizar antes de procesar:
+
+| Transcripción errónea | Interpretación correcta |
+|---|---|
+| `togen` | `tokens` |
+| `pitline` | `pipeline` |
+| `opus 4.7` | el modelo más potente disponible en ese momento |
+
+Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración.
