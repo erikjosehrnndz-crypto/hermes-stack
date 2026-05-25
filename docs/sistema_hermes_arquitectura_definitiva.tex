@@ -1,0 +1,374 @@
+%!TEX program = xelatex
+\documentclass[12pt,a4paper,openany]{book}
+
+% ─── Encoding & Fonts ────────────────────────────────────────────────────────
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+
+% ─── Language ────────────────────────────────────────────────────────────────
+\usepackage[spanish,es-noindentfirst]{babel}
+
+% ─── Layout & Geometry ────────────────────────────────────────────────────────
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.8cm,right=2.8cm,
+            headheight=15pt]{geometry}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\small\thepage}
+\fancyhead[RE]{\small\leftmark}
+\fancyhead[LO]{\small Hermes Stack — Arquitectura Integrada}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─── Color Palette ───────────────────────────────────────────────────────────
+\usepackage{xcolor}
+\definecolor{hermesblue}{HTML}{2563EB}
+\definecolor{hermesdark}{HTML}{1E293B}
+\definecolor{hermeslight}{HTML}{EFF6FF}
+\definecolor{hermesaccent}{HTML}{7C3AED}
+\definecolor{codebg}{HTML}{F8FAFC}
+\definecolor{codefg}{HTML}{1E293B}
+\definecolor{greenok}{HTML}{16A34A}
+\definecolor{redalert}{HTML}{DC2626}
+
+% ─── Typography & Sections ───────────────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge\bfseries\color{hermesblue}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\sffamily\Large\bfseries\color{hermesdark}}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\sffamily\large\bfseries\color{hermesdark}}
+  {\thesubsection}{1em}{}
+
+% ─── Graphics & Diagrams ─────────────────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{babel,shapes.geometric,arrows.meta,positioning,calc,
+                fit,backgrounds,decorations.pathmorphing}
+\usepackage{pgf}
+
+% ─── Tables ──────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{amssymb}
+
+% ─── Code Listings ───────────────────────────────────────────────────────────
+\usepackage{listings}
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{hermesblue}\bfseries,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\itshape\color{greenok!70!black},
+  morestring=[b]',
+  morestring=[b]",
+  stringstyle=\color{hermesaccent},
+}
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small\color{codefg},
+  breaklines=true,
+  frame=single,
+  framesep=5pt,
+  rulecolor=\color{hermesblue!40},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  showstringspaces=false,
+  captionpos=b,
+  keywordstyle=\bfseries\color{hermesblue},
+  commentstyle=\itshape\color{greenok!70!black},
+  stringstyle=\color{hermesaccent},
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+           {ñ}{{\~n}}1 {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1
+           {Ú}{{\'U}}1 {Ñ}{{\~N}}1
+}
+
+% ─── Boxes ───────────────────────────────────────────────────────────────────
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable,listingsutf8}
+
+\newtcolorbox{infobox}[1][]{
+  enhanced,breakable,
+  colback=hermeslight,colframe=hermesblue,
+  fonttitle=\sffamily\bfseries,
+  title={#1},arc=4pt
+}
+\newtcolorbox{warnbox}[1][Advertencia]{
+  enhanced,breakable,
+  colback=red!5,colframe=redalert!80!black,
+  fonttitle=\sffamily\bfseries,
+  title={#1},arc=4pt
+}
+
+% ─── Misc ────────────────────────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage[hidelinks,
+            pdfauthor={Erik José Hernández},
+            pdftitle={Hermes Stack — Manual Técnico e Informe de Arquitectura},
+            pdfsubject={Sintesis de Arquitectura y Pipelines de Voz del Hermes Stack},
+            pdfkeywords={Hermes, LLM, Docker, Observabilidad, LaTeX}]{hyperref}
+\usepackage{cleveref}
+
+% ─── Custom Commands ─────────────────────────────────────────────────────────
+\newcommand{\service}[1]{\textbf{\textsf{\color{hermesblue}#1}}}
+\newcommand{\code}[1]{\texttt{\small#1}}
+\newcommand{\port}[1]{\texttt{:#1}}
+\newcommand{\envvar}[1]{\texttt{\color{hermesaccent}#1}}
+\newcommand{\latency}[1]{\textbf{\color{greenok}#1}}
+\newcommand{\domain}[1]{\texttt{\color{hermesblue}#1}}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── PORTADA ──────────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \pagecolor{hermesdark}
+  \color{white}
+  \centering
+  \vspace*{2cm}
+
+  \begin{tikzpicture}
+    \node[draw=hermesblue,line width=3.5pt,rounded corners=15pt,
+          fill=hermesblue!15,inner sep=25pt] {
+      \begin{minipage}{11cm}\centering
+        {\sffamily\Huge\bfseries\color{white} HERMES STACK}\\[8pt]
+        {\sffamily\Large\color{hermesblue!40!white} Informe Técnico de Arquitectura Integrada}\\[4pt]
+        {\sffamily\small Versión Definitiva v3.0}
+      \end{minipage}
+    };
+  \end{tikzpicture}
+
+  \vspace{1.5cm}
+  {\sffamily\large Síntesis de Arquitectura General, Agentes, Pipelines, Core,\\
+   Visión de Futuro y Justificación de Decisiones}
+
+  \vspace{2cm}
+  \begin{tabular}{ll}
+    \textsf{\textbf{Autor:}}     & Erik José Hernández \\[4pt]
+    \textsf{\textbf{Email:}}     & \texttt{erikjosehernandez@gmail.com} \\[4pt]
+    \textsf{\textbf{Repositorio:}}& \texttt{github.com/erikjosehrnndz-crypto/hermes-stack} \\[4pt]
+    \textsf{\textbf{Entorno:}}   & \texttt{el80.space} \\[4pt]
+    \textsf{\textbf{Fecha:}}     & Mayo 2026 \\
+  \end{tabular}
+
+  \vfill
+  {\small\color{white!60}
+    Plataforma de Inteligencia Artificial Conversacional por Voz Autohospedada.\\
+    Documento consolidado de ingeniería y especificaciones de baja latencia.
+  }
+\end{titlepage}
+\nopagecolor
+
+% ── ÍNDICES ──────────────────────────────────────────────────────────────────
+\frontmatter
+\tableofcontents
+\listoftables
+\mainmatter
+
+% ── CAPÍTULO 1: SISTEMA GENERAL ──────────────────────────────────────────────
+\chapter{Sistema General}
+El \service{Hermes Stack} es una infraestructura autohospedada basada en microservicios dockerizados, desplegada en un único servidor VPS bajo el dominio primario \domain{el80.space}. Su principal objetivo es coordinar el procesamiento en tiempo real de voz a voz con baja latencia y alta privacidad.
+
+\section{Topología de Redes Docker}
+Para aislar el tráfico de datos funcionales del tráfico de monitorización y observabilidad, se definen dos redes puente (bridge) separadas en el orquestador:
+\begin{enumerate}
+    \item \textbf{backend}: Red privada para los servicios que integran el flujo conversacional. El agente principal, el reconocedor Whisper, el router LiteLLM y el caché Redis conviven en este segmento sin visibilidad directa hacia la red externa.
+    \item \textbf{monitoring}: Red específica de observabilidad. Conecta Prometheus con Grafana y los distintos exportadores de hardware/kernel (\code{cAdvisor} y \code{node-exporter}) para aislar la telemetría del núcleo operativo del sistema.
+\end{enumerate}
+
+\section{Hardening de Seguridad y Aislamiento Perimetral}
+La seguridad perimetral se basa en el principio de defensa en profundidad:
+\begin{itemize}
+    \item \textbf{Exposición a Loopback:} Todos los puertos definidos en \code{docker-compose.yml} (excepto el proxy inverso Caddy) están vinculados explícitamente a \code{127.0.0.1}. Esto anula la accesibilidad por IP pública directa y obliga a que todo el tráfico entrante sea evaluado por las reglas de routing y TLS de Caddy.
+    \item \textbf{Usuarios No-Root:} Servicios clave como LiteLLM y Grafana ejecutan procesos bajo identidades de sistema con ID de usuario restringidos (\code{user: "472:472"}), evitando la escalada de privilegios en el host ante una potencial vulnerabilidad de ejecución remota de código (RCE).
+    \item \textbf{Banderas de Seguridad:} Se aplican restricciones en el kernel del contenedor mediante \code{security\_opt} con la opción \code{no-new-privileges:true} y se descartan las capacidades del sistema con \code{cap\_drop: [ALL]} para Redis y Hermes.
+    \item \textbf{Filesystem de Solo Lectura y tmpfs:} Para evitar la inyección persistente de malware, los volúmenes operativos se montan en modo de solo lectura (\code{:ro}) cuando es viable, mientras que las escrituras de archivos temporales se realizan sobre memoria RAM utilizando configuraciones \code{tmpfs} (\code{/app/tmp:size=64M,noexec,nosuid}).
+\end{itemize}
+
+\section{Subdominios y Direccionamiento}
+El proxy inverso \service{Caddy} actúa como el punto de terminación TLS y enrutador HTTPS. La siguiente tabla describe el mapa de subdominios configurado en producción:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+\textbf{Subdominio} & \textbf{Puerto Interno} & \textbf{Propósito Principal} \\
+\midrule
+\domain{hermes.el80.space} & \port{8080} & Entrada del canal de voz del Agente Hermes (\code{/process}) \\
+\domain{docs.el80.space} & \port{3001} & Frontend de documentación y control (Next.js 14) \\
+\domain{litellm.el80.space} & \port{4000} & Endpoint unificado del proxy de modelos de lenguaje \\
+\domain{grafana.el80.space} & \port{3000} & Acceso web a métricas y visualización de Dashboards \\
+\domain{files.el80.space} & \port{8095} & Gestor web de archivos locales (FileBrowser) \\
+\bottomrule
+\end{tabularx}
+\caption{Tabla de Direccionamiento de Subdominios}
+\label{tab:subdomains}
+\end{table}
+
+% ── CAPÍTULO 2: AGENTS (AGENTES) ─────────────────────────────────────────────
+\chapter{Agents}
+El componente \service{hermes-agent} es el núcleo inteligente y conversacional de la plataforma. Está construido sobre Python 3.12 usando programación asíncrona (\code{aiohttp}) para responder a peticiones concurrentes de audio y texto de forma ágil.
+
+\section{Gestión de Memoria y Contexto Conversacional}
+Para ofrecer interacciones coherentes en el tiempo, el agente no debe ser sin estado (\textit{stateless}). Sin embargo, mantener el histórico en la memoria del proceso genera riesgos de fugas de memoria (\textit{memory leaks}) y pérdida de contexto ante reinicios.
+\begin{itemize}
+    \item El agente utiliza \service{Redis} como capa de estado centralizada.
+    \item Cada sesión de chat se asocia a un identificador único de conversación.
+    \item El contexto, compuesto por el historial de mensajes formateado y variables de sesión, se persiste y recupera en Redis con políticas de expiración (TTL) automáticas de 30 minutos.
+\end{itemize}
+
+\section{Checkpointing y Mitigación de Pérdida de Estado}
+Para resolver vulnerabilidades asociadas a la pérdida de estado en la ejecución del agente, se implementa un mecanismo de \textbf{checkpointing}:
+\begin{infobox}[Flujo de Checkpointing en Hermes]
+Antes de enviar el prompt final al router LLM, el estado actual de la conversación y las variables del agente se serializan y escriben transaccionalmente en Redis. Si el proceso de inferencia de voz o el servidor de ElevenLabs falla a mitad del stream, el cliente puede reconectarse a un nodo redundante y reanudar la interacción usando el checkpoint almacenado en Redis, evitando la repetición del turno conversacional del usuario.
+\end{infobox}
+
+\section{Orquestación Jerárquica de Modelos}
+La arquitectura define una jerarquía operativa multi-modelo basada en la economía de tokens y la capacidad cognitiva requerida por la tarea:
+\begin{enumerate}
+    \item \textbf{Orquestación General y Razonamiento Crítico:} Se delega en modelos Premium como \code{gpt-4o} o \code{claude-sonnet-4.6} (vía OpenRouter) debido a su alto rendimiento en la toma de decisiones lógicas de negocio.
+    \item \textbf{Extracción de Datos y Tareas Secundarias:} Reservado para modelos intermedios como \code{llama-3.1-70b-instruct}.
+    \item \textbf{Inferencia de Conversación Rápida:} Utiliza de forma nativa \code{gemini-2.0-flash} gracias a su latencia extremadamente baja de inferencia, óptima para flujos de voz continua.
+\end{enumerate}
+
+% ── CAPÍTULO 3: PIPELINES ────────────────────────────────────────────────────
+\chapter{Pipelines}
+Los flujos de ejecución en el Hermes Stack se dividen en tres pipelines automatizados principales: Voz E2E, Despliegue CI/CD y Observabilidad/Auto-curación.
+
+\section{Pipeline de Voz End-to-End}
+El flujo que procesa la interacción por voz del usuario de extremo a extremo está optimizado para cumplir con un SLO de \latency{< 500 ms}:
+\begin{enumerate}
+    \item \textbf{Captura y Stream:} El micrófono del cliente envía el audio comprimido a través de un WebSocket seguro (\code{wss://hermes.el80.space/process}).
+    \port{443} de Caddy recibe la petición y la deriva localmente al \port{8080} del agente Hermes.
+    \item \textbf{Speech-to-Text (STT):} El agente envía los bytes del audio al microservicio local de Whisper (\port{9000}). La transcripción se realiza localmente utilizando el modelo base en menos de 200 ms.
+    \item \textbf{Orquestación e Inferencia LLM:} Con el texto transcrito, el agente consulta a \port{4000} (LiteLLM Router). Si la respuesta no está cacheada en Redis, LiteLLM enruta la petición al proveedor óptimo según la estrategia de latencia, retornando el texto en aproximadamente 300 ms.
+    \item \textbf{Text-to-Speech (TTS):} El agente procesa y limpia el texto para evitar que el sintetizador vocal intente leer caracteres Markdown. El texto limpio se envía mediante WebSocket a la API externa de ElevenLabs Flash v2.5.
+    \item \textbf{Inferencia Vocal y Reproducción:} ElevenLabs, configurado con \code{auto\_mode: true}, devuelve inmediatamente los fragmentos de audio PCM a 24 kHz que se reproducen en streaming en el altavoz del usuario.
+\end{enumerate}
+
+\section{Pipeline CI/CD (GitHub Actions a VPS)}
+El despliegue continuo garantiza cambios de código ágiles sin detener la operación de producción:
+\begin{itemize}
+    \item \textbf{Etapa de Lint y Validación:} Todo push o PR ejecuta validaciones con \code{ruff}, \code{black} y \code{mypy} en un runner externo de GitHub.
+    \item \textbf{Despliegue Automático:} Al hacer push sobre la rama \code{main}, el runner establece conexión SSH con el VPS, descarga los cambios e inicia el build de contenedores (\code{docker compose up -d --build}).
+    \item \textbf{Health Checks Autenticados:} El pipeline espera un período de gracia de 15 segundos y evalúa la salud de los servicios críticos (LiteLLM y Hermes Agent) usando headers de autenticación (\code{LITELLM\_MASTER\_KEY}).
+    \item \textbf{Rollback a HEAD\~{}1:} Si cualquiera de los health checks retorna un estado fallido, el script aborta inmediatamente y ejecuta \code{git checkout HEAD\~{}1 \&\& docker compose up -d --build} para restablecer la versión estable anterior, mitigando cualquier downtime de producción.
+\end{itemize}
+
+\section{Pipeline de Observabilidad y Auto-Curación}
+Para proteger la disponibilidad del stack (99.5\% de SLA objetivo):
+\begin{enumerate}
+    \item \textbf{Scraping de Métricas:} Prometheus monitoriza cada 15 segundos los endpoints de telemetría de LiteLLM, Hermes Agent y exporters de sistema (\code{cAdvisor} y \code{node-exporter}).
+    \item \textbf{Bucle Reactivo de Auto-Curación:} Si un contenedor deja de responder a sus health checks internos de Docker, el daemon \code{autoheal} lo detecta a través del socket de Docker y ejecuta un reinicio forzado del servicio afectado en menos de 30 segundos.
+    \item \textbf{Watchdog Systemd del Host:} Un script persistente monitoriza el estado global de Docker. Si el servicio de Docker se congela a nivel del kernel del VPS, envía una alerta al webhook de Slack de emergencias y reinicia el servicio de systemd (\code{systemctl restart docker}) de forma automática.
+\end{enumerate}
+
+% ── CAPÍTULO 4: CORE (COMPONENTES CENTRALES) ─────────────────────────────────
+\chapter{Core}
+El núcleo de procesamiento se compone de tecnologías clave destinadas a centralizar la lógica de integración, enrutamiento y caché.
+
+\section{LiteLLM Router}
+Actúa como gateway y proxy unificado para todos los modelos lógicos de lenguaje. En lugar de forzar al agente a implementar clientes específicos de API para cada proveedor, LiteLLM expone una interfaz OpenAI-compatible en el puerto \port{4000}.
+\begin{itemize}
+    \item Carga dinámicamente las credenciales seguras de \code{OPENROUTER\_API\_KEY} y \code{GEMINI\_API\_KEY}.
+    \item Ejecuta un balanceo inteligente basado en la latencia histórica de las peticiones.
+    \item Soporta virtual keys para controlar de forma granular los presupuestos de consumo de tokens.
+\end{itemize}
+
+\section{Redis Cache}
+Redis actúa como intermediario para interceptar peticiones de inferencia duplicadas. Si el hash del prompt enviado coincide con un registro activo en Redis, la respuesta se devuelve directamente al agente sin realizar llamadas externas a las APIs de OpenRouter o Google, logrando:
+\begin{itemize}
+    \item Latencia de respuesta de \latency{0 ms}.
+    \item Ahorro directo en costos de infraestructura y tokens consumidos.
+    \item Resiliencia del sistema ante cortes prolongados de la red externa o caídas globales de proveedores.
+\end{itemize}
+
+\section{Caddy Proxy}
+Es el único componente que escucha en los puertos externos expuestos del VPS (\port{80} y \port{443}). Maneja la encriptación mediante certificados automáticos SSL y distribuye las peticiones entrantes usando hosts virtuales hacia los puertos de loopback de los contenedores Docker en el backend.
+
+% ── CAPÍTULO 5: VISIÓN PARA EL FUTURO ────────────────────────────────────────
+\chapter{Visión para el Futuro}
+El roadmap de evolución del Hermes Stack plantea mejoras sustanciales en portabilidad, experiencia de usuario y arquitectura.
+
+\section{Frontend y Next.js Compatibility}
+El sitio web principal (\domain{docs.el80.space}) se basa actualmente en Next.js con App Router.
+\begin{itemize}
+    \item \textbf{Objetivo a corto plazo:} Consolidar la rama \code{feat/nextjs-rocket-compat} en la rama principal.
+    \item \textbf{Impacto:} Permitirá la integración y renderizado ágil de los componentes estáticos y dinámicos del dashboard, facilitando una experiencia de observabilidad en tiempo real desde el navegador del usuario.
+\end{itemize}
+
+\section{Blueprint de Aplicación Android Nativa}
+Para masificar el acceso al asistente, se ha diseñado un blueprint arquitectónico de una aplicación móvil nativa:
+\begin{itemize}
+    \item \textbf{Stack Móvil:} Kotlin con Jetpack Compose para interfaces rápidas y reactivas, junto a la librería de integración de Google AI Studio.
+    \item \textbf{Canal WebSocket Nativo:} La app se conectará por WebSockets directos al endpoint de audio del Hermes Agent, permitiendo un canal de comunicación de flujo bidireccional y eliminando por completo la necesidad de un navegador web móvil.
+    \item \textbf{Validación Local de Salud:} El cliente móvil consultará periódicamente a \code{docs.el80.space/health} para verificar el estado de los servicios internos antes de iniciar transmisiones de voz, notificando al usuario si el servidor requiere mantenimiento.
+\end{itemize}
+
+\section{Hitos del Roadmap Técnico (2026 - 2027)}
+\begin{itemize}
+    \item \textbf{Q3 2026 (Corto Plazo):} Completar el build-check y resolver la latencia en transacciones Whisper mediante streaming de entrada.
+    \item \textbf{Q4 2026 (Mediano Plazo):} Migrar los secretos almacenados en texto plano en el archivo \code{.env} del VPS hacia soluciones de bóveda segura como HashiCorp Vault.
+    \item \textbf{2027 (Largo Plazo):} Implementar despliegues avanzados tipo Blue-Green para eliminar cualquier micro-downtime residual durante reinicios de contenedores.
+\end{itemize}
+
+% ── CAPÍTULO 6: META ─────────────────────────────────────────────────────────
+\chapter{Meta}
+La gestión interna y las normas operativas que rigen el mantenimiento autónomo del Hermes Stack se definen en esta sección Meta.
+
+\section{Estructura de Reglas de Agentes y Sistema}
+Para asegurar que los agentes autónomos de IA no rompan la estabilidad operativa de producción, se implementan archivos de control rígidos:
+\begin{itemize}
+    \item \textbf{[CLAUDE.md](file:///root/CLAUDE.md):} Define el protocolo obligatorio de inicio y cierre de sesión de trabajo, el uso del comando \code{make check} antes de commits y la configuración del token HTTPS para git push.
+    \item \textbf{[AGENTS.md](file:///root/AGENTS.md):} Detalla la secuencia de arranque obligatoria, las restricciones estrictas de Git (como no commitear bases de datos ni dotfiles) y los criterios formales para la definición de una tarea como completada (Definition of Done).
+\end{itemize}
+
+\section{Bucle Operativo de Sesión}
+Cada ciclo de trabajo para un agente de desarrollo cumple un protocolo estricto:
+\begin{enumerate}
+    \item \textbf{Clock-In:} Diagnóstico inicial del stack y backlog mediante comandos locales del sistema.
+    \item \textbf{Tarea Única:} Para evitar la dispersión de esfuerzos, se prohíbe abrir más de una tarea operativa simultáneamente en una sesión de desarrollo.
+    \item \textbf{Cierre y Clock-Out:} Actualización del estado en \code{PENDIENTES.md}, commits incrementales y generación de un archivo de handoff si la tarea no se culminó.
+\end{enumerate}
+
+\section{El Comando Evolve}
+El comando \code{/evolve} es un mecanismo meta-cognitivo para los agentes. Permite analizar la sesión de trabajo recién terminada, detectar puntos débiles en las instrucciones y actualizar automáticamente los archivos de directivas de desarrollo (\code{CLAUDE.md} y \code{AGENTS.md}) para que los agentes futuros no vuelvan a tropezar con problemas ya resueltos.
+
+% ── CAPÍTULO 7: JUSTIFICACIÓN ────────────────────────────────────────────────
+\chapter{Justificación}
+Las decisiones de diseño de la arquitectura del Hermes Stack han sido seleccionadas estratégicamente para optimizar los recursos, asegurar la disponibilidad y cumplir con las expectativas de rendimiento.
+
+\section{STT Local con Whisper en Infraestructura Propia}
+\begin{itemize}
+    \item \textbf{Decisión:} Ejecutar el modelo Whisper Base en local dentro de Docker en lugar de APIs externas como OpenAI.
+    \item \textbf{Justificación:} El procesamiento local elimina la latencia de subir audio a través de internet (round-trip de red de subida). Además, garantiza que las conversaciones por voz de los usuarios nunca salgan del servidor de producción, cumpliendo con estrictas directrices de soberanía de datos y privacidad.
+\end{itemize}
+
+\section{ElevenLabs Flash v2.5 con auto\_mode y Compresión Nula}
+\begin{itemize}
+    \item \textbf{Decisión:} Configurar la síntesis de voz mediante ElevenLabs Flash v2.5, configurando \code{auto\_mode: true} y \code{compression=None}.
+    \item \textbf{Justificación:} Flash v2.5 reduce la latencia de inferencia TTS a la mitad en comparación con Turbo v2.5 (~75ms vs ~150ms). El parámetro \code{auto\_mode} deshabilita buffers internos para generar audio PCM inmediatamente en cuanto el agente envía el texto, mientras que omitir la compresión web reduce los ciclos de procesamiento de CPU requeridos para deserializar datos.
+\end{itemize}
+
+\section{LiteLLM sobre Integración Propietaria de APIs}
+\begin{itemize}
+    \item \textbf{Decisión:} Utilizar LiteLLM Router en lugar de llamadas directas a las APIs de OpenRouter y Google.
+    \item \textbf{Justificación:} LiteLLM proporciona una capa unificada de fallback y balanceo basada en latencia de manera nativa sin sobrecargar el código de control del agente. La configuración externa de modelos en YAML facilita cambios inmediatos de proveedores en caliente sin alterar la lógica de negocio de Hermes.
+\end{itemize}
+
+\section{Redundancia Híbrida: OpenRouter y API Directa de Google}
+\begin{itemize}
+    \item \textbf{Decisión:} Emplear de forma paralela la pasarela de OpenRouter y la API nativa de Google Gemini.
+    \item \textbf{Justificación:} Esta topología garantiza alta disponibilidad. Si los servidores de OpenRouter sufren latencias altas o caídas, LiteLLM redirige dinámicamente las llamadas directamente al endpoint oficial de Google Gemini, garantizando que el asistente siempre responda con fiabilidad.
+\end{itemize}
+
+\end{document}
