@@ -157,10 +157,7 @@ chore/<nombre>    # mantenimiento (gitignore, CLAUDE.md, deps)
 ```bash
 git checkout -b feat/mi-feature
 # ... trabajo y commits ...
-GH_TOKEN=$(gh auth token)
-git remote set-url origin "https://erikjosehrnndz-crypto:${GH_TOKEN}@github.com/erikjosehrnndz-crypto/hermes-stack.git"
-git push -u origin feat/mi-feature
-git remote set-url origin "https://github.com/erikjosehrnndz-crypto/hermes-stack.git"
+# push usando patrón HTTPS con token (ver sección Git arriba)
 gh pr create --title "..." --body "..."
 ```
 
@@ -189,8 +186,7 @@ El tool `Write` (para sobreescribir un archivo existente) requiere haber usado e
 ✅ Read(archivo.md)    → Edit(archivo.md)    # funciona
 ```
 
-**Previene:** error "File has not been read yet" al intentar sobreescribir archivos cuyo contenido llegó vía Bash. Error ocurrido en sesión 2026-05-25 con PENDIENTES.md.
-**Cómo aplicar:** antes de cualquier `Write` en archivo existente, verificar que hubo un `Read` del mismo archivo en este turno.
+**Previene:** error "File has not been read yet". Antes de cualquier `Write` en archivo existente, verificar que hubo un `Read` del mismo archivo en este turno.
 
 ---
 
@@ -203,9 +199,7 @@ El tool `Write` (para sobreescribir un archivo existente) requiere haber usado e
 - La tarea es convertir/reformatear algo existente (texto → LaTeX, etc.)
 - La tarea es < 30 min de escritura directa
 
-**Riesgo crítico de orquestación masiva:** Si N agentes chocan con rate limit simultáneamente, el trabajo se pierde al 100% si no hay archivos escritos en disco. En sesión 2026-05-24, 5 agentes LaTeX cayeron por rate limit y `hermes_bp/` quedó vacío. Rehacerlo directo tomó 20 min.
-
-**Regla:** Si el contenido fuente ya existe → escribir directo. Solo paralelizar si la investigación genuinamente lo requiere y cada agente escribe su output a disco antes de terminar.
+**Regla:** Si el contenido fuente ya existe → escribir directo. Solo paralelizar si la investigación genuinamente lo requiere y cada agente escribe su output a disco antes de terminar. N agentes con rate limit simultáneo = pérdida total si no hay archivos en disco.
 
 ### Checkpointing obligatorio en sub-agentes
 
@@ -244,7 +238,6 @@ Asignar el modelo mínimo suficiente por fase:
 - **Sonnet:** síntesis, redacción técnica, generación de documentos
 - **Opus:** orquestador raíz SIEMPRE (ver siguiente regla), o sub-agente si el usuario lo activa explícitamente
 
-En sesión 2026-05-23, 4 agentes Haiku produjeron ~3400 líneas estructuradas. Usar Sonnet/Opus hubiera costado 3-5x más para el mismo resultado.
 
 ---
 
@@ -258,7 +251,7 @@ Cualquier `/gg`, `/swarm`, plan multi-agente o tarea con sub-agentes **debe** se
 1. Si el modelo activo no es Opus 4.7 (o el más potente del momento), avisar al usuario y sugerir `/model` antes de proceder.
 2. El orquestador raíz **nunca** se degrada a Sonnet/Haiku — los modelos pequeños son SOLO para sub-agentes.
 
-**Por qué:** el orquestador toma decisiones de alto impacto (descomposición, autorización de swarms anidados, síntesis final). Un modelo débil orquestando agentes fuertes produce decomposiciones torpes y pierde dinero en re-trabajo. Un modelo fuerte orquestando agentes Haiku produce decomposiciones óptimas con coste mínimo.
+El orquestador toma decisiones de alto impacto; un modelo débil orquestando agentes fuertes produce decomposiciones torpes. Modelos pequeños → solo sub-agentes.
 
 ### Sub-agentes pueden lanzar sub-swarms — solo con autorización del padre
 
@@ -276,18 +269,13 @@ Un sub-agente **puede** solicitar lanzar su propio swarm si su tarea es demasiad
 3. El orquestador padre evalúa la solicitud, la aprueba o la rechaza explícitamente, y solo entonces re-invoca al sub-agente con permiso concedido.
 4. Profundidad máxima recomendada: **3 niveles** (orquestador → sub-agente → sub-sub-agente). Cualquier nivel adicional requiere aprobación explícita del usuario.
 
-**Por qué:** previene explosión combinatoria de costes y pérdida de control jerárquico. Si un sub-agente Haiku lanza unilateralmente 5 sub-agentes Sonnet, el coste se dispara sin que el orquestador raíz pueda intervenir. Toda autorización fluye top-down.
+Previene explosión de costes. Toda autorización fluye top-down.
 
 ### Sub-agentes de larga duración → `run_in_background: true`
 
 Cualquier sub-agente cuya tarea estimada exceda **60 segundos** debe lanzarse con `run_in_background: true`. El orquestador recibe notificación automática al completar, no debe `sleep` ni hacer polling.
 
-**Regla práctica:**
-- Lectura/extracción simple (< 60 s) → foreground
-- Investigación, redacción, generación de múltiples archivos → background
-- Síntesis final que depende de TODOS los outputs previos → foreground (porque ya no hay paralelismo que aprovechar)
-
-Previene: el orquestador esperando inactivo mientras consume tokens de contexto. En sesión 2026-05-25 wiki-swarm, agentes background liberaron al orquestador para validar outputs intermedios sin bloquear.
+**Regla práctica:** lectura simple → foreground · investigación/redacción → background · síntesis final → foreground.
 
 ### Plan jerárquico explícito al inicio del swarm
 
@@ -317,10 +305,7 @@ cat node_modules/<lib>/package.json | grep '"version"' | head -1
 npm list <lib>
 ```
 
-**No asumir que la versión instalada soporta las últimas features.** Error cometido en 2026-05-25: se usó `next.config.ts` (feature de Next.js 15+) pero la versión instalada era 14.2.x, que no lo soporta — build roto hasta renombrar a `.mjs`.
-
-**Regla de orden:** el check de versión debe ser el **primer paso** cuando el plan menciona archivos de configuración version-específicos (ej. `next.config.ts`, plugins con breaking changes). Verificar primero, escribir después.
-Previene: el ciclo write→build-error→fix que ya ocurrió.
+**No asumir que la versión instalada soporta las últimas features.** El check de versión debe ser el **primer paso** cuando el plan menciona archivos de configuración version-específicos. Verificar primero, escribir después.
 
 ---
 
@@ -453,7 +438,7 @@ No usar `\faIcon{}`. Sustituir con texto o Unicode directo.
 \usepackage{amssymb}   % añadir si se usa \checkmark o \square, \triangleright, etc.
 ```
 
-**Previene:** error `! Undefined control sequence. \checkmark` en cada fila de tabla con visto bueno. Ocurrido en sesión 2026-05-25 al generar el resumen de auto-mejora.
+**Previene:** error `! Undefined control sequence. \checkmark`.
 
 ### Compilación — 3 pasadas + verificación
 
@@ -517,13 +502,8 @@ Leer `.github/workflows/deploy.yml` antes de:
 
 ## Recursos de referencia del proyecto
 
-### Blueprint PDF
-
-`/root/Hermes_Stack_Blueprint.pdf` (52 páginas) es el documento técnico de referencia del stack completo: arquitectura, diagramas, todos los servicios. Leer antes de tareas que requieran contexto profundo del stack.
-
-### Estructura LaTeX base validada
-
-`main.tex + s1_architecture.tex + s2_services.tex + s3_cicd.tex + s4_observability.tex` compila limpia (24 pp, 0 errores XeLaTeX). Usar como punto de partida para futuros documentos técnicos del proyecto.
+- **Blueprint:** `/root/Hermes_Stack_Blueprint.pdf` (52 pp) — arquitectura completa. Leer antes de tareas de contexto profundo.
+- **LaTeX base:** `main.tex + s1_*.tex + s2_*.tex + s3_*.tex + s4_*.tex` — compila limpio (24 pp). Usar como plantilla.
 
 ---
 
@@ -569,7 +549,6 @@ git add .claude/settings.json   # error: pathspec ignored by .gitignore
 ```
 
 **Consecuencia:** si el VPS se reinicia o se clona el repo en otra máquina, hay que recrear `settings.json` manualmente a partir de la tabla de permisos canónicos de esta sección.
-**Previene:** confusión al intentar `git add` del archivo de permisos (error 2026-05-25).
 
 ### Síntoma de acumulación — cuándo limpiar
 
@@ -666,8 +645,7 @@ El usuario **no** necesita escribir `/plan` para activar la planificación. Cual
 4. Verificar pre-condiciones (versión de librería, existencia de directorios, permisos).
 5. Solo entonces empezar a ejecutar.
 
-**Previene:** ciclos write → error → fix por saltarse el análisis, y a la vez evita el coste de mostrar planes verbosos al usuario cuando él ya confía en el agente.
-**Aplicar:** desde la sesión 2026-05-25, por petición explícita del usuario.
+**Previene:** ciclos write → error → fix por saltarse el análisis.
 
 ---
 
@@ -683,44 +661,23 @@ El usuario paga por cada token de output. La regla para esta sesión y todas las
 
 A partir de 2026-05-25, la barra de progreso **no se imprime en el chat**. Está integrada en la `statusLine` de Claude Code y se actualiza en vivo con cada tool call mediante un hook `PostToolUse`. Mostrar barras ASCII en el chat duplica el coste sin valor — la status line ya las renderiza.
 
-**Infraestructura instalada:**
-- `/root/.claude/statusline.sh` — lee `/tmp/claude_progress` (formato `current|total|task|eta|started_epoch`) y emite barra ANSI + sub-agentes activos + ETA dinámico.
-- `/root/.claude/hooks/progress_tick.sh` — hook `PostToolUse` que incrementa `current` tras cada tool call. Esto hace la barra **realmente en vivo**, no a saltos manuales.
-- `/root/.claude/settings.json` — registra `statusLine` y el hook.
+**Infraestructura instalada:** `statusline.sh` (lee `/tmp/claude_progress`, emite barra ANSI+ETA), `hooks/progress_tick.sh` (PostToolUse, auto-incrementa), `settings.json` (registra ambos).
 
-**Cómo usarla al empezar una tarea no trivial:**
-
-```bash
-# Estimar pasos (tool calls aproximados) y task name
-echo "0|<N_pasos>|<nombre_tarea>|0|$(date +%s)" > /tmp/claude_progress
-```
-
-A partir de ahí, el hook incrementa el contador automáticamente con cada Edit/Write/Bash/Read. La status line muestra:
-
-```
-[████████░░░░░░░░░░░░] 40% · <task> · ETA ~30s · agents: 2▶ 3✓
-```
-
-- `2▶` = sub-agentes corriendo · `3✓` = completados (detectados en `/tmp/claude-0/-root/<sid>/tasks/`).
-- Color: cian < 25% · amarillo 25-75% · verde > 75%.
-- ETA se **recalcula en vivo** con el ritmo real de tool calls (no es fijo).
-- El hook auto-inicializa `/tmp/claude_progress` con `total=40` si no existe — la barra arranca sola aunque Claude no haya escrito el archivo. El `echo "0|N|task..."` sigue siendo preferible para un total más preciso.
-
-Al terminar, el hook auto-limpia `/tmp/claude_progress` tras alcanzar el 100%.
+**Iniciar tarea:** `echo "0|<N_pasos>|<task>|0|$(date +%s)" > /tmp/claude_progress` — el hook incrementa automáticamente. Auto-inicializa con total=40 si no existe. Auto-limpia al llegar al 100%.
 
 ### Reglas de implementación de la barra (para no romperla)
 
 - **No usar `set -euo pipefail`** en `statusline.sh` ni en `progress_tick.sh` — causa salidas silenciosas en casos límite (glob sin matches, archivos ausentes). Usar `|| true` por línea donde aplique.
 - **Construir la barra con string slicing**, no con loops `seq`: `bar="${FILLED:0:$filled}${EMPTY:0:$empty}"`. Los loops son lentos y el statusline se llama en cada tool call.
 - **Detectar sub-agentes solo si hay archivo de progreso activo** — sin esta condición, los archivos de tareas de la sesión principal se cuentan como sub-agentes falsos.
-**Previene:** barra siempre en 0% (sin auto-init), salida silenciosa del script, falsos positivos de sub-agentes. Error observado en sesión 2026-05-25.
+**Previene:** barra siempre en 0%, salida silenciosa del script, falsos positivos de sub-agentes.
 
 **Regla del chat:** durante el trabajo, el chat permanece silencioso. Excepciones:
 - Bloqueo real (error, decisión que solo el usuario puede tomar) → mensaje claro.
 - Cierre de turno → UNA línea final con commit hash o artefacto. Nada más.
 - Petición explícita del usuario ("qué hiciste", "muéstrame") → explicar.
 
-Previene: gasto de cientos a miles de tokens por sesión en narración redundante y barras a saltos. Aplicar desde 2026-05-25 por petición explícita del usuario.
+Previene: gasto de tokens en narración redundante.
 
 ---
 
@@ -754,7 +711,7 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 | `ression` | `sesión` |
 | `engenire` / `enginering` | `engineering` |
 
-Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración. Errores de dictado de la sesión 2026-05-25 confirman: la transcripción es ruidosa pero el sentido siempre es inferible si se mantiene la semántica del stack.
+Ante ambigüedad: inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración.
 
 ---
 
@@ -779,7 +736,7 @@ Registrar `on_startup`/`on_cleanup` en el `aiohttp.web.Application`:
 app.on_startup.append(lambda app: app["agent"].start())
 app.on_cleanup.append(lambda app: app["agent"].stop())
 ```
-**Previene:** latencia extra por reconexión TCP en cada LLM call. Error cometido en versión original de hermes/core/agent.py.
+**Previene:** latencia extra por reconexión TCP en cada LLM call.
 
 ### Handlers externos también deben usar la sesión compartida del agente
 
@@ -800,7 +757,7 @@ async def health_handler(request):
     ok = await check_litellm(agent.litellm_url, session)
 ```
 
-**Previene:** overhead TCP+TLS en cada healthcheck (autoheal cada 30s × 2 checks = 2 conexiones efímeras/30s). Error encontrado en `hermes/api/health.py` en sesión 2026-05-25.
+**Previene:** overhead TCP+TLS en cada healthcheck (autoheal cada 30s × 2 checks = 2 conexiones efímeras/30s).
 
 ### orjson en lugar de json stdlib
 
@@ -894,7 +851,7 @@ health-check:
     curl -sf -H "Authorization: Bearer $$LITELLM_MASTER_KEY" http://127.0.0.1:4000/health
 ```
 
-**Previene:** health check que reporta DOWN aunque el servicio esté Up, por LITELLM_MASTER_KEY vacío. Error en sesión 2026-05-25 en el Makefile inicial del harness.
+**Previene:** health check que reporta DOWN por LITELLM_MASTER_KEY vacío.
 
 ### `docker compose ps` — output es "Up" no "running"
 
@@ -905,7 +862,7 @@ El comando `docker compose ps` muestra el estado como `Up X days (healthy)`, no 
 @if docker compose ps hermes 2>/dev/null | grep -q "running"; then  # ✗ no coincide
 ```
 
-**Previene:** condición always-false que omite lint silenciosamente. Error en sesión 2026-05-25 en el target lint-check del Makefile.
+**Previene:** condición always-false que omite lint silenciosamente.
 
 ### `make doctor` — pipeline principal único
 
@@ -933,13 +890,23 @@ Cualquier `[ -f ... ] && echo ...` al final de un recipe de Make debe terminar c
 [ -f "$$HANDOFF" ] && echo "pendiente" || true
 ```
 
-**Previene:** `make: *** Error 1` al final de targets que verifican archivos opcionales. Error en sesión 2026-05-25 en el target `doctor`.
+**Previene:** `make: *** Error 1` al final de targets que verifican archivos opcionales.
 
 ### AGENTS.md — cuándo usarlo
 
 `AGENTS.md` es el entry file de 100 líneas para el agente. CLAUDE.md es el detalle completo.
 - Agente nuevo o context comprimido: leer `AGENTS.md` primero (startup, hard constraints, verification gate)
 - Trabajo detallado: consultar CLAUDE.md para la sección relevante
+
+### CLAUDE.md — presupuesto de tamaño (< 40 k chars)
+
+El sistema lanza `Large CLAUDE.md will impact performance` cuando supera los 40 000 caracteres. Verificar en cada `/evolve`:
+
+```bash
+wc -c /root/CLAUDE.md   # debe ser < 40000
+```
+
+Si supera: comprimir prosa histórica ("Error en sesión...", "Aplicar desde...", "Por qué..." explicativos) — nunca eliminar reglas operativas. Target: < 39 500 para dejar margen.
 
 ### MEMORY.md — límite de 200 líneas
 
