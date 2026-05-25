@@ -520,21 +520,40 @@ El usuario paga por cada token de output. La regla para esta sesión y todas las
 
 **No mostrar el contenido completo de archivos editados** salvo que el usuario lo pida explícitamente. El comando `/gg` por defecto pide "muestra el contenido completo del nuevo CLAUDE.md" — esa instrucción queda **anulada** por esta regla: solo mostrar diff implícito (commit hash) salvo petición explícita del usuario en el turno actual.
 
-**Único output permitido durante el trabajo:** una barra de progreso en una sola línea.
+### La barra de progreso vive en la status line del sistema, no en el chat
+
+A partir de 2026-05-25, la barra de progreso **no se imprime en el chat**. Está integrada en la `statusLine` de Claude Code y se actualiza en vivo con cada tool call mediante un hook `PostToolUse`. Mostrar barras ASCII en el chat duplica el coste sin valor — la status line ya las renderiza.
+
+**Infraestructura instalada:**
+- `/root/.claude/statusline.sh` — lee `/tmp/claude_progress` (formato `current|total|task|eta|started_epoch`) y emite barra ANSI + sub-agentes activos + ETA dinámico.
+- `/root/.claude/hooks/progress_tick.sh` — hook `PostToolUse` que incrementa `current` tras cada tool call. Esto hace la barra **realmente en vivo**, no a saltos manuales.
+- `/root/.claude/settings.json` — registra `statusLine` y el hook.
+
+**Cómo usarla al empezar una tarea no trivial:**
+
+```bash
+# Estimar pasos (tool calls aproximados) y task name
+echo "0|<N_pasos>|<nombre_tarea>|0|$(date +%s)" > /tmp/claude_progress
+```
+
+A partir de ahí, el hook incrementa el contador automáticamente con cada Edit/Write/Bash/Read. La status line muestra:
 
 ```
-[████░░░░░░] 40% · ETA ~60s
+[████████░░░░░░░░░░░░] 40% · <task> · ETA ~30s · agents: 2▶ 3✓
 ```
 
-Reglas operativas:
-- Al recibir una tarea no trivial: emitir UNA barra inicial al 0% con ETA estimado.
-- Actualizar solo en hitos (25/50/75/100%) — no en cada tool call.
-- Al terminar: barra al 100% + UNA línea final con el hash del commit o el artefacto generado. Sin resumen.
-- Bloqueos reales (errores, decisiones que el usuario debe tomar) → mensaje claro, no barra.
-- Si el usuario pregunta "qué hiciste" o "muéstrame" → entonces sí explicar.
+- `2▶` = sub-agentes corriendo · `3✓` = completados (detectados en `/tmp/claude-0/-root/<sid>/tasks/`).
+- Color: cian < 25% · amarillo 25-75% · verde > 75%.
+- ETA se **recalcula en vivo** con el ritmo real de tool calls (no es fijo).
 
-Previene: gasto de cientos a miles de tokens por sesión en narración redundante.
-Aplicar desde la sesión 2026-05-25 en adelante por petición explícita del usuario.
+Al terminar, el hook auto-limpia `/tmp/claude_progress` tras alcanzar el 100%.
+
+**Regla del chat:** durante el trabajo, el chat permanece silencioso. Excepciones:
+- Bloqueo real (error, decisión que solo el usuario puede tomar) → mensaje claro.
+- Cierre de turno → UNA línea final con commit hash o artefacto. Nada más.
+- Petición explícita del usuario ("qué hiciste", "muéstrame") → explicar.
+
+Previene: gasto de cientos a miles de tokens por sesión en narración redundante y barras a saltos. Aplicar desde 2026-05-25 por petición explícita del usuario.
 
 ---
 
