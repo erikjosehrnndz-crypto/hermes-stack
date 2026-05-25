@@ -18,7 +18,7 @@ class HermesAgent:
     def __init__(self):
         self.litellm_url = os.getenv("LITELLM_URL", "http://litellm:4000")
         self.litellm_key = os.getenv("LITELLM_KEY", "")
-        self.model = "gpt-4o-mini"  # Tier economico por defecto
+        self.model = os.getenv("HERMES_MODEL", "gemini-flash")  # gemini-flash: más rápido y barato via LiteLLM
         self.max_tokens = 200       # Restriccion estricta
         self.temperature = 0.35     # Determinismo prioritario
 
