@@ -42,7 +42,7 @@ Antes de hacer `git add <dir>/`, hacer `ls -la <dir>` e identificar artefactos. 
 | Directorio | Ignorar |
 |---|---|
 | `hermes_bp/` | `*.aux *.toc *.out *.lot *.log *.synctex.gz *.db` |
-| `website/` | `node_modules/ dist/` |
+| `website/` | `node_modules/ .next/ dist/ *.db` |
 | cualquier Python | `__pycache__/ *.pyc .venv/` |
 
 El `.gitignore` raíz tiene `.*` que ignora todos los dotfiles. Para que los `.gitignore` de subdirectorios funcionen, el raíz debe tener `!.gitignore` como excepción — ya está añadido.
@@ -54,9 +54,19 @@ El `.gitignore` raíz tiene `.*` que ignora todos los dotfiles. Para que los `.g
 *.zip             # backups y archivos de exportación
 Sync/  snap/      # directorios del sistema
 *.aux *.toc *.out *.lot *.log   # artefactos LaTeX
-node_modules/  dist/            # dependencias y builds de frontend
+node_modules/  .next/  dist/    # dependencias y builds de frontend
 .env  .env.*                    # secretos
 ```
+
+### Verificar build antes de hacer commit
+
+**Regla obligatoria:** antes de `git add` + `git commit` en cualquier cambio de frontend, ejecutar el build para confirmar que compila sin errores:
+
+```bash
+cd website && npm run build   # debe completar sin errores TS ni de compilación
+```
+
+Previene commits rotos que el CI detecta después. Si el build falla, corregir antes de commitear — nunca commitear con el build roto aunque "sea solo un cambio pequeño".
 
 ### Commit por tarea lógica, no por sesión
 
@@ -112,6 +122,107 @@ gh pr create --title "..." --body "..."
 **Riesgo crítico de orquestación masiva:** Si N agentes chocan con rate limit simultáneamente, el trabajo se pierde al 100% si no hay archivos escritos en disco. En sesión 2026-05-24, 5 agentes LaTeX cayeron por rate limit y `hermes_bp/` quedó vacío. Rehacerlo directo tomó 20 min.
 
 **Regla:** Si el contenido fuente ya existe → escribir directo. Solo paralelizar si la investigación genuinamente lo requiere y cada agente escribe su output a disco antes de terminar.
+
+---
+
+## Dependencias — verificar versión antes de usar features
+
+Antes de usar una característica específica de versión de cualquier librería, verificar la versión instalada:
+
+```bash
+cat node_modules/<lib>/package.json | grep '"version"' | head -1
+# o bien:
+npm list <lib>
+```
+
+**No asumir que la versión instalada soporta las últimas features.** Error cometido en 2026-05-25: se usó `next.config.ts` (feature de Next.js 15+) pero la versión instalada era 14.2.x, que no lo soporta — build roto hasta renombrar a `.mjs`.
+
+---
+
+## Next.js / website
+
+La carpeta `website/` usa **Next.js 14 App Router + TypeScript**. Versión instalada: 14.2.x.
+
+### Archivo de configuración — `.mjs`, nunca `.ts`
+
+Next.js 14.x **no** soporta `next.config.ts`. Solo Next.js 15+ lo soporta.
+
+```
+✓  next.config.mjs    ← usar siempre para Next.js 14
+✗  next.config.ts     ← solo Next.js 15+, NO usar hasta actualizar
+```
+
+Error concreto si se usa `.ts` en v14:
+```
+Error: Configuring Next.js via 'next.config.ts' is not supported.
+```
+
+### App Router — `'use client'` en componentes con hooks
+
+Todo componente que use `useState`, `useEffect`, `fetch`, `window`, `document` u otras APIs de browser **debe** tener `'use client'` como primera línea (antes de cualquier import):
+
+```tsx
+'use client';
+
+import React, { useState, useEffect } from 'react';
+```
+
+Sin esta directiva, Next.js intenta renderizarlo en el servidor y lanza errores de hidratación o de módulos de browser no disponibles.
+
+Aplica especialmente a `src/App.tsx` y cualquier componente en `src/components/` que use hooks.
+
+### Dockerfile standalone — `public/` debe existir
+
+El Dockerfile de Next.js standalone incluye:
+```dockerfile
+COPY --from=builder /app/public ./public
+```
+
+Si `public/` no existe en el repositorio, el Docker build **falla silenciosamente** o lanza error en la copia. Siempre crear `public/.gitkeep` si no hay assets estáticos:
+
+```bash
+mkdir -p website/public && touch website/public/.gitkeep
+git add website/public/.gitkeep
+```
+
+### Estructura de archivos App Router
+
+```
+website/
+├── app/
+│   ├── layout.tsx          # Root layout — importa globals CSS, define metadata
+│   ├── page.tsx            # Home page — renderiza App component
+│   └── api/
+│       ├── tree/route.ts   # GET /api/tree — árbol de directorios
+│       └── health/route.ts # GET /health   — health check
+├── src/
+│   ├── App.tsx             # SPA principal ('use client')
+│   ├── index.css           # Tailwind + custom styles
+│   └── components/         # Componentes React ('use client' si usan hooks)
+├── public/                 # Assets estáticos (.gitkeep si está vacío)
+├── next.config.mjs         # Configuración Next.js (output: 'standalone')
+├── tsconfig.json           # TypeScript para App Router
+├── postcss.config.js       # Requerido por Tailwind en Next.js
+└── tailwind.config.js      # content paths incluyen app/ y src/
+```
+
+### API Routes — Next.js Route Handlers vs Express
+
+Los endpoints de API se implementan como Route Handlers en `app/api/*/route.ts`, no con Express. Patrón:
+
+```ts
+// app/api/ejemplo/route.ts
+import { NextResponse } from 'next/server';
+export async function GET() {
+  return NextResponse.json({ data: 'valor' });
+}
+```
+
+No añadir Express ni otros servidores HTTP — Next.js `next start` sirve tanto el frontend como las API routes.
+
+### `.next/` — artefacto de build, nunca al repositorio
+
+`.next/` es el directorio de output del build. Está en `.gitignore` raíz. Confirmar que esté ignorado antes de cualquier `git add` en `website/`.
 
 ---
 
