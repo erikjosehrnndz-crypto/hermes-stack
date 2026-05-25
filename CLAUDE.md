@@ -442,6 +442,62 @@ Leer `.github/workflows/deploy.yml` antes de:
 
 ---
 
+## Claude Code — Configuración de permisos
+
+### Dos archivos, dos roles distintos
+
+| Archivo | Rol | Origen |
+|---|---|---|
+| `~/.claude/settings.json` | Permisos **canónicos** del proyecto — editar manualmente | Commitear en memoria mental |
+| `~/.claude/settings.local.json` | Acumulación automática de clicks "Allow" en el UI | **Limpiar periódicamente** |
+
+**Regla:** toda operación regular del workflow de CLAUDE.md debe estar en `settings.json`. No esperar a que se acumule en `settings.local.json`.
+
+### Permisos canónicos para este VPS (estado 2026-05-25)
+
+Las siguientes reglas en `settings.json` cubren el workflow completo:
+
+| Patrón | Cubre |
+|---|---|
+| `Bash(git *)` | Todas las operaciones git incluyendo push HTTPS con token |
+| `Bash(gh *)` | GitHub CLI: auth, pr create, api, repo |
+| `Bash(docker *)` | docker compose ps/up/down/logs/inspect |
+| `Bash(curl *)` | Health checks post-deploy (`curl -f http://...`) |
+| `Bash(npm *)` | npm install, run build, run dev, list |
+| `Bash(xelatex *)` | Compilación LaTeX 3 pasadas |
+| `Write(/root/website/*)` | Frontend Next.js |
+| `Write(/root/.claude/*)` | Hooks, settings, statusline |
+
+### Síntoma de acumulación — cuándo limpiar
+
+```bash
+cat ~/.claude/settings.local.json | jq '.permissions.allow | length'
+```
+
+Si > 20 reglas: revisar si alguna nueva necesita pasar a `settings.json`, luego limpiar:
+
+```bash
+echo '{}' > ~/.claude/settings.local.json
+```
+
+Previene: reglas específicas obsoletas, bugs de doble slash, y ruido que entierra permisos reales.
+
+### Bug — doble slash en Read permissions
+
+`Read(//usr/bin/**)` con doble slash es un bug silencioso — la regla no matchea nada. Ocurre cuando el permiso se concede via UI desde un path que el sistema pasa con `//`.
+
+```
+✓  Read(/usr/bin/**)          ← slash simple, funciona
+✗  Read(//usr/bin/**)         ← doble slash, silently broken
+```
+
+Siempre verificar con `jq` después de cualquier consolidación:
+```bash
+jq '.permissions.allow[]' ~/.claude/settings.json | grep '//'   # debe salir vacío
+```
+
+---
+
 ## Docker — nombres de servicio vs contenedor
 
 En este proyecto hay una distinción importante para `docker compose up --no-deps`:
@@ -589,6 +645,9 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 | `connbel` / `conbel` / `conel` | `con el` |
 | `conocimmiento` | `conocimiento` |
 | `arregla` | `arregla` (correcto) |
+| `actualizs` / `actualiza s` | `actualiza` |
+| `sintodo` / `sintax` | `sintaxis` |
+| `verifica sint` | `verifica sintaxis` |
 
 Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración. Errores de dictado de la sesión 2026-05-25 confirman: la transcripción es ruidosa pero el sentido siempre es inferible si se mantiene la semántica del stack.
 
