@@ -36,15 +36,16 @@ Checks:
 ### 1.2 State
 
 ```bash
-cat /root/PENDIENTES.md | grep -E "^- \[|state:|evidence:|fecha:" | head -40
+# PENDIENTES.json es la fuente canónica (campos: status, evidence, verification)
+jq -r '.[] | "\(.id)  status=\(.status)  evidence=\(.evidence)"' /root/PENDIENTES.json 2>/dev/null
 ls /root/PENDIENTES.json 2>/dev/null && echo "JSON presente" || echo "JSON ausente"
 ```
 
 Checks:
-- Todos los ítems tienen campo `state:` definido
-- Ítems `done` tienen `evidence:` con valor (no vacío)
-- Ningún ítem `active` lleva > 7 días sin actualización
-- PENDIENTES.json sincronizado con el MD
+- Todos los ítems tienen campo `status` definido (not-started / active / done)
+- Ítems `done` tienen `evidence` con valor no vacío
+- Ningún ítem `active` lleva > 7 días sin actualización (verificar fecha de update en git log)
+- PENDIENTES.json sincronizado con el MD (misma lista de IDs)
 
 ### 1.3 Verification
 
@@ -52,24 +53,25 @@ Checks:
 make -n check 2>&1 | head -20
 grep -n '"running"' /root/Makefile 2>/dev/null || echo "OK: no 'running'"
 head -3 /root/Makefile
-cat /root/PENDIENTES.md | grep -E "verification:" | head -10
+# Ítems activos sin verification en JSON:
+jq -r '.[] | select(.status == "active") | select(.verification == "") | .id' /root/PENDIENTES.json 2>/dev/null
 ```
 
 Checks:
 - `make check` es un target válido y ejecutable
 - Makefile no usa grep `"running"` (debe ser `"Up"`)
 - Makefile tiene `SHELL := /bin/bash` como primera línea
-- Cada ítem `active` de PENDIENTES tiene campo `verification:` explícito
+- Cada ítem `active` de PENDIENTES.json tiene campo `verification` no vacío
 
 ### 1.4 Scope
 
 ```bash
-grep -c "state: active" /root/PENDIENTES.md 2>/dev/null || echo "0"
-grep "state: active" /root/PENDIENTES.md 2>/dev/null
+jq -r '[.[] | select(.status == "active")] | length' /root/PENDIENTES.json 2>/dev/null || echo "0"
+jq -r '.[] | select(.status == "active") | .id' /root/PENDIENTES.json 2>/dev/null
 ```
 
 Checks:
-- ≤ 1 ítem en `state: active`
+- ≤ 1 ítem en `status: active`
 
 ### 1.5 Session Lifecycle
 
@@ -148,18 +150,18 @@ El orquestador escribe directamente. Nunca los sub-agentes (aplica la regla de C
 - CLAUDE.md con sección duplicada → merge en la existente; nunca appendear
 
 **State:**
-- Ítem sin `state:` → añadir `state: pending`
-- Ítem `done` sin `evidence:` → añadir `evidence: (pendiente de verificación)`
-- Ítem `active` > 7 días → añadir `stale: <fecha>`, mover a `state: pending`
+- Ítem sin `status` en JSON → añadir `"status": "not-started"` como default
+- Ítem `done` con `evidence` vacío en JSON → añadir `"evidence": "(pendiente de verificación)"`
+- Ítem `active` > 7 días → añadir nota en MD, mover a `"status": "not-started"` en JSON
 - **No cerrar ítems como done** sin evidencia real
 
 **Verification:**
 - Makefile con grep `"running"` → corregir a `"Up"` (bug silencioso)
 - Makefile sin `SHELL := /bin/bash` → añadir como primera línea
-- Ítem `active` sin `verification:` → añadir `verification: (definir comando)`
+- Ítem `active` con `verification` vacío en JSON → añadir `"verification": "(definir comando)"`
 
 **Scope:**
-- > 1 ítem `active` → mover todos menos el más reciente a `state: pending`, añadir `paused-by: /evolve`
+- > 1 ítem `status: active` → mover todos menos el más reciente a `status: not-started`, añadir nota en PENDIENTES.md con `paused-by: /evolve`
 
 **Session:**
 - SESSION_HANDOFF.md con "siguiente paso" vacío → añadir `"Ver PENDIENTES.md ítem activo"`

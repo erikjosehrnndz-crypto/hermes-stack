@@ -751,6 +751,8 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 | `actualizs` / `actualiza s` | `actualiza` |
 | `sintodo` / `sintax` | `sintaxis` |
 | `verifica sint` | `verifica sintaxis` |
+| `ression` | `sesión` |
+| `engenire` / `enginering` | `engineering` |
 
 Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración. Errores de dictado de la sesión 2026-05-25 confirman: la transcripción es ruidosa pero el sentido siempre es inferible si se mantiene la semántica del stack.
 

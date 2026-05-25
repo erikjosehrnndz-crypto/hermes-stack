@@ -1,6 +1,5 @@
 import os
 import orjson
-import asyncio
 import aiohttp
 import hashlib
 from cachetools import TTLCache

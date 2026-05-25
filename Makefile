@@ -100,7 +100,7 @@ health-check:
 lint-check:
 	@echo "→ Python lint"
 	@if docker compose ps hermes 2>/dev/null | grep -q "Up"; then \
-		docker compose exec -T hermes sh -c "pip install -q ruff black && ruff check /app && black --check /app" \
+		docker compose exec -T hermes sh -c "pip install -q ruff black && export PATH=/app/.local/bin:$$PATH && ruff check /app && black --check /app" \
 		  2>&1 && echo "  lint OK"; \
 	else \
 		echo "  hermes not running — skipping lint. Start with: docker compose up -d hermes"; \

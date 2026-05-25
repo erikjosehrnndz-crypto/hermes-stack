@@ -31,9 +31,6 @@ async def metrics_handler(request):
 
 async def process_handler(request):
     """Procesa un texto utilizando el agente Hermes y retorna la respuesta sanitizada."""
-    status = 200
-    start_time = time.time()
-
     try:
         data = await request.json()
         text_input = data.get("text", "").strip()
@@ -51,7 +48,6 @@ async def process_handler(request):
         return web.json_response(result)
 
     except Exception as e:
-        status = 500
         HTTP_REQUESTS_TOTAL.labels(method="POST", endpoint="/process", status="500").inc()
         return web.json_response({"error": f"Fallo al procesar la tarea: {str(e)}"}, status=500)
 
