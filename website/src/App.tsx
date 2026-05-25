@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import TreeView from './components/TreeView';
 import { motion } from 'framer-motion';

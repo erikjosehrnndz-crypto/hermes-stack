@@ -16,6 +16,8 @@ extract_pdf.py
 
 # Ignore node_modules, cache, logs
 node_modules/
+.next/
+dist/
 __pycache__/
 *.log
 hermes/logs/*
