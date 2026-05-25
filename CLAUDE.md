@@ -545,8 +545,16 @@ A partir de ahí, el hook incrementa el contador automáticamente con cada Edit/
 - `2▶` = sub-agentes corriendo · `3✓` = completados (detectados en `/tmp/claude-0/-root/<sid>/tasks/`).
 - Color: cian < 25% · amarillo 25-75% · verde > 75%.
 - ETA se **recalcula en vivo** con el ritmo real de tool calls (no es fijo).
+- El hook auto-inicializa `/tmp/claude_progress` con `total=40` si no existe — la barra arranca sola aunque Claude no haya escrito el archivo. El `echo "0|N|task..."` sigue siendo preferible para un total más preciso.
 
 Al terminar, el hook auto-limpia `/tmp/claude_progress` tras alcanzar el 100%.
+
+### Reglas de implementación de la barra (para no romperla)
+
+- **No usar `set -euo pipefail`** en `statusline.sh` ni en `progress_tick.sh` — causa salidas silenciosas en casos límite (glob sin matches, archivos ausentes). Usar `|| true` por línea donde aplique.
+- **Construir la barra con string slicing**, no con loops `seq`: `bar="${FILLED:0:$filled}${EMPTY:0:$empty}"`. Los loops son lentos y el statusline se llama en cada tool call.
+- **Detectar sub-agentes solo si hay archivo de progreso activo** — sin esta condición, los archivos de tareas de la sesión principal se cuentan como sub-agentes falsos.
+**Previene:** barra siempre en 0% (sin auto-init), salida silenciosa del script, falsos positivos de sub-agentes. Error observado en sesión 2026-05-25.
 
 **Regla del chat:** durante el trabajo, el chat permanece silencioso. Excepciones:
 - Bloqueo real (error, decisión que solo el usuario puede tomar) → mensaje claro.
@@ -575,5 +583,95 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 | `suoerior` / `superor` | `superior` |
 | `comaml` / `comoml` | `como` |
 | `jerarqia` / `gerarquia` | `jerarquía` |
+| `imolementa s` / `implémenta` | `implementa` |
+| `interfsz` / `interfas` | `interfaz` |
+| `metrivas` / `metriques` | `métricas` |
+| `connbel` / `conbel` / `conel` | `con el` |
+| `conocimmiento` | `conocimiento` |
+| `arregla` | `arregla` (correcto) |
 
 Ante ambigüedad en un prompt de voz, inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración. Errores de dictado de la sesión 2026-05-25 confirman: la transcripción es ruidosa pero el sentido siempre es inferible si se mantiene la semántica del stack.
+
+---
+
+## Hermes Agent — patrones de performance (Python)
+
+### aiohttp ClientSession — siempre compartida, nunca por request
+
+Crear `aiohttp.ClientSession` en `start()` y cerrarla en `stop()` — **no dentro de `_query_llm`**. El patrón `async with aiohttp.ClientSession() as session:` por cada request abre y cierra una conexión TCP+TLS nueva cada vez, añadiendo ~50-200ms de overhead.
+
+```python
+async def start(self):
+    connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
+    self._session = aiohttp.ClientSession(connector=connector)
+
+async def stop(self):
+    if self._session:
+        await self._session.close()
+```
+
+Registrar `on_startup`/`on_cleanup` en el `aiohttp.web.Application`:
+```python
+app.on_startup.append(lambda app: app["agent"].start())
+app.on_cleanup.append(lambda app: app["agent"].stop())
+```
+**Previene:** latencia extra por reconexión TCP en cada LLM call. Error cometido en versión original de hermes/core/agent.py.
+
+### orjson en lugar de json stdlib
+
+`orjson` es drop-in (import orjson) y 3-10× más rápido. Diferencia de API:
+- `orjson.dumps()` devuelve `bytes`, no `str`
+- Para escritura en archivo: `f.write(orjson.dumps(obj) + b"\n")` — abrir en modo `"ab"` no `"a"`
+- Para request HTTP con aiohttp: pasar `data=orjson.dumps(payload)` con `Content-Type: application/json` en headers (no usar el parámetro `json=`)
+
+### cachetools.TTLCache para dedup de queries de voz
+
+Whisper puede transcribir la misma frase dos veces en segundos si el micrófono captura eco. Un `TTLCache(maxsize=256, ttl=60)` con clave `hash(model+text)` previene doble gasto de tokens:
+
+```python
+from cachetools import TTLCache
+self._query_cache: TTLCache = TTLCache(maxsize=256, ttl=60)
+```
+
+### LiteLLM Redis cache — activar desde el inicio
+
+Redis ya corre en el stack. Añadir siempre a `config/litellm.yaml`:
+
+```yaml
+litellm_settings:
+  cache: True
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    ttl: 3600
+```
+
+Sin esto, queries LLM idénticas (misma sesión, mismo prompt) consumen tokens innecesariamente.
+
+---
+
+## Next.js — API Routes con fetch interno a Docker
+
+Las rutas server-side (`app/api/*/route.ts`) corren dentro del contenedor `hermes-website` que está en la red `backend`. Acceden a otros servicios por hostname de Docker:
+
+```typescript
+const HERMES = process.env.HERMES_URL_INTERNAL ?? 'http://hermes:8080';
+const LITELLM = process.env.LITELLM_URL_INTERNAL ?? 'http://litellm:4000';
+```
+
+### AbortSignal.timeout() — forma moderna de timeout en fetch
+
+```typescript
+const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+```
+
+No usar `new AbortController()` + `setTimeout` + `clearTimeout` — `AbortSignal.timeout` es más limpio y disponible desde Node 17+.
+
+### LiteLLM 401 = servicio up
+
+LiteLLM responde 401 cuando recibe una request sin autenticación válida, pero eso confirma que el servicio está corriendo. En health checks de la UI:
+
+```typescript
+litellmUp = [200, 401].includes(litellmRes.value.status);
+```

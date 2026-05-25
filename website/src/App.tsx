@@ -62,7 +62,8 @@ const App: React.FC = () => {
           <div className="navbar-links">
             <a href="#servicios">Servicios</a>
             <a href="#repositorio">Repositorio</a>
-            <a href="https://github.com/erikjosehrnndz/hermes-stack" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="/metricas">Métricas</a>
+            <a href="https://github.com/erikjosehrnndz-crypto/hermes-stack" target="_blank" rel="noreferrer">GitHub</a>
           </div>
         </div>
       </nav>
