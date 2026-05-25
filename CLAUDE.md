@@ -142,10 +142,20 @@ Previene: pérdida del 100% del trabajo cuando el orquestador choca con rate lim
 Los sub-agentes lanzados con TaskCreate no heredan permisos Write/Bash del orquestador. Si un agente necesita escribir archivos o ejecutar comandos, el orquestador debe configurar `.claude/settings.json` antes de lanzarlo, o el orquestador debe escribir él mismo los archivos con los resultados.
 Previene: ciclo de bloqueos de permisos que consume rate limit sin producir archivos.
 
+### CLAUDE.md solo debe editarlo el agente principal
+
+Los sub-agentes que editan `CLAUDE.md` reciben un security warning ("self-modification soft block") por ser un archivo que controla el comportamiento del agente. Patrón correcto:
+1. Sub-agentes investigan y devuelven sus hallazgos como texto
+2. El agente principal (orquestador) hace el `Edit`/`Write` final sobre `CLAUDE.md`
+
+Previene: friction de warnings y posible bloqueo de edición desde sub-agentes.
+
 ### Síntesis incremental con 4+ agentes en paralelo
 
 Con 4 o más agentes en paralelo, lanzar el agente de síntesis de forma **incremental** a medida que cada investigador completa — no esperar todos los resultados simultáneamente.
 Previene: bloqueo total si el orquestador sufre rate limit esperando al último agente.
+
+**Excepción:** si el sintetizador necesita TODOS los inputs para producir un output coherente (ej. consolidar reglas de CLAUDE.md), esperar a todos los agentes es correcto. Aplicar síntesis incremental solo cuando los resultados parciales son independientemente útiles.
 
 ### El orquestador no debe investigar trabajo que delegó
 
@@ -328,6 +338,25 @@ No existe por defecto — escribir un archivo en esa ruta sin crear el directori
 ### /gg es efectivo para la PRÓXIMA sesión, no la actual
 
 Las reglas añadidas con `/gg` al final de una sesión no previenen errores que ya ocurrieron en esa misma sesión — benefician la sesión siguiente. El valor de `/gg` es **prospectivo**.
+
+### /gg multi-sesión — transcripts disponibles
+
+Los transcripts completos de sesiones anteriores están en:
+```
+/root/.claude/projects/-root/<sessionId>.jsonl
+```
+El índice de sesiones (sessionIds + timestamps + comandos) está en:
+```
+/root/.claude/history.jsonl
+```
+Para ejecutar `/gg` sobre N sesiones anteriores, usar el patrón swarm:
+- Lanzar 1 agente Researcher por sesión mayor (en paralelo)
+- Lanzar 1 Memory Specialist para comparar memoria vs CLAUDE.md
+- El agente principal (no sub-agente) sintetiza y escribe CLAUDE.md
+
+### /plan con Ruflo disponible → proponer swarm desde el inicio
+
+Cuando la tarea involucra investigación multi-dominio + síntesis y los agentes Ruflo están disponibles, el plan inicial debe ser una arquitectura swarm (Researcher / Memory Specialist / Reviewer / Coder), no un enfoque secuencial con bash. Proponer el swarm directamente evita que el plan sea rechazado y requiera revisión.
 
 ---
 
