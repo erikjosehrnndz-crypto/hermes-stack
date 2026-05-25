@@ -490,6 +490,30 @@ Siempre verificar antes de declarar un deploy exitoso.
 
 ---
 
+## Estilo de comunicación — output mínimo
+
+El usuario paga por cada token de output. La regla para esta sesión y todas las futuras es:
+
+**No narrar el procedimiento ni el progreso.** Nada de "voy a hacer X", "ahora hago Y", "completado Z". El diff y los commits cuentan la historia — no la repitas en prosa.
+
+**Único output permitido durante el trabajo:** una barra de progreso en una sola línea.
+
+```
+[████░░░░░░] 40% · ETA ~60s
+```
+
+Reglas operativas:
+- Al recibir una tarea no trivial: emitir UNA barra inicial al 0% con ETA estimado.
+- Actualizar solo en hitos (25/50/75/100%) — no en cada tool call.
+- Al terminar: barra al 100% + UNA línea final con el hash del commit o el artefacto generado. Sin resumen.
+- Bloqueos reales (errores, decisiones que el usuario debe tomar) → mensaje claro, no barra.
+- Si el usuario pregunta "qué hiciste" o "muéstrame" → entonces sí explicar.
+
+Previene: gasto de cientos a miles de tokens por sesión en narración redundante.
+Aplicar desde la sesión 2026-05-25 en adelante por petición explícita del usuario.
+
+---
+
 ## Sesiones de voz / remote-control
 
 Los prompts dictados por micrófono llegan con errores de transcripción. Normalizar antes de procesar:
