@@ -490,11 +490,35 @@ Siempre verificar antes de declarar un deploy exitoso.
 
 ---
 
+## Planificación interna implícita
+
+El usuario **no** necesita escribir `/plan` para activar la planificación. Cualquier tarea no trivial — multi-paso, multi-archivo, multi-agente, con dependencias o riesgos — debe planificarse internamente **antes** de empezar a escribir o ejecutar.
+
+**Regla:** planificación implícita, ejecución directa.
+
+- Tareas triviales (un solo Edit puntual, un `git status`, una respuesta corta) → ejecutar sin plan.
+- Tareas no triviales → construir el plan **internamente** (en thinking, no en output al usuario), luego ejecutar.
+- Solo entrar en plan mode formal (`ExitPlanMode`) si el usuario lo pide explícitamente o si el riesgo de la decisión amerita su aprobación previa (cambios irreversibles, refactors grandes, deploys).
+
+**Qué significa "planificar internamente":**
+1. Identificar archivos a tocar y el orden.
+2. Detectar dependencias entre pasos (qué bloquea a qué).
+3. Decidir si requiere swarm (ver "Orquestación jerárquica con Opus 4.7") o escritura directa.
+4. Verificar pre-condiciones (versión de librería, existencia de directorios, permisos).
+5. Solo entonces empezar a ejecutar.
+
+**Previene:** ciclos write → error → fix por saltarse el análisis, y a la vez evita el coste de mostrar planes verbosos al usuario cuando él ya confía en el agente.
+**Aplicar:** desde la sesión 2026-05-25, por petición explícita del usuario.
+
+---
+
 ## Estilo de comunicación — output mínimo
 
 El usuario paga por cada token de output. La regla para esta sesión y todas las futuras es:
 
 **No narrar el procedimiento ni el progreso.** Nada de "voy a hacer X", "ahora hago Y", "completado Z". El diff y los commits cuentan la historia — no la repitas en prosa.
+
+**No mostrar el contenido completo de archivos editados** salvo que el usuario lo pida explícitamente. El comando `/gg` por defecto pide "muestra el contenido completo del nuevo CLAUDE.md" — esa instrucción queda **anulada** por esta regla: solo mostrar diff implícito (commit hash) salvo petición explícita del usuario en el turno actual.
 
 **Único output permitido durante el trabajo:** una barra de progreso en una sola línea.
 
