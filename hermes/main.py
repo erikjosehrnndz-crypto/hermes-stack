@@ -1,7 +1,12 @@
 import os
 from aiohttp import web
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram, REGISTRY
-import time
+from prometheus_client import (
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    REGISTRY,
+)
 
 from core.agent import HermesAgent
 from api.health import health_handler
@@ -10,15 +15,14 @@ from api.health import health_handler
 HTTP_REQUESTS_TOTAL = Counter(
     "hermes_http_requests_total",
     "Total de peticiones HTTP recibidas",
-    ["method", "endpoint", "status"]
+    ["method", "endpoint", "status"],
 )
 PROCESS_LATENCY = Histogram(
-    "hermes_process_latency_seconds",
-    "Latencia del procesamiento de tareas en segundos"
+    "hermes_process_latency_seconds", "Latencia del procesamiento de tareas en segundos"
 )
 ELEVENLABS_STREAM_LATENCY = Histogram(
     "hermes_elevenlabs_stream_latency_seconds",
-    "Latencia de la generacion y streaming de voz ElevenLabs"
+    "Latencia de la generacion y streaming de voz ElevenLabs",
 )
 
 
@@ -36,20 +40,30 @@ async def process_handler(request):
         text_input = data.get("text", "").strip()
 
         if not text_input:
-            HTTP_REQUESTS_TOTAL.labels(method="POST", endpoint="/process", status="400").inc()
-            return web.json_response({"error": "El parametro 'text' no puede estar vacio."}, status=400)
+            HTTP_REQUESTS_TOTAL.labels(
+                method="POST", endpoint="/process", status="400"
+            ).inc()
+            return web.json_response(
+                {"error": "El parametro 'text' no puede estar vacio."}, status=400
+            )
 
         agent = request.app["agent"]
 
         with PROCESS_LATENCY.time():
             result = await agent.process_task(text_input)
 
-        HTTP_REQUESTS_TOTAL.labels(method="POST", endpoint="/process", status="200").inc()
+        HTTP_REQUESTS_TOTAL.labels(
+            method="POST", endpoint="/process", status="200"
+        ).inc()
         return web.json_response(result)
 
     except Exception as e:
-        HTTP_REQUESTS_TOTAL.labels(method="POST", endpoint="/process", status="500").inc()
-        return web.json_response({"error": f"Fallo al procesar la tarea: {str(e)}"}, status=500)
+        HTTP_REQUESTS_TOTAL.labels(
+            method="POST", endpoint="/process", status="500"
+        ).inc()
+        return web.json_response(
+            {"error": f"Fallo al procesar la tarea: {str(e)}"}, status=500
+        )
 
 
 async def on_startup(app):

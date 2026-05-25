@@ -53,7 +53,7 @@ doctor:
 	@echo ""
 	@echo "▶ 4/6  CALIDAD DE CÓDIGO (Python)"
 	@if docker compose -f /root/docker-compose.yml ps hermes 2>/dev/null | grep -q "Up"; then \
-	  if docker compose -f /root/docker-compose.yml exec -T hermes sh -c "ruff check /app --quiet && black --check /app --quiet" 2>/dev/null; then \
+	  if docker compose -f /root/docker-compose.yml exec -T hermes sh -c "ruff check /app --exclude .local --quiet && black --check /app --exclude '\.local' --quiet" 2>/dev/null; then \
 	    echo "   ✅  Código Python sin errores"; \
 	  else \
 	    echo "   ⚠️  Hay avisos en el código Python"; \
@@ -100,7 +100,7 @@ health-check:
 lint-check:
 	@echo "→ Python lint"
 	@if docker compose ps hermes 2>/dev/null | grep -q "Up"; then \
-		docker compose exec -T hermes sh -c "pip install -q ruff black && export PATH=/app/.local/bin:$$PATH && ruff check /app && black --check /app" \
+		docker compose exec -T hermes sh -c "pip install -q ruff black && export PATH=/app/.local/bin:$$PATH && ruff check /app --exclude .local && black --check /app --exclude '\.local'" \
 		  2>&1 && echo "  lint OK"; \
 	else \
 		echo "  hermes not running — skipping lint. Start with: docker compose up -d hermes"; \

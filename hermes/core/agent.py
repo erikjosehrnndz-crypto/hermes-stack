@@ -14,12 +14,15 @@ class HermesAgent:
     Directiva Zero-PR: Los cambios se integran automaticamente
     sin requerir aprobacion manual.
     """
+
     def __init__(self):
         self.litellm_url = os.getenv("LITELLM_URL", "http://litellm:4000")
         self.litellm_key = os.getenv("LITELLM_KEY", "")
-        self.model = os.getenv("HERMES_MODEL", "gemini-flash")  # gemini-flash: más rápido y barato via LiteLLM
-        self.max_tokens = 200       # Restriccion estricta
-        self.temperature = 0.35     # Determinismo prioritario
+        self.model = os.getenv(
+            "HERMES_MODEL", "gemini-flash"
+        )  # gemini-flash: más rápido y barato via LiteLLM
+        self.max_tokens = 200  # Restriccion estricta
+        self.temperature = 0.35  # Determinismo prioritario
 
         # Directorios auto-gestionados
         self.skills_dir = "/app/skills"
@@ -44,28 +47,28 @@ class HermesAgent:
             "REGLAS OPERATIVAS DE EFICIENCIA (OBLIGATORIAS):\n"
             "1. EXTREMA CONCISION: Responde de forma telegrafica, conversacional y directa. "
             "Maximo 25 palabras por respuesta salvo que se solicite detalle explicito.\n"
-            "2. CERO MULETILLAS: Prohibido usar saludos (\"Hola\", \"Claro\", \"Entendido\", "
-            "\"Vale\"), despedidas (\"Quedo atento\", \"Un saludo\"), o introducciones "
-            "(\"Voy a\", \"Te comento que\"). Ve DIRECTO a la informacion.\n"
+            '2. CERO MULETILLAS: Prohibido usar saludos ("Hola", "Claro", "Entendido", '
+            '"Vale"), despedidas ("Quedo atento", "Un saludo"), o introducciones '
+            '("Voy a", "Te comento que"). Ve DIRECTO a la informacion.\n'
             "3. TEXTO PLANO UNICAMENTE: Prohibido Markdown. No uses viñetas, asteriscos, "
             "negritas, codigo, tablas, emojis, ni formatos especiales. Escribe el texto "
             "exactamente como debe ser pronunciado por una voz humana natural.\n"
             "4. CONFIRMACION INMEDIATA: Cuando se solicite confirmar una accion "
             "(registrar inventario, procesar notas, ajustar hardware), inicia "
             "DIRECTAMENTE con la confirmacion y el resultado final.\n"
-            "Ejemplo: \"Listo, registre 3 cervezas y 2 aguas en mesa 5.\"\n"
+            'Ejemplo: "Listo, registre 3 cervezas y 2 aguas en mesa 5."\n'
             "5. NUMEROS NATURALES: Expresa numeros como se hablan, no como se escriben. "
-            "Correcto: \"trescientos cincuenta\". Incorrecto: \"350\".\n"
+            'Correcto: "trescientos cincuenta". Incorrecto: "350".\n'
             "6. SIN INFORMACION REDUNDANTE: No repitas lo que el usuario acaba de decir. "
             "No expliques tu razonamiento. Solo el resultado.\n"
             "EJEMPLOS DE RESPUESTAS CORRECTAS:\n"
-            "- \"Listo, anote 2 pastas y 1 ensalada para la mesa 3.\"\n"
-            "- \"El inventario de hoy: 45 cervezas, 30 vinos, 12 gaseosas.\"\n"
-            "- \"Reiniciando el router. Conexion restablecida en 30 segundos.\"\n"
+            '- "Listo, anote 2 pastas y 1 ensalada para la mesa 3."\n'
+            '- "El inventario de hoy: 45 cervezas, 30 vinos, 12 gaseosas."\n'
+            '- "Reiniciando el router. Conexion restablecida en 30 segundos."\n'
             "EJEMPLOS DE RESPUESTAS PROHIBIDAS:\n"
-            "- \"Hola, con gusto te ayudo con eso. Voy a procesar tu solicitud...\"\n"
-            "- \"**Confirmacion:** *Se ha registrado exitosamente*\"\n"
-            "- \"Claro que si! A continuacion el detalle de tu pedido: 1. ... 2. ...\""
+            '- "Hola, con gusto te ayudo con eso. Voy a procesar tu solicitud..."\n'
+            '- "**Confirmacion:** *Se ha registrado exitosamente*"\n'
+            '- "Claro que si! A continuacion el detalle de tu pedido: 1. ... 2. ..."'
         )
 
     async def start(self):
@@ -93,7 +96,7 @@ class HermesAgent:
             return {
                 "text": cached["content"],
                 "model_used": cached["model"] + "+cache",
-                "latency_ms": round((time.time() - start_time) * 1000, 2)
+                "latency_ms": round((time.time() - start_time) * 1000, 2),
             }
 
         # 1. Seleccionar modelo via LiteLLM (routing automatico)
@@ -101,7 +104,10 @@ class HermesAgent:
             response = await self._query_llm(text_input)
             content = response.get("content", "Error procesando peticion.")
             model_used = response.get("model", self.model)
-            self._query_cache[cache_key] = {"content": self._sanitize_for_tts(content), "model": model_used}
+            self._query_cache[cache_key] = {
+                "content": self._sanitize_for_tts(content),
+                "model": model_used,
+            }
         except Exception as e:
             print(f"Error llamando a LiteLLM: {e}")
             content = f"Error al conectar con el router de lenguaje. {str(e)}"
@@ -114,11 +120,7 @@ class HermesAgent:
         latency_ms = round((time.time() - start_time) * 1000, 2)
         self._log_execution(text_input, clean_text, model_used, latency_ms)
 
-        return {
-            "text": clean_text,
-            "model_used": model_used,
-            "latency_ms": latency_ms
-        }
+        return {"text": clean_text, "model_used": model_used, "latency_ms": latency_ms}
 
     async def _query_llm(self, text_input: str) -> Dict[str, Any]:
         """Realiza la consulta asincrona al LiteLLM Proxy usando la sesion compartida."""
@@ -136,7 +138,7 @@ class HermesAgent:
             "model": self.model,
             "messages": messages,
             "max_tokens": self.max_tokens,
-            "temperature": self.temperature
+            "temperature": self.temperature,
         }
 
         session = self._session
@@ -152,7 +154,7 @@ class HermesAgent:
                 url,
                 headers=headers,
                 data=orjson.dumps(payload),
-                timeout=aiohttp.ClientTimeout(total=20)
+                timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
@@ -162,8 +164,12 @@ class HermesAgent:
                 content = result["choices"][0]["message"]["content"]
                 model_name = result.get("model", self.model)
 
-                self.conversation_history.append({"role": "user", "content": text_input})
-                self.conversation_history.append({"role": "assistant", "content": content})
+                self.conversation_history.append(
+                    {"role": "user", "content": text_input}
+                )
+                self.conversation_history.append(
+                    {"role": "assistant", "content": content}
+                )
 
                 return {"content": content, "model": model_name}
         finally:
@@ -173,26 +179,40 @@ class HermesAgent:
     def _sanitize_for_tts(self, text: str) -> str:
         """Sanitiza el texto eliminando Markdown y caracteres no pronunciables."""
         # Remover negritas, cursivas, codigo y headers de markdown
-        text = re.sub(r'[*_`#\-\[\]()]+', '', text)
+        text = re.sub(r"[*_`#\-\[\]()]+", "", text)
 
         # Reemplazar multiples espacios por uno solo
-        text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(r"\s+", " ", text).strip()
 
         # Remover saludos y muletillas comunes en caso de que el modelo haya fallado en seguir el system prompt
         blacklist = [
-            r'^hola,?\s*', r'^entendido,?\s*', r'^claro,?\s*', r'^vale,?\s*',
-            r'^te comento que\s*', r'^un saludo\s*$', r'^quedo atento\s*$'
+            r"^hola,?\s*",
+            r"^entendido,?\s*",
+            r"^claro,?\s*",
+            r"^vale,?\s*",
+            r"^te comento que\s*",
+            r"^un saludo\s*$",
+            r"^quedo atento\s*$",
         ]
         for pattern in blacklist:
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+            text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
         # Reemplazar numeros simples por palabras si la expresion no es muy larga
         num_map = {
-            "0": "cero", "1": "uno", "2": "dos", "3": "tres", "4": "cuatro",
-            "5": "cinco", "6": "seis", "7": "siete", "8": "ocho", "9": "nueve", "10": "diez"
+            "0": "cero",
+            "1": "uno",
+            "2": "dos",
+            "3": "tres",
+            "4": "cuatro",
+            "5": "cinco",
+            "6": "seis",
+            "7": "siete",
+            "8": "ocho",
+            "9": "nueve",
+            "10": "diez",
         }
         for num, word in num_map.items():
-            text = re.sub(r'\b' + num + r'\b', word, text)
+            text = re.sub(r"\b" + num + r"\b", word, text)
 
         return text.strip()
 
@@ -203,7 +223,7 @@ class HermesAgent:
             "query": query,
             "response": response,
             "model": model,
-            "latency_ms": latency
+            "latency_ms": latency,
         }
         self.execution_log.append(log_entry)
 
