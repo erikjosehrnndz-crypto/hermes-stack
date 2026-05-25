@@ -179,6 +179,19 @@ gh pr create --title "..." --body "..."
 
 **No appendear secciones nuevas** si ya existe una sección equivalente — editar la existente. Causa de error pasado: sección CI/CD duplicada en README por append sin leer el final del archivo.
 
+### Write tool exige Read tool — Bash cat no cuenta
+
+El tool `Write` (para sobreescribir un archivo existente) requiere haber usado el tool `Read` en la misma sesión. Ver el contenido con `Bash cat` o `Bash head` **no satisface** ese requisito. Si se intenta `Write` sin `Read` previo: error "File has not been read yet".
+
+```
+❌ Bash(cat archivo.md) → Write(archivo.md)   # falla
+✅ Read(archivo.md)    → Write(archivo.md)   # funciona
+✅ Read(archivo.md)    → Edit(archivo.md)    # funciona
+```
+
+**Previene:** error "File has not been read yet" al intentar sobreescribir archivos cuyo contenido llegó vía Bash. Error ocurrido en sesión 2026-05-25 con PENDIENTES.md.
+**Cómo aplicar:** antes de cualquier `Write` en archivo existente, verificar que hubo un `Read` del mismo archivo en este turno.
+
 ---
 
 ## Sub-agentes vs escritura directa
@@ -859,6 +872,38 @@ Estado actual del harness del Hermes Stack (patrón de learn-harness-engineering
 | Verification | `Makefile` con `make check` | ✅ OK |
 | Scope | Regla "una tarea activa" en CLAUDE.md | ✅ OK |
 | Session Lifecycle | Checklist inicio + clock-out + `SESSION_HANDOFF.md` | ✅ OK |
+
+### Makefile — SHELL := /bin/bash obligatorio
+
+Cualquier Makefile que use `source`, arrays bash, o `[[ ]]` necesita esta línea al inicio:
+
+```makefile
+SHELL := /bin/bash
+```
+
+Sin esto, Make usa `/bin/sh` por defecto y `source /root/.env` falla silenciosamente — las variables de entorno no se cargan y los health checks fallan aunque el servicio esté running.
+
+También: usar `set -a; source <env>; set +a` para exportar automáticamente todas las variables del archivo env:
+
+```makefile
+SHELL := /bin/bash
+health-check:
+    @set -a; source /root/.env 2>/dev/null; set +a; \
+    curl -sf -H "Authorization: Bearer $$LITELLM_MASTER_KEY" http://127.0.0.1:4000/health
+```
+
+**Previene:** health check que reporta DOWN aunque el servicio esté Up, por LITELLM_MASTER_KEY vacío. Error en sesión 2026-05-25 en el Makefile inicial del harness.
+
+### `docker compose ps` — output es "Up" no "running"
+
+El comando `docker compose ps` muestra el estado como `Up X days (healthy)`, no como `running`. Cualquier grep sobre este output debe buscar `"Up"`:
+
+```makefile
+@if docker compose ps hermes 2>/dev/null | grep -q "Up"; then  # ✓
+@if docker compose ps hermes 2>/dev/null | grep -q "running"; then  # ✗ no coincide
+```
+
+**Previene:** condición always-false que omite lint silenciosamente. Error en sesión 2026-05-25 en el target lint-check del Makefile.
 
 ### AGENTS.md — cuándo usarlo
 
