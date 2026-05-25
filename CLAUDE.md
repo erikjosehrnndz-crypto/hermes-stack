@@ -905,6 +905,34 @@ El comando `docker compose ps` muestra el estado como `Up X days (healthy)`, no 
 
 **Previene:** condición always-false que omite lint silenciosamente. Error en sesión 2026-05-25 en el target lint-check del Makefile.
 
+### `make doctor` — pipeline principal único
+
+Para cualquier duda sobre el estado del stack, ejecutar UN solo comando:
+
+```bash
+make doctor
+```
+
+Corre los 6 pasos en orden: repositorio → servicios Docker → health → calidad de código → harness → tareas pendientes. Output con emojis: ✅ OK, ❌ problema, ⚠️ advertencia.
+
+**Regla:** cuando un usuario no-programador pregunta "qué pasa con el stack", ejecutar `make doctor` primero y explicar el output en lenguaje simple.
+
+Skill alternativo: `/pipeline` — hace lo mismo pero con explicaciones en lenguaje no técnico y puede actualizar el Makefile si detecta nuevos servicios o scripts.
+
+### Makefile — `|| true` en condiciones de archivo
+
+Cualquier `[ -f ... ] && echo ...` al final de un recipe de Make debe terminar con `|| true`. Sin esto, si el archivo no existe, Make reporta error y aborta el target:
+
+```makefile
+# ❌ crashea si HANDOFF no existe:
+[ -f "$$HANDOFF" ] && echo "pendiente"
+
+# ✅ correcto:
+[ -f "$$HANDOFF" ] && echo "pendiente" || true
+```
+
+**Previene:** `make: *** Error 1` al final de targets que verifican archivos opcionales. Error en sesión 2026-05-25 en el target `doctor`.
+
 ### AGENTS.md — cuándo usarlo
 
 `AGENTS.md` es el entry file de 100 líneas para el agente. CLAUDE.md es el detalle completo.
