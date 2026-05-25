@@ -1,10 +1,13 @@
 import os
-import json
+import orjson
 import asyncio
 import aiohttp
+import hashlib
+from cachetools import TTLCache
 from typing import Dict, Any, List
 import time
 import re
+
 
 class HermesAgent:
     """
@@ -27,6 +30,13 @@ class HermesAgent:
         # Estado interno
         self.conversation_history: List[Dict[str, str]] = []
         self.execution_log: List[Dict[str, Any]] = []
+
+        # Sesion HTTP compartida — se inicializa en start()
+        self._session: aiohttp.ClientSession | None = None
+
+        # Cache de dedup en memoria: evita llamadas API duplicadas en ventana de 60s
+        # Util para transcripciones repetidas de voz (Whisper repite la misma query)
+        self._query_cache: TTLCache = TTLCache(maxsize=256, ttl=60)
 
         # System Prompt v2.0 (Optimizado para Flash v2.5)
         self.system_prompt = (
@@ -59,21 +69,42 @@ class HermesAgent:
             "- \"Claro que si! A continuacion el detalle de tu pedido: 1. ... 2. ...\""
         )
 
+    async def start(self):
+        """Crea la sesion HTTP compartida con connection pooling."""
+        connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
+        self._session = aiohttp.ClientSession(connector=connector)
+
+    async def stop(self):
+        """Cierra la sesion HTTP compartida."""
+        if self._session:
+            await self._session.close()
+            self._session = None
+
     async def process_task(self, text_input: str) -> Dict[str, Any]:
         """
         Procesa una tarea y retorna la respuesta con metadatos.
         El formato de salida esta optimizado para TTS streaming.
         """
         start_time = time.time()
-        
+
+        # Dedup cache — misma query dentro de 60s devuelve resultado cacheado
+        cache_key = hashlib.md5(f"{self.model}:{text_input}".encode()).hexdigest()
+        if cache_key in self._query_cache:
+            cached = self._query_cache[cache_key]
+            return {
+                "text": cached["content"],
+                "model_used": cached["model"] + "+cache",
+                "latency_ms": round((time.time() - start_time) * 1000, 2)
+            }
+
         # 1. Seleccionar modelo via LiteLLM (routing automatico)
         try:
             response = await self._query_llm(text_input)
             content = response.get("content", "Error procesando peticion.")
             model_used = response.get("model", self.model)
+            self._query_cache[cache_key] = {"content": self._sanitize_for_tts(content), "model": model_used}
         except Exception as e:
             print(f"Error llamando a LiteLLM: {e}")
-            # Mock / Fallback local para desarrollo si no hay API disponible
             content = f"Error al conectar con el router de lenguaje. {str(e)}"
             model_used = "local-fallback"
 
@@ -81,7 +112,7 @@ class HermesAgent:
         clean_text = self._sanitize_for_tts(content)
 
         # 3. Log de la operacion
-        latency_ms = (time.time() - start_time) * 1000
+        latency_ms = round((time.time() - start_time) * 1000, 2)
         self._log_execution(text_input, clean_text, model_used, latency_ms)
 
         return {
@@ -91,22 +122,15 @@ class HermesAgent:
         }
 
     async def _query_llm(self, text_input: str) -> Dict[str, Any]:
-        """Realiza la consulta asincrona al LiteLLM Proxy."""
+        """Realiza la consulta asincrona al LiteLLM Proxy usando la sesion compartida."""
         url = f"{self.litellm_url}/v1/chat/completions"
-        headers = {
-            "Content-Type": "application/json"
-        }
+        headers = {"Content-Type": "application/json"}
         if self.litellm_key:
             headers["Authorization"] = f"Bearer {self.litellm_key}"
 
-        messages = [
-            {"role": "system", "content": self.system_prompt}
-        ]
-        
-        # Mantener historial corto para maximizar concision y reducir costos
+        messages = [{"role": "system", "content": self.system_prompt}]
         for hist in self.conversation_history[-4:]:
             messages.append(hist)
-            
         messages.append({"role": "user", "content": text_input})
 
         payload = {
@@ -116,33 +140,45 @@ class HermesAgent:
             "temperature": self.temperature
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload, timeout=20) as resp:
+        session = self._session
+        if session is None or session.closed:
+            # Fallback si start() no fue llamado
+            session = aiohttp.ClientSession()
+            owns_session = True
+        else:
+            owns_session = False
+
+        try:
+            async with session.post(
+                url,
+                headers=headers,
+                data=orjson.dumps(payload),
+                timeout=aiohttp.ClientTimeout(total=20)
+            ) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
                     raise Exception(f"HTTP {resp.status}: {error_text}")
-                
-                result = await resp.json()
+
+                result = orjson.loads(await resp.read())
                 content = result["choices"][0]["message"]["content"]
                 model_name = result.get("model", self.model)
-                
-                # Guardar en historial
+
                 self.conversation_history.append({"role": "user", "content": text_input})
                 self.conversation_history.append({"role": "assistant", "content": content})
-                
-                return {
-                    "content": content,
-                    "model": model_name
-                }
+
+                return {"content": content, "model": model_name}
+        finally:
+            if owns_session:
+                await session.close()
 
     def _sanitize_for_tts(self, text: str) -> str:
         """Sanitiza el texto eliminando Markdown y caracteres no pronunciables."""
         # Remover negritas, cursivas, codigo y headers de markdown
         text = re.sub(r'[*_`#\-\[\]()]+', '', text)
-        
+
         # Reemplazar multiples espacios por uno solo
         text = re.sub(r'\s+', ' ', text).strip()
-        
+
         # Remover saludos y muletillas comunes en caso de que el modelo haya fallado en seguir el system prompt
         blacklist = [
             r'^hola,?\s*', r'^entendido,?\s*', r'^claro,?\s*', r'^vale,?\s*',
@@ -150,10 +186,8 @@ class HermesAgent:
         ]
         for pattern in blacklist:
             text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-            
+
         # Reemplazar numeros simples por palabras si la expresion no es muy larga
-        # Nota: Un convertidor completo de numeros a letras en español seria extenso,
-        # pero hacemos reemplazos basicos comunes como salvaguarda.
         num_map = {
             "0": "cero", "1": "uno", "2": "dos", "3": "tres", "4": "cuatro",
             "5": "cinco", "6": "seis", "7": "siete", "8": "ocho", "9": "nueve", "10": "diez"
@@ -173,15 +207,13 @@ class HermesAgent:
             "latency_ms": latency
         }
         self.execution_log.append(log_entry)
-        
-        # Limitar log en memoria
+
         if len(self.execution_log) > 100:
             self.execution_log.pop(0)
 
-        # Escribir a disco
         try:
             os.makedirs(self.logs_dir, exist_ok=True)
-            with open(os.path.join(self.logs_dir, "agent_execution.log"), "a", encoding="utf-8") as f:
-                f.write(json.dumps(log_entry) + "\n")
+            with open(os.path.join(self.logs_dir, "agent_execution.log"), "ab") as f:
+                f.write(orjson.dumps(log_entry) + b"\n")
         except Exception as e:
             print(f"No se pudo escribir en log de ejecucion: {e}")

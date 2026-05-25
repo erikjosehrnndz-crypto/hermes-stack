@@ -17,8 +17,8 @@ model_list:
       timeout: 30
       model_info:
         access_groups: ["premium"]
-  
-  # === TIER ECONOMICO: Modelos rapidos y baratos (Via OpenRouter) ===
+
+  # === TIER ECONOMICO: Modelos rapidos y baratos ===
   - model_name: gpt-4o-mini
     litellm_params:
       model: openrouter/openai/gpt-4o-mini
@@ -35,6 +35,15 @@ model_list:
       timeout: 10
       model_info:
         access_groups: ["basic", "premium"]
+  # Gemini Flash — nativo via Google, mas rapido y barato para TTS pipelines
+  - model_name: gemini-flash
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+      rpm: 1000
+      timeout: 10
+      model_info:
+        access_groups: ["basic", "premium"]
 
   # === EMBEDDINGS (Via Gemini) ===
   - model_name: embeddings
@@ -47,6 +56,15 @@ router_settings:
   routing_strategy: latency-based-routing
   allowed_fails: 2
   cooldown_time: 60
+
+# === CACHE REDIS — evita llamadas LLM duplicadas ===
+litellm_settings:
+  cache: True
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    ttl: 3600
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
