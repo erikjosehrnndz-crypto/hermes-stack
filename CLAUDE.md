@@ -374,6 +374,18 @@ export async function GET() {
 
 No añadir Express ni otros servidores HTTP — Next.js `next start` sirve tanto el frontend como las API routes.
 
+### `force-dynamic` obligatorio en routes GET con datos en tiempo real
+
+Next.js 14 cachea rutas `GET` por defecto en production build. Sin la directiva, `/api/metrics` y `/api/health` sirven datos stale. Añadir **como primera exportación** en cualquier route que devuelva datos dinámicos:
+
+```ts
+export const dynamic = 'force-dynamic';
+```
+
+El build confirma: rutas con la directiva muestran `ƒ (Dynamic)`, sin ella `○ (Static)` — señal de caché activa.
+
+**Previene:** health check always-healthy aunque el servicio esté caído; métricas congeladas en producción.
+
 ### `.next/` — artefacto de build, nunca al repositorio
 
 `.next/` es el directorio de output del build. Está en `.gitignore` raíz. Confirmar que esté ignorado antes de cualquier `git add` en `website/`.

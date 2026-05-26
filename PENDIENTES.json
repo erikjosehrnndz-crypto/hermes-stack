@@ -60,9 +60,9 @@
     "priority": "improvement",
     "purpose": "Merge feat/nextjs-rocket-compat → main para activar el CD pipeline (26 commits adelante de origin).",
     "depends_on": [],
-    "status": "not-started",
+    "status": "done",
     "verification": "git log --oneline main..HEAD | wc -l  # debe ser 0 después del merge",
-    "evidence": "",
+    "evidence": "commit 762fc61 — merge feat/nextjs-rocket-compat → main, push c218fe2",
     "notes": "Verificar build antes de PR: cd website && npm run build"
   },
   {

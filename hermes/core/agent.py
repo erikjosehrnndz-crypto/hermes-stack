@@ -91,7 +91,7 @@ class HermesAgent:
         """
         start_time = time.time()
 
-        # Dedup cache — misma query dentro de 60s devuelve resultado cacheado
+        # Dedup cache — misma query dentro de 300s devuelve resultado cacheado
         cache_key = hashlib.md5(f"{self.model}:{text_input}".encode()).hexdigest()
         if cache_key in self._query_cache:
             cached = self._query_cache[cache_key]
@@ -124,7 +124,9 @@ class HermesAgent:
 
         return {"text": clean_text, "model_used": model_used, "latency_ms": latency_ms}
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8)
+    )
     async def _query_llm(self, text_input: str) -> Dict[str, Any]:
         """Realiza la consulta asincrona al LiteLLM Proxy usando la sesion compartida."""
         url = f"{self.litellm_url}/v1/chat/completions"
@@ -219,7 +221,9 @@ class HermesAgent:
 
         return text.strip()
 
-    async def _log_execution(self, query: str, response: str, model: str, latency: float):
+    async def _log_execution(
+        self, query: str, response: str, model: str, latency: float
+    ):
         """Registra la ejecucion en un archivo de log local y memoria (disk write en executor)."""
         log_entry = {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
