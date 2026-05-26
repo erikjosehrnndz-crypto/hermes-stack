@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const HERMES = process.env.HERMES_URL_INTERNAL ?? 'http://hermes:8080';
 
 export async function POST(request: NextRequest) {

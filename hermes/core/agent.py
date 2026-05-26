@@ -1,9 +1,12 @@
 import os
+import asyncio
 import orjson
 import aiohttp
 import hashlib
 from cachetools import TTLCache
-from typing import Dict, Any, List
+from collections import deque
+from typing import Dict, Any
+from tenacity import retry, stop_after_attempt, wait_exponential
 import time
 import re
 
@@ -29,16 +32,15 @@ class HermesAgent:
         self.data_dir = "/app/data"
         self.logs_dir = "/app/logs"
 
-        # Estado interno
-        self.conversation_history: List[Dict[str, str]] = []
-        self.execution_log: List[Dict[str, Any]] = []
+        # Estado interno — deque acota memoria sin romper slicing [-4:]
+        self.conversation_history: deque = deque(maxlen=20)
+        self.execution_log: list = []
 
         # Sesion HTTP compartida — se inicializa en start()
         self._session: aiohttp.ClientSession | None = None
 
-        # Cache de dedup en memoria: evita llamadas API duplicadas en ventana de 60s
-        # Util para transcripciones repetidas de voz (Whisper repite la misma query)
-        self._query_cache: TTLCache = TTLCache(maxsize=256, ttl=60)
+        # Cache de dedup: evita llamadas API duplicadas — 300s cubre repeticiones de voz entre minutos
+        self._query_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
 
         # System Prompt v2.0 (Optimizado para Flash v2.5)
         self.system_prompt = (
@@ -118,10 +120,11 @@ class HermesAgent:
 
         # 3. Log de la operacion
         latency_ms = round((time.time() - start_time) * 1000, 2)
-        self._log_execution(text_input, clean_text, model_used, latency_ms)
+        await self._log_execution(text_input, clean_text, model_used, latency_ms)
 
         return {"text": clean_text, "model_used": model_used, "latency_ms": latency_ms}
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
     async def _query_llm(self, text_input: str) -> Dict[str, Any]:
         """Realiza la consulta asincrona al LiteLLM Proxy usando la sesion compartida."""
         url = f"{self.litellm_url}/v1/chat/completions"
@@ -143,8 +146,8 @@ class HermesAgent:
 
         session = self._session
         if session is None or session.closed:
-            # Fallback si start() no fue llamado
-            session = aiohttp.ClientSession()
+            connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
+            session = aiohttp.ClientSession(connector=connector)
             owns_session = True
         else:
             owns_session = False
@@ -216,8 +219,8 @@ class HermesAgent:
 
         return text.strip()
 
-    def _log_execution(self, query: str, response: str, model: str, latency: float):
-        """Registra la ejecucion en un archivo de log local y memoria."""
+    async def _log_execution(self, query: str, response: str, model: str, latency: float):
+        """Registra la ejecucion en un archivo de log local y memoria (disk write en executor)."""
         log_entry = {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "query": query,
@@ -230,9 +233,13 @@ class HermesAgent:
         if len(self.execution_log) > 100:
             self.execution_log.pop(0)
 
-        try:
+        def _write():
             os.makedirs(self.logs_dir, exist_ok=True)
             with open(os.path.join(self.logs_dir, "agent_execution.log"), "ab") as f:
                 f.write(orjson.dumps(log_entry) + b"\n")
+
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _write)
         except Exception as e:
             print(f"No se pudo escribir en log de ejecucion: {e}")

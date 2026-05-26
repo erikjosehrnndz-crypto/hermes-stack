@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 type TreeNode = { name: string; type: 'file' | 'directory'; children?: TreeNode[] };
 
 function walk(dir: string, depth: number): TreeNode[] {

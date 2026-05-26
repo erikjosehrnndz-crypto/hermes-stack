@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const HERMES = process.env.HERMES_URL_INTERNAL ?? 'http://hermes:8080';
 const LITELLM = process.env.LITELLM_URL_INTERNAL ?? 'http://litellm:4000';
 const LITELLM_KEY = process.env.LITELLM_MASTER_KEY ?? '';
