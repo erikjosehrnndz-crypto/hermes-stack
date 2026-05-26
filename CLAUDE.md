@@ -255,21 +255,9 @@ El orquestador toma decisiones de alto impacto; un modelo débil orquestando age
 
 ### Sub-agentes pueden lanzar sub-swarms — solo con autorización del padre
 
-Un sub-agente **puede** solicitar lanzar su propio swarm si su tarea es demasiado amplia para un único hilo. Patrón obligatorio:
+Un sub-agente que necesite paralelizar debe **retornar primero** su solicitud (razón, agentes propuestos, tokens estimados, outputs a `/tmp/`) — nunca lanzar directamente. El padre aprueba/rechaza antes de re-invocar. Profundidad máxima: 3 niveles. Toda autorización fluye top-down.
 
-1. El sub-agente detecta que necesita paralelizar.
-2. **Retorna su respuesta sin lanzar nada todavía**, incluyendo:
-   ```
-   SOLICITUD_SUB_SWARM:
-   - Razón: <por qué un hilo no basta>
-   - Agentes propuestos: <N>, modelos: <Haiku/Sonnet>
-   - Estimación de tokens: <total aproximado>
-   - Outputs esperados: <archivos a /tmp/<task_id>/...>
-   ```
-3. El orquestador padre evalúa la solicitud, la aprueba o la rechaza explícitamente, y solo entonces re-invoca al sub-agente con permiso concedido.
-4. Profundidad máxima recomendada: **3 niveles** (orquestador → sub-agente → sub-sub-agente). Cualquier nivel adicional requiere aprobación explícita del usuario.
-
-Previene explosión de costes. Toda autorización fluye top-down.
+**Previene:** explosión de costes.
 
 ### Sub-agentes de larga duración → `run_in_background: true`
 
@@ -464,24 +452,14 @@ mkdir -p ~/.claude/commands/
 
 No existe por defecto — escribir un archivo en esa ruta sin crear el directorio primero falla silenciosamente o con error de path.
 
-### /gg es efectivo para la PRÓXIMA sesión, no la actual
+### /evolve es efectivo para la PRÓXIMA sesión, no la actual
 
-Las reglas añadidas con `/gg` al final de una sesión no previenen errores que ya ocurrieron en esa misma sesión — benefician la sesión siguiente. El valor de `/gg` es **prospectivo**.
+Las reglas añadidas con `/evolve` al final de una sesión benefician la sesión siguiente. El valor de `/evolve` es **prospectivo**.
 
-### /gg multi-sesión — transcripts disponibles
+### /evolve multi-sesión — transcripts disponibles
 
-Los transcripts completos de sesiones anteriores están en:
-```
-/root/.claude/projects/-root/<sessionId>.jsonl
-```
-El índice de sesiones (sessionIds + timestamps + comandos) está en:
-```
-/root/.claude/history.jsonl
-```
-Para ejecutar `/gg` sobre N sesiones anteriores, usar el patrón swarm:
-- Lanzar 1 agente Researcher por sesión mayor (en paralelo)
-- Lanzar 1 Memory Specialist para comparar memoria vs CLAUDE.md
-- El agente principal (no sub-agente) sintetiza y escribe CLAUDE.md
+Transcripts anteriores: `/root/.claude/projects/-root/<sessionId>.jsonl`
+Índice de sesiones: `/root/.claude/history.jsonl`
 
 ### /plan con Ruflo disponible → proponer swarm desde el inicio
 
@@ -538,15 +516,7 @@ Las siguientes reglas en `settings.json` cubren el workflow completo:
 ### `.claude/` está en `.gitignore` — settings.json NO va al repositorio
 
 El `.gitignore` raíz contiene `.*`, que ignora **todos los dotfiles**, incluyendo `.claude/`.
-`git add .claude/settings.json` falla silenciosamente o lanza error. Este archivo **vive solo en el VPS**.
-
-```bash
-# Esto FALLA:
-git add .claude/settings.json   # error: pathspec ignored by .gitignore
-
-# Gestión correcta: editar directamente, nunca commitear
-# Las reglas canónicas se documentan en CLAUDE.md (esta sección)
-```
+`git add .claude/settings.json` falla — este archivo **vive solo en el VPS**.
 
 **Consecuencia:** si el VPS se reinicia o se clona el repo en otra máquina, hay que recrear `settings.json` manualmente a partir de la tabla de permisos canónicos de esta sección.
 
@@ -591,6 +561,16 @@ En este proyecto hay una distinción importante para `docker compose up --no-dep
 | `whisper-stt` | `whisper-stt` |
 
 El watchdog y cualquier script que use `docker compose up --no-deps <servicio>` debe usar el **nombre de servicio**, no el nombre de contenedor.
+
+### Docker healthcheck — usar `127.0.0.1`, no `localhost`
+
+`localhost` en contenedores Alpine puede resolver a `[::1]` (IPv6) mientras el proceso escucha en IPv4 → `Connection refused` aunque el servicio esté up. Usar `127.0.0.1` siempre en healthchecks:
+
+```yaml
+test: ["CMD", "wget", "--spider", "http://127.0.0.1:3000/api/health"]  # ✓
+```
+
+**Previene:** healthcheck always-failing que oculta el estado real del contenedor.
 
 ---
 
@@ -655,7 +635,7 @@ El usuario paga por cada token de output. La regla para esta sesión y todas las
 
 **No narrar el procedimiento ni el progreso.** Nada de "voy a hacer X", "ahora hago Y", "completado Z". El diff y los commits cuentan la historia — no la repitas en prosa.
 
-**No mostrar el contenido completo de archivos editados** salvo que el usuario lo pida explícitamente. El comando `/gg` por defecto pide "muestra el contenido completo del nuevo CLAUDE.md" — esa instrucción queda **anulada** por esta regla: solo mostrar diff implícito (commit hash) salvo petición explícita del usuario en el turno actual.
+**No mostrar el contenido completo de archivos editados** salvo petición explícita del usuario.
 
 ### La barra de progreso vive en la status line del sistema, no en el chat
 
@@ -796,6 +776,14 @@ const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
 ```
 
 No usar `new AbortController()` + `setTimeout` + `clearTimeout` — `AbortSignal.timeout` es más limpio y disponible desde Node 17+.
+
+### LiteLLM — Prometheus metrics y modelos caídos en silencio
+
+Para exponer métricas a Prometheus: `callbacks: ["prometheus"]` en `litellm_settings`. El endpoint es `/metrics/` (trailing slash) — configurar `metrics_path: '/metrics/'` en prometheus.yml.
+
+Si un modelo aparece en litellm.yaml pero no en `GET /v1/models`: LiteLLM lo deshabilitó silenciosamente tras fallo de API. Testear directo al proveedor para ver el error real — `RESOURCE_EXHAUSTED` = cuota agotada → redirigir por OpenRouter (`openrouter/<provider>/<model>`).
+
+**Previene:** `litellm: down` en Prometheus y horas depurando config cuando el error es cuota/billing.
 
 ### LiteLLM 401 = servicio up
 

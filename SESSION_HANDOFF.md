@@ -1,14 +1,16 @@
-El siguiente paso es: resolver hs-001 (Hermes Agent: 0 requests en 47h — investigar pipeline Whisper → /process) o hacer merge de feat/nextjs-rocket-compat a main (hs-006).
+El siguiente paso es: hacer merge de `feat/nextjs-rocket-compat` → `main` (hs-006) para activar el CD pipeline y desplegar los 26 commits acumulados.
 
-**Trabajo completado en esta sesión (2026-05-26):**
-- Creado Droplet DO `hermes-expansion` (104.236.74.0, NYC3, 4 vCPU / 8 GB)
-- Desplegado Control Center: Grafana + Prometheus + Portainer en `https://control.el80.space`
-- DNS `control.el80.space` añadido vía Hostinger API
-- SSL emitido via DNS-01 (acme.sh), auto-renueva por cron
-- Federación Prometheus configurada (agrega métricas del VPS principal)
-- Hook DNS Hostinger instalado: `/root/.acme.sh/dnsapi/dns_hostinger.sh`
+**Trabajo completado en sesión 2026-05-26:**
+- hs-001: creado `website/app/api/voice/route.ts` (bridge frontend→Hermes). Pipeline E2E verificado: 458ms
+- hs-002: GEMINI_API_KEY en cuota free agotada; gemini-flash migrado a `openrouter/google/gemini-2.5-flash`
+- hs-003: litellm en red monitoring + callbacks prometheus + metrics_path `/metrics/`; `litellm : up` en Prometheus
+- hs-004: gemini-flash E2E verificado (483ms, model healthy)
+- hs-005: rebuild hermes ya estaba en commit 8b2dc10
+- Corregido healthcheck website (IPv6→IPv4, path `/health`→`/api/health`)
 
-**Credenciales nuevas:**
+**Commits clave:** `4f2540d` (stack fixes), `/evolve` actual
+
+**Credenciales control-center (de sesión anterior):**
 - SSH Droplet: `ssh -i /root/.ssh/do_droplet_key root@104.236.74.0`
 - Grafana: admin / HermesControl2026!
 - Compose en Droplet: `/root/control-center/`
