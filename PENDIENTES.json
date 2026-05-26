@@ -1,0 +1,79 @@
+[
+  {
+    "id": "hs-001",
+    "service": "hermes-agent",
+    "priority": "critical",
+    "purpose": "Hermes Agent: 0 requests en 47h — pipeline Whisper → /process sin cliente.",
+    "depends_on": [],
+    "status": "done",
+    "verification": "curl -X POST http://127.0.0.1:3001/api/voice -H 'Content-Type: application/json' -d '{\"text\":\"test\"}' | jq .text",
+    "evidence": "commit 4f2540d — website/app/api/voice/route.ts creado; curl → {\"text\":\"Pipeline de voz funcionando.\",\"model_used\":\"gemini-flash\",\"latency_ms\":458.66}",
+    "notes": "Root cause: GEMINI_API_KEY en cuota gratuita agotada + no existía bridge frontend→Hermes"
+  },
+  {
+    "id": "hs-002",
+    "service": "litellm-router",
+    "priority": "critical",
+    "purpose": "gemini/text-embedding-004 caído en LiteLLM — GEMINI_API_KEY en cuota gratuita agotada.",
+    "depends_on": [],
+    "status": "done",
+    "verification": "source /root/.env && curl -s -H 'Authorization: Bearer $LITELLM_MASTER_KEY' http://127.0.0.1:4000/health | python3 -c \"import json,sys; d=json.load(sys.stdin); print('UNHEALTHY:', [m.get('model') for m in d.get('unhealthy_endpoints',[])])\"",
+    "evidence": "commit 4f2540d — gemini-flash migrado a openrouter/google/gemini-2.5-flash; embeddings model eliminado; UNHEALTHY: []",
+    "notes": "La API de Gemini (AIza...) tiene quota free tier = 0. Siempre usar OpenRouter para Gemini en prod."
+  },
+  {
+    "id": "hs-003",
+    "service": "infra",
+    "priority": "warning",
+    "purpose": "litellm no en red monitoring → Prometheus no puede scrapear métricas.",
+    "depends_on": [],
+    "status": "done",
+    "verification": "curl -s 'http://127.0.0.1:9090/api/v1/targets' | python3 -c \"import json,sys; d=json.load(sys.stdin); [print(t['labels']['job'], ':', t['health']) for t in d['data']['activeTargets'] if 'litellm' in t['labels'].get('job','')]\"",
+    "evidence": "commit 4f2540d — litellm en red monitoring + callbacks prometheus + metrics_path /metrics/; resultado: litellm : up",
+    "notes": ""
+  },
+  {
+    "id": "hs-004",
+    "service": "litellm-router",
+    "priority": "warning",
+    "purpose": "Verificar gemini-flash end-to-end.",
+    "depends_on": ["hs-001"],
+    "status": "done",
+    "verification": "source /root/.env && curl -s -X POST http://127.0.0.1:4000/v1/chat/completions -H 'Authorization: Bearer $LITELLM_MASTER_KEY' -H 'Content-Type: application/json' -d '{\"model\":\"gemini-flash\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}],\"max_tokens\":5}' | jq '.choices[0].message.content'",
+    "evidence": "commit 4f2540d — gemini-flash E2E verificado: 483ms, model openrouter/google/gemini-2.5-flash",
+    "notes": ""
+  },
+  {
+    "id": "hs-005",
+    "service": "hermes-agent",
+    "priority": "improvement",
+    "purpose": "Rebuild hermes container para aplicar cambios de sesión 2026-05-25.",
+    "depends_on": [],
+    "status": "done",
+    "verification": "docker compose ps hermes | grep 'Up'",
+    "evidence": "commit 8b2dc10 — rebuild aplicado en sesión 2026-05-25",
+    "notes": ""
+  },
+  {
+    "id": "hs-006",
+    "service": "infra",
+    "priority": "improvement",
+    "purpose": "Merge feat/nextjs-rocket-compat → main para activar el CD pipeline (26 commits adelante de origin).",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "git log --oneline main..HEAD | wc -l  # debe ser 0 después del merge",
+    "evidence": "",
+    "notes": "Verificar build antes de PR: cd website && npm run build"
+  },
+  {
+    "id": "hs-007",
+    "service": "infra",
+    "priority": "improvement",
+    "purpose": "Completar mesh Tailscale: autenticar DO droplet (URL generada) + verificar Android (xiaomi-14t-pro) activo en red.",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "tailscale ping 100.85.146.98 && tailscale ping <DO_TAILSCALE_IP> && tailscale status | grep -c 'active'",
+    "evidence": "",
+    "notes": "DO droplet tiene Tailscale instalado pero 'Logged out'. URL de auth generada en sesión 2026-05-26. Android offline hace 2d — abrir app Tailscale en Xiaomi 14T Pro."
+  }
+]

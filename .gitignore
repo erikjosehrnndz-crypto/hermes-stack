@@ -1,0 +1,25 @@
+# Ignore env files containing secrets
+.env
+.env.*
+!.env.template
+
+# Ignore system/app specific dotfiles
+.*
+!.github
+!.gitignore
+
+# Ignore custom archives and backups
+*.tar.gz
+*.bin
+9router_backup
+extract_pdf.py
+
+# Ignore node_modules, cache, logs
+node_modules/
+.next/
+dist/
+__pycache__/
+*.log
+hermes/logs/*
+hermes/data/*
+hermes/tmp/*

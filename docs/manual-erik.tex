@@ -1,0 +1,371 @@
+\documentclass[11pt,a4paper,spanish]{article}
+
+\usepackage[utf-8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{xcolor}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{tabulary}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{babel,arrows.meta,positioning,calc,fit,backgrounds,shapes.misc}
+
+\geometry{margin=0.75in}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small Hermes Stack}
+\lhead{\small Manual de Uso}
+\cfoot{\thepage}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  columns=fullflexible,
+  language=bash,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{gray!30},
+  aboveskip=6pt,
+  belowskip=6pt
+}
+
+\definecolor{hermes-dark}{RGB}{45, 45, 45}
+\definecolor{hermes-blue}{RGB}{68, 134, 232}
+\definecolor{hermes-green}{RGB}{52, 214, 146}
+
+\title{\huge\textbf{Manual de Uso}\\[\smallskip]\Large Claude Code \textbullet{} Hermes Stack\\[\smallskip]\normalsize Tu referencia rápida. Diseñado para escanear, no para leer.}
+\author{}
+\date{\small Actualizado: 25 de mayo de 2026}
+
+\begin{document}
+
+\maketitle
+
+\section*{⚡ Panel de Control — Respuesta en < 5 segundos}
+
+Cuando necesites algo, aquí está la acción correcta:
+
+\vspace{0.3cm}
+
+\noindent\begin{tabular}{|p{2.5cm}|p{3.5cm}|p{3.5cm}|}
+\hline
+\textbf{Situación} & \textbf{Comando / Acción} & \textbf{Por qué} \\
+\hline
+Inicio de sesión & \texttt{make doctor} & Estado completo del stack en 1 comando \\
+¿Qué tengo pendiente? & \texttt{cat /root/PENDIENTES.md | head -30} & Tu backlog ordenado por prioridad \\
+El stack no responde & \texttt{/pipeline} & Diagnóstico en lenguaje simple + guía \\
+Quiero cambiar código & Pídelo directamente en el chat & Claude lo hace — no necesitas comandos \\
+¿Funcionó el cambio? & \texttt{make check} & Build + health + lint en 1 comando \\
+Quiero hacer un commit & Pídele a Claude que lo haga & Usa el patrón HTTPS correcto automáticamente \\
+Sesión larga, quiero parar & Pide ``haz clock-out'' & Claude actualiza PENDIENTES, commit, handoff \\
+Nueva sesión, ¿dónde estaba? & \texttt{cat /root/SESSION\_HANDOFF.md} & El paso siguiente está escrito literalmente \\
+Quiero que Claude recuerde & ``recuerda que...'' en el chat & Lo guarda permanentemente en memoria \\
+El harness está desactualizado & \texttt{/evolve} & Audita y actualiza CLAUDE.md automáticamente \\
+\hline
+\end{tabular}
+
+\section*{🔄 Flujo de Sesión}
+
+Una sesión tiene 5 fases. Siempre en este orden:
+
+\vspace{0.4cm}
+
+\subsection*{Fase 1: Clock-In}
+Verificar estado real del stack y qué hay pendiente:
+\begin{lstlisting}
+make doctor                    # diagnóstico completo
+cat /root/PENDIENTES.md        # ver tareas activas
+cat /root/SESSION_HANDOFF.md   # retomar desde donde terminó
+\end{lstlisting}
+
+\subsection*{Fase 2: Elegir Tarea (UNA sola)}
+\begin{itemize}
+  \item 🔴 Prioridad alta primero (items hs-001, hs-002)
+  \item Si surge idea secundaria → registrar en PENDIENTES.md pero \textbf{no empezarla}
+  \item Una tarea a la vez previene el ``70\% en 3 tareas''
+\end{itemize}
+
+\subsection*{Fase 3: Ejecutar (en el chat)}
+\begin{itemize}
+  \item Describir qué quieres → Claude investiga + implementa
+  \item Si es algo riesgoso → Claude te pide confirmación
+  \item Si usas voz → dicta directo, Claude normaliza errores tipográficos
+\end{itemize}
+
+\subsection*{Fase 4: Verificar (Definition of Done — 4 criterios)}
+Una tarea está done cuando se cumplen TODOS estos:
+\begin{enumerate}
+  \item \checkmark Código implementado
+  \item \checkmark \texttt{make check} → sin errores
+  \item \checkmark Evidencia en PENDIENTES.md (commit hash o output real)
+  \item \checkmark \texttt{docker compose ps} → todos los servicios \texttt{Up}
+\end{enumerate}
+
+\subsection*{Fase 5: Clock-Out}
+Al terminar sesión:
+\begin{lstlisting}
+# Pedir: "haz clock-out"
+# Claude hará:
+#  1. Actualizar PENDIENTES.md con evidencia
+#  2. Ejecutar make check para verificar stack sano
+#  3. Hacer commit de todo el trabajo
+#  4. Crear SESSION_HANDOFF.md
+\end{lstlisting}
+
+\vspace{0.5cm}
+
+\section{🎯 Slash Commands}
+
+Comandos especializados que activan comportamientos automáticos:
+
+\vspace{0.3cm}
+
+\begin{tabular}{|p{2cm}|p{3cm}|p{4cm}|}
+\hline
+\textbf{Comando} & \textbf{Cuándo usarlo} & \textbf{Qué hace} \\
+\hline
+\texttt{/evolve} & Al final de sesiones largas o si algo no está documentado & Audita los 5 subsistemas del harness, extrae aprendizajes, actualiza CLAUDE.md \\
+\texttt{/pipeline} & El stack falla y no sabes por dónde empezar & Ejecuta \texttt{make doctor} y explica en lenguaje simple qué está mal \\
+\hline
+\end{tabular}
+
+\vspace{0.3cm}
+
+\noindent\textbf{Tip para ADHD:} Estos comandos son de mantenimiento. El chat normal cubre el 95\% de lo que necesitas.
+
+\section{🔧 Skills Ruflo — Cuándo Activarlos}
+
+Escribe la frase clave en el chat y Claude usa el skill automáticamente:
+
+\subsection*{Diagnóstico y Estado}
+\begin{itemize}
+  \item ``estado del stack'' / ``qué está corriendo'' → \texttt{ruflo-status}
+  \item ``diagnóstico completo'' → \texttt{ruflo-doctor}
+  \item ``audita la seguridad'' → \texttt{security-audit}
+\end{itemize}
+
+\subsection*{Memoria y Contexto}
+\begin{itemize}
+  \item ``busca en tu memoria...'' / ``recuerdas cuando...'' → \texttt{recall}
+  \item ``guarda esto en memoria'' / ``recuerda que...'' → \texttt{ruflo-memory}
+\end{itemize}
+
+\subsection*{Código y Documentación}
+\begin{itemize}
+  \item ``genera tests para [archivo]'' → \texttt{testgen}
+  \item ``documenta [módulo]'' → \texttt{ruflo-docs}
+  \item ``revisa este PR'' / ``revisa el diff'' → \texttt{code-review}
+\end{itemize}
+
+\subsection*{Automatización y Background}
+\begin{itemize}
+  \item ``programa X cada [intervalo]'' → \texttt{ruflo-loop}
+  \item ``activa autopilot para...'' → \texttt{autopilot}
+\end{itemize}
+
+\subsection*{Rastreo de Costos}
+\begin{itemize}
+  \item ``cuánto costó esta sesión'' → \texttt{ruflo-cost}
+  \item ``optimiza mi uso de tokens'' → \texttt{cost-optimize}
+\end{itemize}
+
+\section{🌳 Árbol de Decisión}
+
+\vspace{0.2cm}
+
+\noindent¿Qué necesitas ahora?
+
+\begin{itemize}
+  \item \textbf{Stack no responde / algo está caído}
+    \begin{itemize}
+      \item \texttt{/pipeline} → si no basta: \texttt{make logs} → \texttt{docker compose ps}
+    \end{itemize}
+  \item \textbf{Quiero cambiar código / funcionalidad}
+    \begin{itemize}
+      \item Describir en el chat (Claude implementa) → \texttt{make check} → pedir commit
+    \end{itemize}
+  \item \textbf{¿Qué hay pendiente?}
+    \begin{itemize}
+      \item \texttt{cat /root/PENDIENTES.md | head -30}
+      \item Más detalle: \texttt{cat /root/PENDIENTES.json}
+    \end{itemize}
+  \item \textbf{Quiero que Claude recuerde algo}
+    \begin{itemize}
+      \item ``recuerda que [X]'' en el chat → guardado en \texttt{\textasciitilde/.claude/projects/.../memory/}
+    \end{itemize}
+  \item \textbf{Error misterioso}
+    \begin{itemize}
+      \item \texttt{make logs} → \texttt{docker compose ps} → pegar error en chat
+    \end{itemize}
+  \item \textbf{Cuánto estoy gastando}
+    \begin{itemize}
+      \item ``cuánto costó esta sesión'' en el chat
+    \end{itemize}
+  \item \textbf{Terminar sesión bien}
+    \begin{itemize}
+      \item ``haz clock-out'' en el chat
+    \end{itemize}
+  \item \textbf{Harness desactualizado}
+    \begin{itemize}
+      \item \texttt{/evolve} (mejor al final de sesión larga)
+    \end{itemize}
+\end{itemize}
+
+\section{🧠 Tips ADHD+AACC}
+
+\subsection*{1. Voz → Acción Sin Fricción}
+
+En el chat, usa el prefijo \texttt{!} para ejecutar comandos directamente:
+
+\begin{lstlisting}
+! make doctor
+! cat /root/PENDIENTES.md
+! docker compose ps
+\end{lstlisting}
+
+Dicta el comando y el output aparece en la conversación.
+
+\subsection*{2. Una Tarea Activa — El Sistema Te Protege}
+
+Cuando surge idea secundaria:
+\begin{enumerate}
+  \item Di: ``anota esto para después: [idea]''
+  \item Claude la registra en PENDIENTES.md
+  \item Tú continúas con lo que estabas haciendo
+\end{enumerate}
+
+PENDIENTES.md es tu buffer externo de memoria.
+
+\subsection*{3. Recuperar Contexto Entre Sesiones en 30 Segundos}
+
+\begin{lstlisting}
+cat /root/SESSION_HANDOFF.md
+\end{lstlisting}
+
+El archivo contiene literalmente: ``el siguiente paso es: [instrucción concreta]''. No necesitas reconstruir nada.
+
+\subsection*{4. Señales de que Claude Entiende vs. Adivina}
+
+\begin{tabular}{|p{3.5cm}|p{3.5cm}|}
+\hline
+\textbf{Claude entiende} & \textbf{Claude adivina} \\
+\hline
+Cita archivos específicos con rutas & Habla en genérico (``deberías...'') \\
+Ejecuta comandos y muestra output real & Dice ``probablemente funciona'' \\
+Propone verificación concreta & No propone forma de verificar \\
+Pide confirmación antes de cambios & Actúa sin preguntar en cambios riesgosos \\
+\hline
+\end{tabular}
+
+Si ves señales de ``adivina'' → pide: ``¿leíste el archivo? muéstrame qué encontraste exactamente''.
+
+\subsection*{5. Opus vs. Sonnet — Cuándo Importa}
+
+\begin{tabular}{|p{3cm}|p{2cm}|p{3.5cm}|}
+\hline
+\textbf{Situación} & \textbf{Modelo} & \textbf{Por qué} \\
+\hline
+Trabajo diario, cambios de código & Sonnet (default) & Suficiente, mucho más barato \\
+Orquestación multi-agente compleja & Opus 4.7 & Mejor descomposición de tareas grandes \\
+Documentos importantes, arquitectura & Opus 4.7 & Razonamiento notablemente superior \\
+\hline
+\end{tabular}
+
+Para cambiar: escribe \texttt{/model} en el chat.
+
+\subsection*{6. Cuando Claude Se Atasca}
+
+Si después de 2 intentos el resultado no está bien:
+
+\begin{enumerate}
+  \item Escribe: ``Para. Dime exactamente qué estás intentando hacer y qué encontraste.''
+  \item Claude reporta su estado → identificas si es comprensión o ejecución
+  \item Si sigue atascado (3+ intentos) → escala a escritura directa o sub-agente
+\end{enumerate}
+
+\subsection*{7. El Chat Es Tu Terminal Principal}
+
+No abras terminales separadas. En el chat puedes:
+\begin{itemize}
+  \item Pedir que ejecute comandos
+  \item Ver outputs directamente
+  \item Pedir que interprete resultados
+  \item Pedir que tome acción basada en lo que vio
+\end{itemize}
+
+\section{🌐 Servicios y Puertos — Referencia Rápida}
+
+\begin{center}
+\small
+\begin{tabular}{|l|l|r|l|}
+\hline
+\textbf{Servicio} & \textbf{URL Pública} & \textbf{Puerto} & \textbf{Estado Esperado} \\
+\hline
+Hermes Agent & hermes.el80.space & 8080 & \texttt{Up} + \texttt{/health} 200 \\
+LiteLLM Router & litellm.el80.space & 4000 & \texttt{Up} + \texttt{/health} 200 \\
+Website & docs.el80.space & 3001 & \texttt{Up} \\
+Grafana & grafana.el80.space & 3000 & \texttt{Up} \\
+FileBrowser & files.el80.space & 8095 & \texttt{Up} \\
+Whisper STT & — (interno) & 9000 & \texttt{Up} \\
+Prometheus & — (interno) & 9090 & \texttt{Up} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+
+Verificar todo:
+\begin{lstlisting}
+make health-check   # ver estado rápido
+make status         # docker compose ps
+\end{lstlisting}
+
+\section{📋 Comandos Make — Cheat Sheet}
+
+\begin{lstlisting}
+make doctor        # Diagnóstico completo (6 pasos)
+make check         # Verificación rápida: build + health + lint
+make health-check  # Solo health
+make build-check   # Solo build Next.js
+make lint-check    # Solo lint Python
+make status        # docker compose ps
+make logs          # Últimas 40 líneas de cada servicio
+make clean-tmp     # Limpiar /tmp/claude_progress y /tmp/*.md
+\end{lstlisting}
+
+\section{📚 Glosario Mínimo}
+
+\begin{itemize}
+  \item \textbf{harness:} Conjunto de archivos que hacen que Claude trabaje bien: CLAUDE.md, AGENTS.md, PENDIENTES.json, Makefile, hooks
+
+  \item \textbf{skill:} Capacidad especializada que se activa con frases clave (``genera tests''). No necesitas saber el nombre técnico
+
+  \item \textbf{swarm:} Varios agentes trabajando en paralelo en subtareas. Claude lo orquesta automáticamente
+
+  \item \textbf{sub-agente:} Agente que Claude lanza internamente. Tú no los controlas directamente
+
+  \item \textbf{PENDIENTES.json:} Backlog estructurado con id, prioridad, estado, verificación, evidencia. Claude lo actualiza
+
+  \item \textbf{SESSION\_HANDOFF.md:} Nota de Claude a Claude: ``lo que quedó pendiente y el siguiente paso concreto''. Recuperación en 30 segundos
+
+  \item \textbf{Definition of Done:} 4 criterios para considerar una tarea terminada (implementación + verificación + evidencia + stack Up)
+
+  \item \textbf{clock-in / clock-out:} Checklist de inicio y cierre de sesión. Garantiza estado conocido
+
+  \item \textbf{MCP:} Protocolo que permite a Claude usar herramientas externas (Google Drive, Gmail, browser, DB). Ya configurado
+\end{itemize}
+
+\vspace{1cm}
+
+\noindent\hrulefill
+
+\noindent\small\textit{Última actualización: 25 de mayo de 2026 · Hermes Stack · erikjosehrnndz-crypto}
+
+\end{document}

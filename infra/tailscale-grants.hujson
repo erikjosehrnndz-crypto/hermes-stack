@@ -10,6 +10,12 @@
         "tailscale": true
       }
     },
+    // Mesh infra: todos los nodos tag:infra pueden hablarse entre sí (VPS ↔ DO droplet ↔ Android)
+    {
+      "src": ["tag:infra"],
+      "dst": ["tag:infra"],
+      "ip":  ["*:*"]
+    },
     // Hermes: acceso solo al router LLM y a Whisper
     {
       "src": ["tag:hermes"],

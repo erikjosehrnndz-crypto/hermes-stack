@@ -5,11 +5,13 @@ import websockets
 import base64
 from typing import AsyncIterator
 
+
 class ElevenLabsVoiceStream:
     """
     Cliente WebSocket para ElevenLabs Flash v2.5
     con streaming bidireccional de baja latencia.
     """
+
     ENDPOINT = "wss://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream-input"
 
     def __init__(self):
@@ -21,15 +23,15 @@ class ElevenLabsVoiceStream:
         """Establece conexion WebSocket con configuracion optimizada."""
         if not self.api_key:
             raise ValueError("Falta la variable de entorno ELEVENLABS_API_KEY.")
-            
+
         uri = self.ENDPOINT.format(voice_id=self.voice_id)
-        
+
         # Desactivamos compresion y pings automatizados para mejorar la latencia
         self.ws = await websockets.connect(
             uri,
             extra_headers={"xi-api-key": self.api_key},
             compression=None,
-            ping_interval=None
+            ping_interval=None,
         )
 
         # Enviar configuracion inicial (auto_mode para deshabilitar buffers manuales)
@@ -40,14 +42,16 @@ class ElevenLabsVoiceStream:
             "voice_settings": {
                 "stability": 0.50,
                 "similarity_boost": 0.70,
-                "use_speaker_boost": True
+                "use_speaker_boost": True,
             },
             "auto_mode": True,
-            "output_format": "pcm_24000"
+            "output_format": "pcm_24000",
         }
         await self.ws.send(json.dumps(init_payload))
 
-    async def stream_text(self, text_stream: AsyncIterator[str]) -> AsyncIterator[bytes]:
+    async def stream_text(
+        self, text_stream: AsyncIterator[str]
+    ) -> AsyncIterator[bytes]:
         """Envia texto por partes y produce los bytes de audio recibidos."""
         if not self.ws:
             await self.connect()
@@ -57,10 +61,9 @@ class ElevenLabsVoiceStream:
                 async for text in text_stream:
                     if text and self.ws:
                         # Enviar trozo de texto a procesar
-                        await self.ws.send(json.dumps({
-                            "text": text,
-                            "try_trigger_generation": True
-                        }))
+                        await self.ws.send(
+                            json.dumps({"text": text, "try_trigger_generation": True})
+                        )
                 # Mensaje de finalizacion requerido por ElevenLabs
                 if self.ws:
                     await self.ws.send(json.dumps({"text": ""}))
@@ -74,11 +77,11 @@ class ElevenLabsVoiceStream:
             while self.ws:
                 message = await self.ws.recv()
                 data = json.loads(message)
-                
+
                 audio_b64 = data.get("audio")
                 if audio_b64:
                     yield base64.b64decode(audio_b64)
-                    
+
                 if data.get("isFinal", False):
                     break
         except websockets.exceptions.ConnectionClosed:
