@@ -9,7 +9,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-003 | infra | 🟡 warning | ✅ done | litellm en red monitoring; Prometheus scraping OK |
 | hs-004 | litellm-router | 🟡 warning | ✅ done | gemini-flash E2E verificado (483ms) |
 | hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
-| hs-006 | infra | 🔵 mejora | not-started | Merge feat/nextjs-rocket-compat → main |
+| hs-006 | infra | 🔵 mejora | ✅ done | Merge + push main c218fe2; CI/CD activado |
 | hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
