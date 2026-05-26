@@ -4,57 +4,44 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 
 | ID | Servicio | Prioridad | Estado | Próximo paso |
 |---|---|---|---|---|
-| hs-001 | hermes-agent | 🔴 crítico | not-started | Revisar logs Whisper→/process |
-| hs-002 | litellm-router | 🔴 crítico | not-started | Verificar GEMINI_API_KEY permisos |
-| hs-003 | infra | 🟡 warning | not-started | Añadir litellm a red monitoring |
-| hs-004 | litellm-router | 🟡 warning | not-started | Test gemini-flash E2E |
-| hs-005 | hermes-agent | 🔵 mejora | not-started | `docker compose up -d --build hermes` |
+| hs-001 | hermes-agent | 🔴 crítico | ✅ done | Bridge /api/voice creado; pipeline funcional |
+| hs-002 | litellm-router | 🔴 crítico | ✅ done | Gemini reemplazado por OpenRouter/google/gemini-2.5-flash |
+| hs-003 | infra | 🟡 warning | ✅ done | litellm en red monitoring; Prometheus scraping OK |
+| hs-004 | litellm-router | 🟡 warning | ✅ done | gemini-flash E2E verificado (483ms) |
+| hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
 | hs-006 | infra | 🔵 mejora | not-started | Merge feat/nextjs-rocket-compat → main |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
 ---
 
-## 🔴 Crítico
+## ✅ Resueltos (2026-05-26)
 
-**hs-001 — Hermes Agent: 0 requests en 47h**
-- Investigar pipeline de voz (Whisper → `/process`). Verificar que Caddy enruta `hermes.el80.space` correctamente y que el cliente de voz tiene la URL actualizada.
-- **Verificación:** `curl -f http://127.0.0.1:8080/health && docker compose logs hermes --tail=20 | grep 'POST /process'`
-- **Evidencia:** _pendiente_
+**hs-001 — Pipeline Hermes: 0 requests en 47h**
+- Root cause: no existía cliente que llamara `/process`. GEMINI_API_KEY estaba en cuota gratuita agotada.
+- Fix: creado `website/app/api/voice/route.ts` como bridge frontend→Hermes. Modelo actualizado a gemini-2.5-flash via OpenRouter.
+- **Evidencia:** `curl -X POST http://127.0.0.1:3001/api/voice -d '{"text":"test"}' → {"text":"Pipeline de voz funcionando.","model_used":"gemini-flash","latency_ms":458.66}`
 
-**hs-002 — gemini/text-embedding-004 caído en LiteLLM**
-- Verificar que `GEMINI_API_KEY` tiene permiso de embeddings.
-- **Verificación:** `source /root/.env && curl -H "Authorization: Bearer $LITELLM_MASTER_KEY" http://127.0.0.1:4000/health`
-- **Evidencia:** _pendiente_
+**hs-002 — gemini/text-embedding-004 caído**
+- Root cause: GEMINI_API_KEY en free tier agotado (quota limit 0). Embeddings model eliminado de litellm.yaml (no se usa en producción).
+- Fix: gemini-flash redirigido a `openrouter/google/gemini-2.5-flash`. Todos los modelos HEALTHY.
+- **Evidencia:** `HEALTHY: [gpt-4o, claude-sonnet, gpt-4o-mini, llama-3-1-70b, gemini-flash] | UNHEALTHY: []`
 
-## 🟡 Advertencia
+**hs-003 — litellm no en red monitoring**
+- Fix: añadido `monitoring` a networks de litellm en docker-compose.yml + habilitado callback prometheus en litellm.yaml + corregido metrics_path a `/metrics/` en prometheus.yml.
+- **Evidencia:** `curl http://127.0.0.1:9090/api/v1/targets → litellm : up`
 
-**hs-003 — Añadir litellm a red `monitoring`** en `docker-compose.yml` para que Prometheus pueda scrapearlo y aparezca en Grafana.
-- **Verificación:** `docker compose ps litellm | grep monitoring`
-- **Evidencia:** _pendiente_
+**hs-004 — Verificar gemini-flash E2E**
+- Verificado: 483ms latencia, respuesta correcta via LiteLLM → OpenRouter → Google.
+- **Evidencia:** `{"model_used":"gemini-flash","latency_ms":483.11}`
 
-**hs-004 — Verificar gemini-flash end-to-end**
-- Configurado como modelo por defecto de Hermes pero no aparece en health check de LiteLLM.
-- **Verificación:**
-  ```bash
-  source /root/.env
-  curl -s -X POST http://127.0.0.1:4000/v1/chat/completions \
-    -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-    -H "Content-Type: application/json" \
-    -d '{"model":"gemini-flash","messages":[{"role":"user","content":"test"}],"max_tokens":5}' | python3 -m json.tool
-  ```
-- **Evidencia:** _pendiente_
+**hs-005 — Rebuild hermes**
+- Completado en sesión 2026-05-25.
+- **Evidencia:** commit `8b2dc10`
 
-## 🔵 Mejoras
+## 🔵 Mejoras pendientes
 
-**hs-005 — Rebuild `hermes`** para aplicar cambios de sesión 2026-05-25 (gemini-flash default + health.py session compartida):
-```bash
-docker compose up -d --build hermes
-```
-- **Verificación:** `docker compose ps hermes | grep Up`
-- **Evidencia:** _pendiente_
-
-**hs-006 — Merge `feat/nextjs-rocket-compat` → `main`** para activar el CD pipeline y desplegar todos los cambios acumulados (12 commits adelante de origin)
+**hs-006 — Merge `feat/nextjs-rocket-compat` → `main`** para activar el CD pipeline y desplegar todos los cambios acumulados
 - **Verificación:** `git log --oneline main..HEAD | wc -l  # debe ser 0`
 - **Evidencia:** _pendiente_
 

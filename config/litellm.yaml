@@ -35,21 +35,15 @@ model_list:
       timeout: 10
       model_info:
         access_groups: ["basic", "premium"]
-  # Gemini Flash — nativo via Google, mas rapido y barato para TTS pipelines
+  # Gemini 2.5 Flash — via OpenRouter (evita cuota directa de Google AI Studio)
   - model_name: gemini-flash
     litellm_params:
-      model: gemini/gemini-2.0-flash
-      api_key: os.environ/GEMINI_API_KEY
+      model: openrouter/google/gemini-2.5-flash
+      api_key: os.environ/OPENROUTER_API_KEY
       rpm: 1000
       timeout: 10
       model_info:
         access_groups: ["basic", "premium"]
-
-  # === EMBEDDINGS (Via Gemini) ===
-  - model_name: embeddings
-    litellm_params:
-      model: gemini/text-embedding-004
-      api_key: os.environ/GEMINI_API_KEY
 
 # === CONFIGURACION DEL ROUTER ===
 router_settings:
@@ -59,6 +53,7 @@ router_settings:
 
 # === CACHE REDIS — evita llamadas LLM duplicadas ===
 litellm_settings:
+  callbacks: ["prometheus"]
   cache: True
   cache_params:
     type: redis
