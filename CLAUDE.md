@@ -689,27 +689,14 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 |---|---|
 | `togen` | `tokens` |
 | `pitline` | `pipeline` |
-| `opus 4.7` | el modelo más potente disponible en ese momento |
-| `swcion` / `sewion` | `sesión` |
+| `opus 4.7` | el modelo más potente disponible |
+| `swcion` / `sewion` / `ression` | `sesión` |
 | `backgraund` / `bacgraun` | `background` |
-| `swarm` (dictado) | `swarm` (correcto, no normalizar a `enjambre`) |
 | `orwuestador` / `orquertador` | `orquestador` |
-| `caocidad` / `capazidad` | `capacidad` |
-| `lones` / `los nes` | `los` |
-| `suoerior` / `superor` | `superior` |
-| `comaml` / `comoml` | `como` |
 | `jerarqia` / `gerarquia` | `jerarquía` |
-| `imolementa s` / `implémenta` | `implementa` |
-| `interfsz` / `interfas` | `interfaz` |
 | `metrivas` / `metriques` | `métricas` |
 | `connbel` / `conbel` / `conel` | `con el` |
-| `conocimmiento` | `conocimiento` |
-| `arregla` | `arregla` (correcto) |
-| `actualizs` / `actualiza s` | `actualiza` |
 | `sintodo` / `sintax` | `sintaxis` |
-| `verifica sint` | `verifica sintaxis` |
-| `ression` | `sesión` |
-| `engenire` / `enginering` | `engineering` |
 
 Ante ambigüedad: inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración.
 
@@ -822,15 +809,7 @@ litellmUp = [200, 401].includes(litellmRes.value.status);
 
 ## Harness Engineering — resumen de subsistemas
 
-Estado actual del harness del Hermes Stack (patrón de learn-harness-engineering):
-
-| Subsistema | Artefacto | Estado |
-|---|---|---|
-| Instructions | `CLAUDE.md` (800 líneas) + `AGENTS.md` (100 líneas) | ✅ OK |
-| State | `PENDIENTES.md` + `PENDIENTES.json` (con evidence) | ✅ OK |
-| Verification | `Makefile` con `make check` | ✅ OK |
-| Scope | Regla "una tarea activa" en CLAUDE.md | ✅ OK |
-| Session Lifecycle | Checklist inicio + clock-out + `SESSION_HANDOFF.md` | ✅ OK |
+Artefactos: `CLAUDE.md`+`AGENTS.md` (instructions) · `PENDIENTES.json` (state) · `Makefile` (verification) · regla de scope · `SESSION_HANDOFF.md` (lifecycle).
 
 ### Makefile — SHELL := /bin/bash obligatorio
 
@@ -934,3 +913,31 @@ El startup checklist ya incluye `rm -f /tmp/claude_progress`.
 - 1 fallo: reintentar con prompt más específico
 - 2 fallos: intentar escritura directa por el orquestador
 - 3 fallos o ambigüedad de scope: escalar al usuario — no continuar quemando tokens
+
+---
+
+## Infraestructura externa — Digital Ocean / Hostinger
+
+### Hostinger DNS API
+
+URL correcta: `https://developers.hostinger.com/api/dns/v1/zones/<dominio>` (no `api.hostinger.com` — CF 530). PUT con `overwrite:false` añade sin borrar. Spec: `/openapi/openapi.json` en ese mismo host.
+
+### Wildcard DNS + subdominio nuevo → SSL con DNS-01
+
+Con `* → IP` en DNS, ACME cachea esa IP para subdominios nuevos — HTTP-01/TLS-ALPN-01 fallan. Usar acme.sh con hook DNS (`/root/.acme.sh/dnsapi/dns_hostinger.sh`):
+
+```bash
+export HOSTINGER_API_KEY='...'
+~/.acme.sh/acme.sh --issue --dns dns_hostinger -d nuevo.el80.space --dnssleep 15
+~/.acme.sh/acme.sh --install-cert -d nuevo.el80.space --fullchain-file /certs/fullchain.pem --key-file /certs/key.pem
+```
+
+### Digital Ocean — límites y doctl
+
+Cuentas nuevas: solo droplets `s-*` (max $56/mes). GPU/Optimized requiere contactar soporte. `doctl` no está preinstalado:
+
+```bash
+curl -sL https://github.com/digitalocean/doctl/releases/download/v1.110.0/doctl-1.110.0-linux-amd64.tar.gz | tar xz && mv doctl /usr/local/bin/
+```
+
+Control Center: `104.236.74.0`, SSH key `/root/.ssh/do_droplet_key`, panel `https://control.el80.space`, compose en `/root/control-center/`.
