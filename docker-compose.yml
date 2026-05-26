@@ -11,6 +11,7 @@ volumes:
   grafana_data:
   litellm_data:
   whisper_cache:
+  9router_data:
 
 services:
   # ============================================
@@ -238,6 +239,36 @@ services:
       - backend
     labels:
       autoheal.enabled: "true"
+
+  # ============================================
+  # 9ROUTER - Proxy LLM multi-proveedor
+  # ============================================
+  9router:
+    build:
+      context: ./9router
+      dockerfile: Dockerfile
+    container_name: 9router
+    restart: unless-stopped
+    environment:
+      PORT: "20128"
+      HOSTNAME: "0.0.0.0"
+      JWT_SECRET: ${ROUTER_JWT_SECRET}
+      INITIAL_PASSWORD: ${ROUTER_INITIAL_PASSWORD}
+      DATA_DIR: "/data"
+    volumes:
+      - 9router_data:/data
+    networks:
+      - backend
+    ports:
+      - "127.0.0.1:20128:20128"
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 20128 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ============================================
   # FILE BROWSER - Gestor de Archivos Web
