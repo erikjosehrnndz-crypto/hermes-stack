@@ -64,5 +64,16 @@
     "verification": "git log --oneline main..HEAD | wc -l  # debe ser 0 después del merge",
     "evidence": "",
     "notes": "Verificar build antes de PR: cd website && npm run build"
+  },
+  {
+    "id": "hs-007",
+    "service": "infra",
+    "priority": "improvement",
+    "purpose": "Completar mesh Tailscale: autenticar DO droplet (URL generada) + verificar Android (xiaomi-14t-pro) activo en red.",
+    "depends_on": [],
+    "status": "not-started",
+    "verification": "tailscale ping 100.85.146.98 && tailscale ping <DO_TAILSCALE_IP> && tailscale status | grep -c 'active'",
+    "evidence": "",
+    "notes": "DO droplet tiene Tailscale instalado pero 'Logged out'. URL de auth generada en sesión 2026-05-26. Android offline hace 2d — abrir app Tailscale en Xiaomi 14T Pro."
   }
 ]

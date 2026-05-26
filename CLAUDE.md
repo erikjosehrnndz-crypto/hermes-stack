@@ -221,15 +221,11 @@ Previene: friction de warnings y posible bloqueo de edición desde sub-agentes.
 
 ### Síntesis incremental con 4+ agentes en paralelo
 
-Con 4 o más agentes en paralelo, lanzar el agente de síntesis de forma **incremental** a medida que cada investigador completa — no esperar todos los resultados simultáneamente.
-Previene: bloqueo total si el orquestador sufre rate limit esperando al último agente.
-
-**Excepción:** si el sintetizador necesita TODOS los inputs para producir un output coherente (ej. consolidar reglas de CLAUDE.md), esperar a todos los agentes es correcto. Aplicar síntesis incremental solo cuando los resultados parciales son independientemente útiles.
+Con 4+ agentes en paralelo, lanzar el agente síntesis de forma incremental — no esperar todos los resultados simultáneamente. Excepción: si el sintetizador necesita TODOS los inputs (ej. consolidar CLAUDE.md), esperar es correcto.
 
 ### El orquestador no debe investigar trabajo que delegó
 
-Si el usuario delega explícitamente y prohíbe al orquestador hacer Bash/Read, el orquestador debe incrustar el contexto necesario (desde MEMORY.md, CLAUDE.md) en los prompts de los sub-agentes, no leer archivos directamente.
-Previene: consumo de tokens del orquestador en trabajo que fue delegado.
+Incrustar contexto necesario (MEMORY.md, CLAUDE.md) en los prompts de sub-agentes — no hacer Bash/Read directamente sobre trabajo delegado.
 
 ### Economía de modelos en orquestación multi-agente
 
@@ -675,7 +671,6 @@ Los prompts dictados por micrófono llegan con errores de transcripción. Normal
 | `orwuestador` / `orquertador` | `orquestador` |
 | `jerarqia` / `gerarquia` | `jerarquía` |
 | `metrivas` / `metriques` | `métricas` |
-| `connbel` / `conbel` / `conel` | `con el` |
 | `sintodo` / `sintax` | `sintaxis` |
 
 Ante ambigüedad: inferir la interpretación más razonable en el contexto del stack antes de pedir aclaración.
@@ -922,10 +917,17 @@ export HOSTINGER_API_KEY='...'
 
 ### Digital Ocean — límites y doctl
 
-Cuentas nuevas: solo droplets `s-*` (max $56/mes). GPU/Optimized requiere contactar soporte. `doctl` no está preinstalado:
-
-```bash
-curl -sL https://github.com/digitalocean/doctl/releases/download/v1.110.0/doctl-1.110.0-linux-amd64.tar.gz | tar xz && mv doctl /usr/local/bin/
-```
+Cuentas nuevas: solo droplets `s-*` (max $56/mes). GPU/Optimized requiere contactar soporte. `doctl` no está preinstalado — instalar desde `github.com/digitalocean/doctl/releases` (tar.gz → `/usr/local/bin/`).
 
 Control Center: `104.236.74.0`, SSH key `/root/.ssh/do_droplet_key`, panel `https://control.el80.space`, compose en `/root/control-center/`.
+
+### Tailscale — estado offline y autenticación
+
+`tailscale status` puede mostrar `active; relay X; offline` — sesión conocida, nodo actualmente desconectado. Verificar con `tailscale ping <100.x.x.x>` antes de intentar SSH.
+
+"Logged out" ≠ no instalado (`which tailscale`). Para autenticar sin pre-generar auth key:
+
+```bash
+tailscale up --advertise-tags=tag:infra --accept-routes
+# imprime URL: https://login.tailscale.com/a/<token>
+```

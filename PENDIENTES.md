@@ -10,6 +10,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-004 | litellm-router | 🟡 warning | ✅ done | gemini-flash E2E verificado (483ms) |
 | hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
 | hs-006 | infra | 🔵 mejora | not-started | Merge feat/nextjs-rocket-compat → main |
+| hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
@@ -45,6 +46,12 @@ Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 - **Verificación:** `git log --oneline main..HEAD | wc -l  # debe ser 0`
 - **Evidencia:** _pendiente_
 
+**hs-007 — Mesh Tailscale: DO droplet + Android**
+- DO droplet (`104.236.74.0`): Tailscale instalado, pendiente auth (URL generada en sesión 2026-05-26).
+- Android (`xiaomi-14t-pro`): offline hace 2d — abrir app Tailscale en Xiaomi 14T Pro.
+- **Verificación:** `tailscale ping 100.85.146.98 && tailscale status | grep -c 'active'`
+- **Evidencia:** _pendiente_
+
 ---
 
-*Actualizado: 2026-05-25 · Estado formal: `/root/PENDIENTES.json`*
+*Actualizado: 2026-05-26 · Estado formal: `/root/PENDIENTES.json`*
