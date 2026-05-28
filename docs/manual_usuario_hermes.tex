@@ -1,0 +1,1025 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.85]
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usetikzlibrary{babel,arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric,shadows}
+\usepackage{longtable,booktabs,array,xcolor,listings,geometry,hyperref,amssymb,fancyhdr,titlesec,enumitem,tabularx,colortbl}
+\geometry{margin=2.2cm,top=2.5cm,bottom=2.5cm}
+
+% Paleta del manual (tonos verdes y tierra, calidos)
+\definecolor{manualgreen}{HTML}{2D6A4F}
+\definecolor{manualgold}{HTML}{B08D57}
+\definecolor{manualcream}{HTML}{F7F3E9}
+\definecolor{manualred}{HTML}{9B2226}
+\definecolor{manualblue}{HTML}{1B4965}
+\definecolor{rowalt}{HTML}{EFE9D9}
+\definecolor{boxbg}{HTML}{F7F3E9}
+\definecolor{warnbg}{HTML}{FCE4C5}
+\definecolor{okbg}{HTML}{DAEEDB}
+\definecolor{tipbg}{HTML}{E0EDF5}
+\definecolor{codebg}{HTML}{F4F2EA}
+\definecolor{stepbg}{HTML}{FFF8E1}
+
+% Header / Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{manualgreen}\textbf{Manual de Usuario} · Hermes Stack}
+\fancyhead[R]{\small\sffamily\color{manualgold}Erik José Hernández}
+\fancyfoot[C]{\small\sffamily\color{manualgold}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{manualgreen}\leaders\hrule height \headrulewidth\hfill}}
+
+\titleformat{\section}
+  {\Large\sffamily\bfseries\color{manualgreen}}
+  {\thesection.}{0.6em}{}
+  [\vspace{2pt}{\color{manualgold}\titlerule[1pt]}]
+\titleformat{\subsection}
+  {\large\sffamily\bfseries\color{manualblue}}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\normalsize\sffamily\bfseries\color{manualred}}
+  {}{0em}{}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=manualgreen,
+  urlcolor=manualgold,
+  pdftitle={Hermes Stack - Manual de Usuario},
+  pdfauthor={Erik José Hernández},
+  pdfsubject={Manual operativo para uso eficiente del sistema Hermes},
+  pdfkeywords={manual, flujos de trabajo, productividad, IA, voz}
+}
+
+\lstdefinelanguage{bashx}{
+  keywords={docker,compose,curl,git,make,xelatex,grep,cat,echo,export,source,if,then,fi,for,do,done,sudo,kubectl,helm,pip,npm,gh,rsync,ssh,scp,nano,vim,ls,cd,pwd,whoami},
+  keywordstyle=\color{manualred}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=true,
+  comment=[l]{\#},
+  commentstyle=\color{manualgold}\itshape,
+  morestring=[b]',
+  morestring=[b]",
+  stringstyle=\color{manualgreen},
+  showstringspaces=false
+}
+\lstset{
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framerule=0pt,
+  rulecolor=\color{codebg},
+  framesep=6pt,
+  xleftmargin=6pt,
+  xrightmargin=6pt,
+  breaklines=true,
+  basicstyle=\ttfamily\footnotesize
+}
+
+% Cajas semanticas
+\newcommand{\tipbox}[2]{%
+  \begin{center}
+  \fcolorbox{manualblue}{tipbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{manualblue}● TIP: #1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\warnbox}[2]{%
+  \begin{center}
+  \fcolorbox{manualred}{warnbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{manualred}● CUIDADO: #1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\okbox}[2]{%
+  \begin{center}
+  \fcolorbox{manualgreen}{okbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{manualgreen}● BUENA PRÁCTICA: #1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\stepbox}[2]{%
+  \begin{center}
+  \fcolorbox{manualgold}{stepbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{manualgold}● PASO #1}\\[2pt]#2}}
+  \end{center}
+}
+
+\begin{document}
+
+% =====================================================================
+% PORTADA
+% =====================================================================
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[manualgreen] (current page.north west) rectangle ([yshift=-8cm]current page.north east);
+  \fill[manualgold] ([yshift=-8cm]current page.north west) rectangle ([yshift=-8.5cm]current page.north east);
+\end{tikzpicture}
+
+\vspace*{1.5cm}
+\begin{center}
+{\Huge\sffamily\bfseries\color{white}MANUAL DE USUARIO}\\[10pt]
+{\LARGE\sffamily\color{manualcream}Hermes Stack}\\[8pt]
+{\Large\sffamily\color{manualcream}\textit{Tu asistente IA personal}}\\[4cm]
+\end{center}
+
+\vspace{1cm}
+\begin{center}
+\begin{tikzpicture}
+\node[draw=manualgreen, line width=1.5pt, fill=boxbg, rounded corners=10pt, inner sep=20pt, minimum width=14cm] {
+\begin{minipage}{12.5cm}
+\centering
+{\Large\sffamily\bfseries\color{manualgreen}Cómo usar tu sistema con\\ máxima eficiencia y calidad}\\[10pt]
+{\small\sffamily\color{manualblue}
+Flujos de trabajo · Rutinas diarias · Comandos esenciales\\
+Resolución de problemas · Mejores prácticas comprobadas}\\[14pt]
+\begin{tabular}{rl}
+\textbf{\color{manualgreen}Versión:} & 1.0 — Mayo 2026\\
+\textbf{\color{manualgreen}Para:} & Erik José Hernández\\
+\textbf{\color{manualgreen}Sistema:} & Hermes Stack v3.0\\
+\textbf{\color{manualgreen}Dominio:} & el80.space\\
+\textbf{\color{manualgreen}VPS:} & Hostinger 4vCPU / 8GB\\
+\end{tabular}
+\end{minipage}
+};
+\end{tikzpicture}
+\end{center}
+
+\vspace{2.5cm}
+\begin{center}
+{\small\sffamily\color{manualgold}
+Compilado el \today\ con XeLaTeX\\
+github.com/erikjosehrnndz-crypto/hermes-stack}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% INDICE
+% =====================================================================
+\thispagestyle{fancy}
+{\color{manualgreen}\sffamily\Large\bfseries Índice de contenidos}\\[4pt]
+{\color{manualgold}\hrule height 1.2pt}
+\vspace{12pt}
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\newpage
+
+% =====================================================================
+% 1. INTRODUCCION
+% =====================================================================
+\section{Bienvenido a tu sistema}
+
+\subsection{Qué es Hermes Stack}
+
+Hermes es \textbf{tu asistente IA personal autohospedado}. Vive en un servidor que tú controlas (\texttt{el80.space}, en Hostinger), responde por voz y por texto, recuerda lo que hablan, y se ejecuta sin enviar tu información a ningún servicio comercial que no decidas explícitamente.
+
+A diferencia de un chatbot comercial (ChatGPT, Gemini, Claude.ai), Hermes:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Te pertenece}. Vive en tu VPS, en tu repositorio Git, con tus claves.
+\item \textbf{Tiene memoria persistente}. Brain guarda eventos, contexto y embeddings.
+\item \textbf{Es extensible}. Cada nueva habilidad se añade como un skill MCP.
+\item \textbf{Cuesta poco}. ~\$37/mes total entre VPS + LLMs + voz.
+\item \textbf{No depende de un solo proveedor}. LiteLLM enruta entre 5 modelos.
+\end{itemize}
+
+\subsection{Qué vas a encontrar en este manual}
+
+Este manual está organizado por \textbf{intención}: qué quieres hacer, cómo se hace, qué evitar. No es una referencia técnica exhaustiva (eso es la \texttt{ficha\_tecnica\_hermes.pdf}); es la guía operativa que usas el día a día.
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|c|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Sección} & \color{white}\textbf{Cuándo leerla}\\
+\hline
+1-2 & Antes de empezar — orientación general\\
+3 & Cada mañana — rutina diaria recomendada\\
+4 & Cuando vas a hablar/escribir con Hermes\\
+5 & Cuando algo no funciona\\
+6 & Cuando quieres añadir o cambiar algo\\
+7 & Cuando vas a cerrar la jornada\\
+8 & Una vez por semana — mantenimiento\\
+9-10 & Una vez al mes — optimización y revisión\\
+11 & Referencia rápida de comandos\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Las 3 reglas de oro del sistema}
+
+\stepbox{1 — Verificar antes de declarar}{\textit{``Debería funcionar''} no es una verificación. Antes de creer que algo está bien (un deploy, un cambio, una respuesta), ejecuta el comando que lo prueba: \texttt{make doctor}, \texttt{curl} al health, o una pregunta real a Hermes.}
+
+\stepbox{2 — Commitear por tarea, no por sesión}{Si terminaste una tarea, haz commit. No acumules cambios de 5 tareas en un solo commit al final del día. Si tu sesión cae por context limit, pierdes el trabajo no commiteado.}
+
+\stepbox{3 — Una tarea activa por sesión}{Termina lo que empezaste antes de abrir otra cosa. Si surge algo nuevo durante el trabajo, anótalo en \texttt{PENDIENTES.md} pero no lo empieces. Cambiar de contexto deja 3 cosas al 70\% en lugar de 1 al 100\%.}
+
+\newpage
+
+% =====================================================================
+% 2. MAPA MENTAL
+% =====================================================================
+\section{Mapa mental del sistema}
+
+\subsection{Los servicios que tienes que conocer}
+
+De los 15 contenedores que corren en tu VPS, hay 5 que vas a tocar habitualmente. Los otros 10 funcionan en background.
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|l|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Servicio} & \color{white}\textbf{URL} & \color{white}\textbf{Para qué lo abres}\\
+\hline
+\textbf{hermes-website} & \texttt{docs.el80.space} & Hablar con Hermes, ver el tree del repo\\
+\textbf{hermes-agent} & \texttt{hermes.el80.space} & Endpoint API, health check\\
+\textbf{grafana} & \texttt{grafana.el80.space} & Ver métricas y latencia en tiempo real\\
+\textbf{filebrowser} & \texttt{files.el80.space} & Subir/bajar archivos al VPS sin SSH\\
+\textbf{brain} & \texttt{brain.el80.space} & Memoria de Hermes (cliente MCP)\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Los archivos que tienes que conocer}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Archivo} & \color{white}\textbf{Qué contiene}\\
+\hline
+\texttt{/root/CLAUDE.md} & Instrucciones operativas para Claude Code en este proyecto\\
+\texttt{/root/PENDIENTES.md} & Tu lista de tareas activas (estado actual + próximo paso)\\
+\texttt{/root/SESSION\_HANDOFF.md} & Si existe: notas para retomar la sesión anterior\\
+\texttt{/root/Makefile} & Targets de verificación: \texttt{make doctor}, \texttt{make check}\\
+\texttt{/root/docker-compose.yml} & Definición de los 15 contenedores del stack\\
+\texttt{/root/.env} & Secretos y tokens — NUNCA al repositorio\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Diagrama del flujo de voz}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.6cm,
+  flowstep/.style={draw=manualgreen, fill=manualcream, rounded corners=4pt,
+              minimum width=2.5cm, minimum height=0.9cm, font=\footnotesize\sffamily, align=center},
+  arr/.style={->, >=Stealth, thick, color=manualgreen}
+]
+\node[flowstep] (mic) {Tu voz\\(micrófono)};
+\node[flowstep, right=of mic] (stt) {Whisper\\STT\\\textit{~180ms}};
+\node[flowstep, right=of stt] (llm) {LiteLLM\\Gemini\\\textit{~300ms}};
+\node[flowstep, right=of llm] (tts) {ElevenLabs\\Flash\\\textit{~75ms}};
+\node[flowstep, right=of tts] (out) {Audio\\al oído};
+
+\draw[arr] (mic) -- (stt);
+\draw[arr] (stt) -- (llm);
+\draw[arr] (llm) -- (tts);
+\draw[arr] (tts) -- (out);
+
+\node[font=\small\sffamily\bfseries, color=manualred, below=0.5cm of llm] {Total ~500 ms (SLO cumplido)};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Cómo identificar de un vistazo si todo está bien}
+
+Tres señales que indican que el sistema está saludable:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item \texttt{docker compose ps} muestra todos los servicios con estado \texttt{Up X (healthy)}.
+\item \texttt{docs.el80.space} carga sin errores y permite enviar una pregunta.
+\item \texttt{grafana.el80.space} muestra métricas recientes (no plano hace 30 min).
+\end{enumerate}
+
+Si las tres se cumplen → el sistema está al 100\%. Si alguna falla → ver la Sección 5 (Resolución de problemas).
+
+\newpage
+
+% =====================================================================
+% 3. RUTINA DIARIA
+% =====================================================================
+\section{Rutina diaria recomendada}
+
+\subsection{Apertura de jornada (5 minutos)}
+
+Cada mañana, antes de empezar trabajo serio, ejecuta este chequeo. Te ahorra horas de debugging si algo se rompió durante la noche.
+
+\stepbox{1 — Conectar al VPS}{Conéctate por SSH (\texttt{ssh root@el80.space} o el alias que tengas configurado).}
+
+\stepbox{2 — Estado del Git}{Revisa el estado del repo. Si hay cambios sin commit de la noche anterior: revísalos. O bien commit, o bien descarta — \textbf{no empieces trabajo nuevo encima de cambios sin clasificar}.}
+
+\begin{lstlisting}[language=bashx]
+cd /root
+git status
+git log --oneline -5
+\end{lstlisting}
+
+\stepbox{3 — Health check completo}{Ejecuta \texttt{make doctor}. Espera ver \texttt{OK} en cada paso (repo, docker, health, lint, harness, pendientes). Si hay un fallo, lee la sección 5.}
+
+\begin{lstlisting}[language=bashx]
+make doctor
+\end{lstlisting}
+
+\stepbox{4 — Revisar PENDIENTES}{Identifica la tarea activa para hoy. \textbf{Una tarea por sesión}.}
+
+\begin{lstlisting}[language=bashx]
+head -30 /root/PENDIENTES.md
+\end{lstlisting}
+
+\stepbox{5 — Si existe SESSION\_HANDOFF.md}{La sesión anterior dejó instrucciones específicas. Léelas antes de actuar.}
+
+\begin{lstlisting}[language=bashx]
+cat /root/SESSION_HANDOFF.md
+\end{lstlisting}
+
+\subsection{Durante la jornada}
+
+\subsubsection{Trabajando con Claude Code (interactive)}
+
+Abre Claude Code en \texttt{/root}. El sistema \texttt{CLAUDE.md} se carga automáticamente — Claude conoce tus reglas operativas.
+
+\okbox{No micro-gestiones a Claude}{Si quieres una tarea no trivial, descríbela completa: objetivo, restricciones, archivos involucrados. Claude planificará internamente (ver "Planificación interna implícita" en CLAUDE.md). Interrumpir cada 2 pasos consume tokens y rompe el flujo.}
+
+\okbox{Pide commits explícitos}{Claude no commit automáticamente. Cuando termina una tarea lógica, dile: \texttt{commitea esto}. O configura: \texttt{commitea cada vez que termines una tarea}.}
+
+\subsubsection{Hablando con Hermes (voz/texto)}
+
+Abre \texttt{https://docs.el80.space} en cualquier navegador. La interfaz tiene un input de texto y, si concedes permisos, captura de voz.
+
+\tipbox{Frase corta = mejor latencia}{El cache de LiteLLM ahorra ~33\% de queries cuando repites frases similares. Frases cortas también significan menos tokens STT → menos latencia.}
+
+\warnbox{Privacidad de voz}{Tu audio va a Whisper (local, OK) y a ElevenLabs (cloud, vé el texto). Si lo que dices es muy sensible, escríbelo en texto en lugar de hablarlo.}
+
+\subsubsection{Consultando memoria de Brain}
+
+Brain recuerda lo que has hablado. Puedes preguntarle:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textit{"¿De qué hablamos la semana pasada sobre los frenos?"}
+\item \textit{"¿Qué decisiones tomé sobre la migración a Next.js 15?"}
+\item \textit{"Resumen de mis pendientes de hace 3 días"}
+\end{itemize}
+
+Brain usa retrieval híbrido (RRF) entre vector search + graph hops. Cuanto más concreto el query, mejor el resultado.
+
+\subsection{Cierre de jornada (5 minutos)}
+
+\stepbox{1 — Actualizar PENDIENTES.md}{Marca lo que terminaste como \texttt{done} y añade evidencia (commit hash, output, URL). Si quedó algo a medias, deja claro el próximo paso.}
+
+\stepbox{2 — Verificar que el stack sigue sano}{Ejecuta \texttt{make health-check} (rápido, solo \texttt{/health}).}
+
+\stepbox{3 — Commit final del día}{Asegúrate de no dejar cambios sin commit. Si hay trabajo incompleto, commit como \texttt{wip:} con descripción.}
+
+\stepbox{4 — Si dejas trabajo a medias}{Copia la plantilla de handoff y rellena la última acción + próximo paso recomendado.}
+
+\begin{lstlisting}[language=bashx]
+cp .claude/templates/session-handoff.md /root/SESSION_HANDOFF.md
+\end{lstlisting}
+
+\stepbox{5 — Backup (cada viernes)}{Ejecuta \texttt{make backup} y confirma con \texttt{make backup-list}.}
+
+\newpage
+
+% =====================================================================
+% 4. FLUJOS DE TRABAJO
+% =====================================================================
+\section{Flujos de trabajo principales}
+
+\subsection{Flujo A — Conversar con Hermes (uso normal)}
+
+\textbf{Objetivo:} hacer una pregunta, recibir respuesta de voz/texto.
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Abrir \texttt{docs.el80.space}.
+\item Si es por voz: pulsar el botón de micrófono, hablar, soltar.
+\item Esperar respuesta (objetivo: \textless 500ms total).
+\item Si la respuesta es relevante, Brain la guarda automáticamente.
+\item Para profundizar: pide \textit{"explica más sobre X"} en la siguiente vuelta.
+\end{enumerate}
+
+\okbox{Aprovecha la memoria}{Si vuelves al mismo tema al día siguiente, di \textit{"continuamos con lo de ayer sobre X"}. Brain recupera el contexto vía retrieval semántico y Hermes lo trae al prompt.}
+
+\subsection{Flujo B — Añadir una habilidad nueva a Hermes}
+
+\textbf{Objetivo:} que Hermes pueda hacer algo que antes no hacía (ej. consultar el clima, leer noticias).
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Decidir si la habilidad es \textbf{interna} (skill Python en \texttt{/root/hermes/skills/}) o \textbf{externa} (MCP server independiente).
+\item Para skill Python: añadir archivo \texttt{my\_skill.py} con función async. Importarla en \texttt{hermes/agent.py}.
+\item Para MCP server: crear contenedor nuevo en \texttt{docker-compose.yml} expuesto en localhost. Apuntar Claude Code/Hermes a la URL MCP.
+\item Test local antes de deploy: \texttt{curl} al endpoint.
+\item Commit + push → CI/CD aplica el cambio en el VPS.
+\item Verificar con \texttt{make doctor}.
+\end{enumerate}
+
+\warnbox{Skills no triviales requieren plan}{Para añadir una skill que toca varios archivos, primero pide a Claude Code que diseñe el plan (\texttt{/plan}). Aprueba el plan antes de empezar. Esto evita refactors a media implementación.}
+
+\subsection{Flujo C — Modificar el frontend (Next.js)}
+
+\textbf{Objetivo:} cambiar la interfaz web de \texttt{docs.el80.space}.
+
+\begin{lstlisting}[language=bashx]
+cd /root/website
+npm install              # solo si cambiaron deps
+# editar src/App.tsx o componentes en src/components/
+npm run dev              # localhost:3001 para preview
+npm run build            # VERIFICAR que compila sin error
+git add website/<archivos>
+git commit -m "feat(web): ..."
+git push                 # CI/CD deploya
+\end{lstlisting}
+
+\warnbox{Build antes de commit, siempre}{Si commiteas frontend sin verificar \texttt{npm run build}, el CI/CD falla y hace rollback. Pierdes 5-10 minutos. Verifica antes — toma 30 segundos.}
+
+\subsection{Flujo D — Investigar un tema con sub-agentes}
+
+\textbf{Objetivo:} pedir a Claude Code que investigue algo profundo (paper, librería, decisión arquitectónica).
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Verifica que estás en \textbf{Opus 4.7} (\texttt{/model}). El orquestador raíz necesita el mejor modelo.
+\item Describe el objetivo con suficiente contexto: dominio, restricciones, output esperado.
+\item Si la investigación es exhaustiva, di \texttt{/plan} y aprueba el swarm antes de ejecutar.
+\item Para tareas con SOTA: añade \texttt{máximo esfuerzo} o \texttt{state of the art} — Claude lanzará WebSearch antes de diseñar.
+\item Espera sin interrumpir. Los sub-agentes corren en background.
+\item Verifica que el output incluye archivos en \texttt{/tmp/} (checkpointing).
+\end{enumerate}
+
+\okbox{Confía en el orquestador}{Cuando lanzas un swarm, no preguntes "¿cómo va?" cada 2 minutos. Los sub-agentes están corriendo. Te notificarán al terminar. Interrumpir aborta el plan.}
+
+\subsection{Flujo E — Deploy nueva versión del agente}
+
+\textbf{Objetivo:} cambiar lógica del agente Python sin downtime.
+
+\begin{lstlisting}[language=bashx]
+cd /root
+# editar hermes/agent.py
+docker compose build hermes hermes-worker
+docker compose up -d hermes hermes-worker
+curl http://127.0.0.1:8080/health    # verificar
+\end{lstlisting}
+
+\okbox{Servicios que comparten Dockerfile se rebuildan juntos}{\texttt{hermes} y \texttt{hermes-worker} (y \texttt{brain}/\texttt{brain-worker}) comparten imagen. Reconstruir solo uno deja el otro con el código antiguo. Reconstruir AMBOS.}
+
+\subsection{Flujo F — Generar documento profesional (LaTeX)}
+
+\textbf{Objetivo:} crear un PDF profesional para un informe, manual, ficha.
+
+\begin{lstlisting}[language=bashx]
+cd /root/docs
+# crear o editar mi_doc.tex
+xelatex -interaction=nonstopmode mi_doc.tex
+xelatex -interaction=nonstopmode mi_doc.tex    # TOC + labels
+xelatex -interaction=nonstopmode mi_doc.tex    # outlines
+grep "^!" mi_doc.log | sort -u                  # debe salir vacio
+pdfinfo mi_doc.pdf | grep Pages                 # confirmar paginas
+\end{lstlisting}
+
+\warnbox{Babel español + TikZ exige orden específico}{Siempre \texttt{\textbackslash usetikzlibrary\{babel,arrows.meta,...\}} con \texttt{babel} PRIMERO. Si no, los \texttt{>} fallan en flechas.}
+
+\newpage
+
+% =====================================================================
+% 5. RESOLUCION DE PROBLEMAS
+% =====================================================================
+\section{Resolución de problemas}
+
+\subsection{Tabla de diagnóstico rápido}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|X|}
+\hline
+\rowcolor{manualred}\color{white}\textbf{Síntoma} & \color{white}\textbf{Causa probable} & \color{white}\textbf{Acción}\\
+\hline
+\texttt{docs.el80.space} no carga & website caído o Caddy & \texttt{docker compose restart hermes-website caddy}\\
+Hermes no responde voz & whisper-stt o litellm caído & \texttt{docker compose logs --tail=50 whisper-stt litellm}\\
+Latencia \textgreater 1 segundo & cache miss en LiteLLM & Verifica modelo en uso (\texttt{/metrics/}); evita modelos lentos\\
+Health check falla & env var no cargada & \texttt{source /root/.env}; verifica \texttt{LITELLM\_MASTER\_KEY}\\
+Build Next.js falla & deps desincronizadas & \texttt{cd website \&\& rm -rf node\_modules \&\& npm install}\\
+Git push pide credenciales & token no inyectado & Usar patrón HTTPS con GH\_TOKEN (CLAUDE.md \S Git)\\
+Kuzu lock error & dos procesos abren write & Solo brain-worker escribe; brain lee read\_only\\
+CI/CD hizo rollback & health check fallido post-deploy & \texttt{git log -1}; revisar diff que rompió\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Si un contenedor está unhealthy}
+
+\begin{lstlisting}[language=bashx]
+docker compose ps                       # ver cual no esta Up
+docker compose logs --tail=100 <name>   # ver el error
+docker inspect <name> | grep -A 5 Health
+docker compose restart <name>           # reinicio limpio
+docker compose ps                       # confirmar Up (healthy)
+\end{lstlisting}
+
+\subsection{Si el deploy CI/CD hizo rollback automático}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item GitHub Actions detectó \texttt{health check failed} y ejecutó \texttt{git reset --hard HEAD~1}.
+\item El VPS volvió al commit anterior.
+\item Tu rama \texttt{main} en GitHub sigue con el cambio que rompió.
+\item Para corregir: o bien commit fix encima, o bien \texttt{git revert HEAD} y push.
+\end{enumerate}
+
+\warnbox{Nunca force-pushees main}{Si haces \texttt{git push --force main}, sobreescribes el historial y rompes el flujo CI/CD para todos los siguientes deploys. Si necesitas revertir, usa \texttt{git revert} (commit que deshace).}
+
+\subsection{Si LiteLLM reporta modelo caído}
+
+\begin{lstlisting}[language=bashx]
+source /root/.env
+curl -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  http://127.0.0.1:4000/v1/models
+# si un modelo no aparece -> esta deshabilitado por LiteLLM
+curl -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  http://127.0.0.1:4000/health
+\end{lstlisting}
+
+Causas más comunes:
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Cuota del proveedor agotada → revisar billing en OpenRouter/Anthropic.
+\item API key rotada y no actualizada en \texttt{.env}.
+\item Modelo deshabilitado por LiteLLM tras varios fallos consecutivos.
+\end{itemize}
+
+\subsection{Si los logs llenan el disco}
+
+\begin{lstlisting}[language=bashx]
+df -h                                   # uso del disco
+docker system df                        # uso de Docker
+docker compose logs --tail=10 hermes    # ver volumen logs
+# si el problema es logs:
+docker system prune -f                  # limpia logs viejos
+# si el problema es DBs:
+du -sh /root/brain_*/                   # tamanos brain
+\end{lstlisting}
+
+\subsection{Si Claude Code se queda atascado}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Pulsa \texttt{Esc} para interrumpir el tool actual.
+\item Si no responde, abre otra terminal y haz \texttt{ps -ef | grep claude}.
+\item Si está realmente colgado: cerrar sesión y reabrir.
+\item Si los hooks de progreso quedaron stale: \texttt{rm -f /tmp/claude\_progress}.
+\end{enumerate}
+
+\newpage
+
+% =====================================================================
+% 6. PERSONALIZACION
+% =====================================================================
+\section{Personalizar y extender el sistema}
+
+\subsection{Editar las instrucciones de Claude Code (CLAUDE.md)}
+
+\texttt{CLAUDE.md} es donde defines cómo quieres que Claude Code se comporte. Cada vez que abras una sesión, esas instrucciones se cargan automáticamente.
+
+\warnbox{Sólo el agente principal edita CLAUDE.md}{Los sub-agentes que intenten editarlo reciben un security warning. Si necesitas un cambio, hazlo desde tu sesión principal o pídeselo explícitamente a Claude.}
+
+\okbox{Mantén CLAUDE.md \textless 40 KB}{Por encima de ese tamaño Claude lanza un warning de performance. Si crece: comprime prosa explicativa, no elimines reglas operativas. \texttt{wc -c /root/CLAUDE.md} para verificar.}
+
+\subsection{Añadir una memoria en el sistema de auto-memoria}
+
+Si quieres que Claude recuerde algo entre sesiones (preferencia, decisión, contexto):
+
+\begin{lstlisting}[language=bashx]
+# Las memorias viven en:
+ls /root/.claude/projects/-root/memory/
+# Indice: MEMORY.md
+# Detalles: feedback_*.md, project_*.md, user_*.md, reference_*.md
+\end{lstlisting}
+
+Para añadir una memoria nueva, dile a Claude: \textit{"recuerda que prefiero X sobre Y, porque Z"}. Se guarda como archivo en la carpeta y se enlaza desde MEMORY.md.
+
+\subsection{Cambiar el modelo LLM por defecto}
+
+Edita \texttt{config/litellm.yaml} y modifica el orden en \texttt{model\_list} o cambia el \texttt{routing\_strategy}. Reinicia LiteLLM:
+
+\begin{lstlisting}[language=bashx]
+docker compose up -d --force-recreate litellm
+\end{lstlisting}
+
+\subsection{Cambiar la voz de Hermes}
+
+ElevenLabs ofrece muchas voces. Edita la variable \texttt{ELEVENLABS\_VOICE\_ID} en \texttt{.env} y reinicia el agente:
+
+\begin{lstlisting}[language=bashx]
+nano /root/.env    # actualizar ELEVENLABS_VOICE_ID
+docker compose up -d hermes
+\end{lstlisting}
+
+\tipbox{Probar voces antes de cambiar}{Entra a \texttt{elevenlabs.io/voice-library}, escucha samples, copia el voice ID. Voces más populares para español: "Sarah", "Adam", "Bella", "Antoni".}
+
+\subsection{Añadir un subdominio nuevo (servicio público)}
+
+Para exponer un nuevo servicio bajo \texttt{nuevo.el80.space}:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Añadir el subdominio en Hostinger DNS apuntando a la IP del VPS.
+\item Añadir el bloque correspondiente en \texttt{Caddyfile}:
+\begin{lstlisting}[language=bashx]
+nuevo.el80.space {
+    reverse_proxy 127.0.0.1:XXXX
+}
+\end{lstlisting}
+\item Recargar Caddy: \texttt{docker compose restart caddy}.
+\item Verificar TLS: \texttt{curl -I https://nuevo.el80.space} (debe 200 o 401).
+\end{enumerate}
+
+\subsection{Activar/desactivar Brain Phase 6 (memoria conversacional)}
+
+Brain Phase 6 captura cada turn (user + assistant) y crea embeddings asíncronos vía RQ worker. Está activado por defecto. Para revisar:
+
+\begin{lstlisting}[language=bashx]
+docker compose logs --tail=30 brain-worker
+# debe mostrar 'job consolidate done' periodicamente
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 7. MANTENIMIENTO SEMANAL
+% =====================================================================
+\section{Mantenimiento semanal}
+
+\subsection{Lista de chequeo (15-20 minutos, viernes recomendado)}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Backup completo:} \texttt{make backup} y verificar \texttt{make backup-list}.
+\item \textbf{Revisión de PENDIENTES:} ¿hay tareas \texttt{🟡 warning} que se están enfriando? Re-priorizar.
+\item \textbf{Limpieza de \texttt{settings.local.json}:} si tiene \textgreater 20 reglas → mover las relevantes a \texttt{settings.json} y limpiar.
+\begin{lstlisting}[language=bashx]
+cat ~/.claude/settings.local.json | jq '.permissions.allow | length'
+echo '{}' > ~/.claude/settings.local.json    # solo si la migracion ya esta hecha
+\end{lstlisting}
+\item \textbf{Limpieza de \texttt{/tmp}:} archivos de sub-agentes que no se integraron.
+\begin{lstlisting}[language=bashx]
+ls -la /tmp/claude_progress /tmp/*.md 2>/dev/null
+# revisar y eliminar lo no necesario
+\end{lstlisting}
+\item \textbf{Métricas Grafana:} revisar dashboard de Hermes — ¿latencia p95 dentro de SLO?
+\item \textbf{Logs de errores:} \texttt{docker compose logs --tail=200 hermes | grep -i error}.
+\item \textbf{Espacio en disco:} \texttt{df -h}; si \textgreater 80\% usado, limpieza.
+\item \textbf{Dependabot:} revisar PRs de security updates en GitHub.
+\item \textbf{Renovación TLS:} confirmar que Caddy renovó certificados (auto).
+\end{enumerate}
+
+\subsection{Limpieza profunda (mensual)}
+
+\begin{lstlisting}[language=bashx]
+docker system prune -a -f --volumes      # PELIGROSO: solo si backups recientes
+docker compose pull                       # actualizar imagenes base
+docker compose up -d --force-recreate    # recrear con imagenes nuevas
+make doctor                               # verificacion completa
+\end{lstlisting}
+
+\warnbox{No ejecutes \texttt{docker system prune --volumes} sin backup}{Eso borra volúmenes Docker no referenciados. Si por alguna razón un volumen activo no aparece como "in use" en ese momento (servicio caído), se pierden datos. Backup primero.}
+
+\subsection{Métricas a revisar semanalmente}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Métrica} & \color{white}\textbf{Objetivo} & \color{white}\textbf{Alerta si}\\
+\hline
+Latencia E2E p50 & \textless 500 ms & \textgreater 700 ms\\
+Latencia E2E p95 & \textless 800 ms & \textgreater 1200 ms\\
+Cache hit rate LiteLLM & \textgreater 25\% & \textless 15\%\\
+CPU promedio del VPS & \textless 30\% & \textgreater 60\%\\
+RAM uso & \textless 70\% & \textgreater 85\%\\
+Uptime hermes-agent & 100\% & \textless 99.5\%\\
+Coste mensual LLM & \textless \$15 & \textgreater \$25\\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 8. OPTIMIZACION
+% =====================================================================
+\section{Optimización y mejora continua}
+
+\subsection{Reducir latencia (las 5 palancas)}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Cache de LiteLLM activo:} verifica que \texttt{cache: True} en \texttt{config/litellm.yaml}.
+\item \textbf{ClientSession aiohttp compartida:} ya implementado en \texttt{hermes/agent.py} (no crear sesión por request).
+\item \textbf{Modelo más rápido para queries simples:} Gemini Flash \textless GPT-4o-mini \textless Claude Sonnet en latencia.
+\item \textbf{Whisper modelo \texttt{base}:} no subir a \texttt{small} o \texttt{medium} a menos que veas errores recurrentes.
+\item \textbf{ElevenLabs Flash v2.5:} el modelo Multilingual v2 es más bonito pero suma ~200 ms.
+\end{enumerate}
+
+\subsection{Reducir costo}
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Routing por latencia:} ya envía a Gemini Flash por defecto (~\$0.075/M tokens).
+\item \textbf{Cache redis activo:} ahorra ~33\% de queries (datos reales).
+\item \textbf{TTLCache para dedup de voz:} elimina queries duplicadas por eco del micrófono.
+\item \textbf{Truncar contexto largo:} no enviar más de los últimos N turns al prompt (config Hermes).
+\end{itemize}
+
+\tipbox{Modelos caros solo cuando hacen falta}{Claude Sonnet 4.6 cuesta 40× más que Gemini Flash. Úsalo cuando necesites razonamiento profundo (decisiones técnicas, análisis), no para charla casual.}
+
+\subsection{Mejorar calidad de las respuestas}
+
+\subsubsection{System prompt optimizado}
+
+Edita el prompt base de Hermes en \texttt{hermes/agent.py}. Buen prompt:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Rol claro:} "Eres Hermes, asistente personal de Erik..."
+\item \textbf{Estilo:} "Respondes en español, conciso, sin emojis."
+\item \textbf{Restricciones:} "Si no sabes algo, dilo. No inventes citas o datos."
+\item \textbf{Memoria:} "Usa la memoria de Brain cuando sea relevante."
+\end{itemize}
+
+\subsubsection{Calidad de retrieval (Brain)}
+
+Si Brain devuelve resultados poco relevantes:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Verifica que el modelo embeddings esté cargado (\texttt{docker compose logs brain | grep embed}).
+\item Re-indexa: \texttt{docker compose exec brain-worker python3 -m brain.reindex}.
+\item Considera ajustar el cross-encoder reranker (puede ayudar para queries ambiguas).
+\end{enumerate}
+
+\subsection{Aumentar privacidad}
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{LLM local con GPU:} mover queries sensibles a Llama 3.3 70B local (cuando montes GPU).
+\item \textbf{TTS local:} fallback a Coqui XTTS-v2 con GPU para textos sensibles.
+\item \textbf{Filtrar logs:} no loguear el contenido completo de mensajes — solo metadata.
+\end{itemize}
+
+\subsection{Mejorar resilencia}
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Fallbacks LiteLLM:} configurar chain Gemini Flash → GPT-4o-mini → Llama 3.1.
+\item \textbf{Healthchecks agresivos:} interval 30s, autoheal active.
+\item \textbf{Backups remotos:} además de \texttt{make backup} local, sincronizar a S3 o similar.
+\item \textbf{Monitoreo externo:} servicio como UptimeRobot que pingue \texttt{/health} cada 5 min.
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 9. SEGURIDAD Y BUENAS PRACTICAS
+% =====================================================================
+\section{Seguridad y buenas prácticas}
+
+\subsection{Lo que NUNCA debes hacer}
+
+\warnbox{Nunca commit secretos al repositorio}{API keys, tokens, contraseñas. Si ocurre por error: rotar la clave inmediatamente (no basta con \texttt{git rm}). El historial Git público es indexado por bots en horas.}
+
+\warnbox{Nunca force-push a main}{Sobreescribe historial, rompe CI/CD, puede perder trabajo de otros. Si necesitas deshacer: \texttt{git revert}.}
+
+\warnbox{Nunca skip pre-commit hooks (--no-verify)}{Los hooks ejecutan tests, lint, build. Si los saltas, commiteas código roto. Si el hook falla: investiga la causa, arregla, re-commit.}
+
+\warnbox{Nunca expongas servicios sin auth}{Cualquier puerto que abras al público (más allá de localhost) requiere autenticación. Sin auth = vector de ataque. Caddy puede añadir basic auth en pocas líneas.}
+
+\warnbox{Nunca apliques cambios "rápidos" en producción sin testing}{Editar archivos directamente en el VPS y reiniciar sin commit deja el VPS desincronizado del repo. Cualquier CD posterior sobreescribe tu cambio. Workflow correcto: commit → push → CD aplica.}
+
+\subsection{Lo que SIEMPRE debes hacer}
+
+\okbox{Siempre verifica con \texttt{make doctor} antes de declarar algo "listo"}{El comando ejecuta 6 chequeos en 30 segundos. Te ahorra 30 minutos de debugging por suponer que todo está bien.}
+
+\okbox{Siempre commit por tarea lógica}{No acumules cambios. Si terminaste algo discreto, commit. La granularidad de tu historial Git es tu seguro contra accidentes.}
+
+\okbox{Siempre lee el archivo completo antes de editarlo}{No \texttt{Edit} al final del archivo sin leer las últimas líneas. Puede haber contenido de sesiones anteriores que invalida el contexto.}
+
+\okbox{Siempre rota tokens cada 90 días}{API keys de OpenRouter, Anthropic, ElevenLabs. Calendario: 1 de cada cuarto. Permite detectar accesos comprometidos antes de que sean dañinos.}
+
+\subsection{Gestión de secretos — \texttt{.env}}
+
+\texttt{/root/.env} contiene todos los tokens críticos. Reglas:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Permisos \texttt{600} (solo root puede leer): \texttt{chmod 600 /root/.env}.
+\item Nunca \texttt{cat .env} en una sesión compartida — alguien puede ver tu pantalla.
+\item Backup encriptado del \texttt{.env} en un sitio diferente al VPS (password manager).
+\item Si sospechas compromiso: rota TODAS las claves antes de investigar el incidente.
+\end{enumerate}
+
+\subsection{Si un servicio se ve comprometido}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Tirar el servicio: \texttt{docker compose stop <name>}.
+\item Aislar el VPS de la red pública: cerrar puertos en el firewall Hostinger.
+\item Rotar TODAS las API keys.
+\item Auditar logs: \texttt{docker compose logs --since 7d <name>}.
+\item Restaurar desde backup previo confirmado limpio.
+\item Investigar el vector de entrada antes de reabrir.
+\end{enumerate}
+
+\newpage
+
+% =====================================================================
+% 10. VISION A FUTURO
+% =====================================================================
+\section{Visión a futuro — qué viene}
+
+\subsection{Roadmap personal recomendado}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|c|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Cuándo} & \color{white}\textbf{Mejora} & \color{white}\textbf{Impacto}\\
+\hline
+Próximas 2 semanas & Migrar Whisper a \texttt{faster-whisper} & Alto (-145ms)\\
+Próximo mes & Añadir Loki para logs centralizados & Medio\\
+Próximo mes & Reauth rclone para backups remotos & Medio (resiliencia)\\
+Q3 2026 & Mesh Tailscale con Android + DO Droplet & Alto (movilidad)\\
+Q4 2026 & Migrar Redis → Valkey & Bajo (licencia)\\
+Q4 2026 & Considerar Next.js 15 & Bajo\\
+Q1 2027 & OpenTelemetry traces & Alto (observabilidad)\\
+H2 2027 & GPU local + Llama 3.3 70B & Alto (privacidad+costo)\\
+H2 2027 & Memoria episódica (Letta-style) & Muy alto\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Conceptos a estudiar (para entender mejor el stack)}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Model Context Protocol (MCP):} cómo funcionan los servidores stdio vs HTTP. Lee la spec de Anthropic.
+\item \textbf{Retrieval híbrido (RRF):} reciprocal rank fusion entre dense + sparse + cross-encoder.
+\item \textbf{HNSW:} algoritmo de búsqueda aproximada que usa LanceDB.
+\item \textbf{Cypher (Kuzu):} lenguaje de queries para grafos. La parte de \texttt{MATCH (a)-[r]->(b)} es 80\% de los queries.
+\item \textbf{Caddy y ACME:} cómo se renuevan TLS automáticamente (RFC 8555).
+\item \textbf{Docker networking:} diferencia entre bridge default, bridge custom y host networking.
+\end{enumerate}
+
+\subsection{Cómo pensar en escalar (cuándo)}
+
+El stack actual escala vertical hasta llenar el VPS de 4 vCPU / 8 GB. Eso significa:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item ~50 conversaciones de voz simultáneas (limitadas por LiteLLM RPS).
+\item ~10M de vectores en LanceDB (antes de degradar query \textless 50ms).
+\item ~500k nodos en Kuzu (antes de evaluar Neo4j).
+\item ~100 GB de almacenamiento Brain (vault + events + DB files).
+\end{itemize}
+
+Por debajo de esos límites, escalar horizontal (más VPS, K8s) es overkill. Por encima, considera:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Subir el tier del VPS Hostinger (8 vCPU / 16 GB) — solución simple.
+\item Mesh Tailscale con un segundo nodo para LLM heavy queries.
+\item GPU dedicada (RunPod on-demand) para Whisper y/o vLLM.
+\end{enumerate}
+
+\newpage
+
+% =====================================================================
+% 11. REFERENCIA RAPIDA
+% =====================================================================
+\section{Referencia rápida de comandos}
+
+\subsection{Top 20 comandos del día a día}
+
+\begin{lstlisting}[language=bashx]
+# Estado y health
+make doctor                          # check completo
+make health-check                    # solo health endpoints
+make status                          # docker compose ps
+docker compose logs --tail=50 <svc>  # logs recientes
+curl -f http://127.0.0.1:8080/health # hermes health
+
+# Git
+git status
+git log --oneline -10
+git add <archivo> && git commit -m "..."
+gh pr create --title "..." --body "..."
+
+# Frontend
+cd /root/website && npm run build    # ANTES de commit
+cd /root/website && npm run dev      # preview local
+
+# LaTeX
+cd /root/docs && xelatex mi_doc.tex  # 3 pasadas para TOC
+
+# Docker
+docker compose ps
+docker compose up -d <svc>           # arrancar
+docker compose restart <svc>         # reinicio limpio
+docker compose build <svc>           # rebuild imagen
+docker compose logs -f <svc>         # follow logs
+
+# Backup
+make backup                          # backup completo
+make backup-list                     # listar backups
+\end{lstlisting}
+
+\subsection{Variables de entorno críticas (\texttt{.env})}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Variable} & \color{white}\textbf{Para qué}\\
+\hline
+\texttt{LITELLM\_MASTER\_KEY} & Auth interna LiteLLM\\
+\texttt{OPENROUTER\_API\_KEY} & LLMs (Gemini, Llama, GPT)\\
+\texttt{ANTHROPIC\_API\_KEY} & Claude Sonnet 4.6\\
+\texttt{ELEVENLABS\_API\_KEY} & TTS\\
+\texttt{ELEVENLABS\_VOICE\_ID} & Voz de Hermes\\
+\texttt{BRAIN\_API\_TOKEN} & Auth Brain MCP\\
+\texttt{HOSTINGER\_API\_KEY} & DNS automation\\
+\texttt{GRAFANA\_ADMIN\_PASSWORD} & Login Grafana\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{URLs útiles}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Servicio} & \color{white}\textbf{URL}\\
+\hline
+Hermes Web & \texttt{https://docs.el80.space}\\
+Grafana & \texttt{https://grafana.el80.space}\\
+Filebrowser & \texttt{https://files.el80.space}\\
+Brain MCP & \texttt{https://brain.el80.space/mcp/}\\
+LiteLLM Health & \texttt{https://litellm.el80.space/health}\\
+Repo GitHub & \texttt{github.com/erikjosehrnndz-crypto/hermes-stack}\\
+GitHub Actions & \texttt{github.com/erikjosehrnndz-crypto/hermes-stack/actions}\\
+Hostinger Panel & \texttt{hpanel.hostinger.com}\\
+OpenRouter Dashboard & \texttt{openrouter.ai/keys}\\
+ElevenLabs Dashboard & \texttt{elevenlabs.io/app}\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Atajos del flujo Hermes}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Quiero} & \color{white}\textbf{Decir/Escribir a Hermes}\\
+\hline
+Recordar algo & "recuerda que [hecho]"\\
+Buscar en memoria & "¿qué recuerdas de [tema]?"\\
+Resumir reciente & "resumen de los últimos N días"\\
+Olvidar algo & "olvida lo que sabías de [tema]"\\
+Cambiar tema & "cambiemos a [nuevo tema]"\\
+Pedir contexto previo & "continúa con lo de ayer sobre X"\\
+Salir limpio & "guarda estado y nos vemos"\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Cuándo escalar al usuario (a ti mismo) vs Claude}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|X|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Decisión técnica} & \color{white}\textbf{Decisión personal}\\
+\hline
+Claude puede decidir: refactor menor, fix de bug, elegir librería entre 2 opciones del SOTA, lint, format. & Tú decides: cambios arquitectónicos, gastos \textgreater \$10/mes, exposición pública de un servicio, migraciones disruptivas.\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Documentos relacionados}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{manualgreen}\color{white}\textbf{Documento} & \color{white}\textbf{Cuándo abrirlo}\\
+\hline
+\texttt{ficha\_tecnica\_hermes.pdf} & Inventario técnico exhaustivo (55 pp)\\
+\texttt{estado\_del\_arte\_hermes.pdf} & Comparativa SOTA por categoría (47 pp)\\
+\texttt{Hermes\_Stack\_Blueprint.pdf} & Arquitectura definitiva v2 (52 pp)\\
+\texttt{Roadmap\_Tecnico\_Definitivo\_v2.pdf} & Roadmap consolidado\\
+\texttt{informe-practicas-ia.pdf} & Análisis crítico de patrones\\
+\texttt{CLAUDE.md} (raíz del repo) & Reglas operativas Claude Code\\
+\texttt{PENDIENTES.md} (raíz del repo) & Tareas activas\\
+\hline
+\end{tabularx}
+\end{center}
+
+\vspace{1.5cm}
+
+\begin{center}
+\fcolorbox{manualgreen}{boxbg}{\parbox{0.92\textwidth}{
+\centering
+\sffamily\bfseries\color{manualgreen}\Large Fin del manual\\[10pt]
+\small\color{manualgold}
+Hermes Stack — Manual de Usuario v1.0\\
+Compilado el \today\ con XeLaTeX · DejaVu Fonts\\[6pt]
+\textit{Si encuentras algo desactualizado o pasos que no funcionan:\\
+edita este documento y commitea. La documentación se mantiene\\
+con el mismo cuidado que el código.}
+}}
+\end{center}
+
+\end{document}
