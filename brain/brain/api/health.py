@@ -21,12 +21,31 @@ async def health(request: Request) -> JSONResponse:
         redis_ok = False
         redis_err = str(exc)
 
-    status = "ok" if (vault_ok and events_ok and redis_ok) else "degraded"
+    lance_ok = False
+    lance_chunks = 0
+    lance_nodes = 0
+    lance_err: str | None = None
+    try:
+        lance = getattr(state, "lance", None)
+        if lance is not None:
+            lance_chunks = lance.count_chunks()
+            lance_nodes = lance.count_nodes()
+            lance_ok = True
+    except Exception as exc:
+        lance_err = str(exc)
+
+    status = "ok" if (vault_ok and events_ok and redis_ok and lance_ok) else "degraded"
     body = {
         "status": status,
         "vault": {"path": str(state.vault.root), "ok": vault_ok},
         "events": {"path": str(state.events.path), "ok": events_ok, "n": state.events.count()},
         "redis": {"ok": redis_ok, "error": redis_err},
-        "phase": 1,
+        "lance": {
+            "ok": lance_ok,
+            "chunks": lance_chunks,
+            "nodes": lance_nodes,
+            "error": lance_err,
+        },
+        "phase": 2,
     }
     return JSONResponse(body, status_code=200 if status == "ok" else 503)

@@ -11,7 +11,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
 | hs-006 | infra | 🔵 mejora | ✅ done | Merge + push main c218fe2; CI/CD activado |
 | hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
-| hs-008 | brain | 🟢 nueva | phase-1-done | Brain (segundo cerebro): Phase 1 viva en brain.el80.space (FastAPI + FastMCP). Arrancar Phase 2 (LanceDB + BGE-M3 + retrieval real) |
+| hs-008 | brain | 🟢 nueva | phase-2-done | Brain Phase 2 done: LanceDB + multilingual-e5-large + BM25 + RRF hybrid. 32 wiki files ingested, acceptance test PASS (score=0.84). Arrancar Phase 3 (reranking + Kuzu graph). |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
@@ -55,4 +55,4 @@ Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
 ---
 
-*Actualizado: 2026-05-26 · Estado formal: `/root/PENDIENTES.json`*
+*Actualizado: 2026-05-28 · Estado formal: `/root/PENDIENTES.json`*

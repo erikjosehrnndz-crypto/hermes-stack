@@ -17,6 +17,7 @@ from brain.api import health, ingest, search
 from brain.mcp.server import build_mcp
 from brain.settings import get_settings
 from brain.storage.events import EventLog
+from brain.storage.lance import LanceStore
 from brain.storage.vault import Vault
 
 
@@ -26,6 +27,7 @@ vault = Vault(settings.vault_path, git_remote=settings.git_remote)
 events = EventLog(f"{settings.events_path}/events.db")
 redis_conn = redis.Redis.from_url(settings.redis_url)
 queue = Queue("brain", connection=redis_conn)
+lance = LanceStore(settings.lance_path, dim=settings.embed_dim)
 
 
 class _State:
@@ -37,6 +39,7 @@ class _State:
         self.events = events
         self.redis = redis_conn
         self.queue = queue
+        self.lance = lance
 
 
 _state = _State()
@@ -67,6 +70,7 @@ app.state.vault = _state.vault
 app.state.events = _state.events
 app.state.redis = _state.redis
 app.state.queue = _state.queue
+app.state.lance = _state.lance
 
 app.include_router(health.router)
 app.include_router(ingest.router)

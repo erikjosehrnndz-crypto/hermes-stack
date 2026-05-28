@@ -20,6 +20,11 @@ class IngestTextIn(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=32)
     source: str = "api"
     title: str | None = None
+    node_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="ID externo estable para idempotencia (re-ingest sobrescribe).",
+    )
 
 
 @router.post("/text", status_code=202)
@@ -32,6 +37,7 @@ async def ingest_text(payload: IngestTextIn, request: Request) -> JSONResponse:
         tags=payload.tags,
         source=payload.source,
         title=payload.title,
+        node_id=payload.node_id,
     )
     state.events.append(
         event_type="ingest",
@@ -50,7 +56,7 @@ async def ingest_text(payload: IngestTextIn, request: Request) -> JSONResponse:
     job = queue.enqueue(
         "brain.workers.jobs.process_node.process_node",
         node_id,
-        job_timeout=60,
+        job_timeout=300,
         result_ttl=300,
     )
     return JSONResponse(

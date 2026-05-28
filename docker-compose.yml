@@ -13,6 +13,8 @@ volumes:
   redis_data:
   brain_vault:
   brain_events:
+  brain_lance:
+  brain_models:
 
 services:
   # ============================================
@@ -309,11 +311,16 @@ services:
       BRAIN_API_TOKEN: ${BRAIN_API_TOKEN}
       BRAIN_VAULT_PATH: /data/vault
       BRAIN_EVENTS_PATH: /data/events
+      BRAIN_LANCE_PATH: /data/lance
       BRAIN_REDIS_URL: redis://redis:6379/2
       BRAIN_USER_ID: erik
+      BRAIN_EMBED_MODEL: intfloat/multilingual-e5-large
+      FASTEMBED_CACHE_PATH: /data/models
     volumes:
       - brain_vault:/data/vault
       - brain_events:/data/events
+      - brain_lance:/data/lance
+      - brain_models:/data/models
     networks:
       - backend
     ports:
@@ -340,11 +347,16 @@ services:
       BRAIN_API_TOKEN: ${BRAIN_API_TOKEN}
       BRAIN_VAULT_PATH: /data/vault
       BRAIN_EVENTS_PATH: /data/events
+      BRAIN_LANCE_PATH: /data/lance
       BRAIN_REDIS_URL: redis://redis:6379/2
       BRAIN_USER_ID: erik
+      BRAIN_EMBED_MODEL: intfloat/multilingual-e5-large
+      FASTEMBED_CACHE_PATH: /data/models
     volumes:
       - brain_vault:/data/vault
       - brain_events:/data/events
+      - brain_lance:/data/lance
+      - brain_models:/data/models
     networks:
       - backend
     command: ["python", "-m", "brain.workers.rq_worker"]

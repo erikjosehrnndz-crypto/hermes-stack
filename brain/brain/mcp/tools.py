@@ -1,6 +1,6 @@
-"""MCP tools — Phase 1: brain_capture, brain_search.
+"""MCP tools — Phase 2: brain_capture, brain_search (hybrid por defecto).
 
-Las tools delegan en los mismos componentes (vault, events, queue) que la
+Las tools delegan en los mismos componentes (vault, lance, events, queue) que la
 API REST. Una sola implementación, dos transportes.
 """
 from __future__ import annotations
@@ -9,7 +9,7 @@ from typing import Literal
 
 
 def register_tools(mcp, state) -> None:
-    """`state` es el `app.state` de FastAPI (vault, events, queue, settings)."""
+    """`state` es el `app.state` de FastAPI (vault, lance, events, queue, settings)."""
 
     @mcp.tool
     def brain_capture(
@@ -47,8 +47,8 @@ def register_tools(mcp, state) -> None:
         job = state.queue.enqueue(
             "brain.workers.jobs.process_node.process_node",
             node_id,
-            job_timeout=60,
-            result_ttl=300,
+            job_timeout=300,
+            result_ttl=600,
         )
         return {
             "id": node_id,
@@ -58,10 +58,36 @@ def register_tools(mcp, state) -> None:
         }
 
     @mcp.tool
-    def brain_search(q: str, k: int = 5) -> dict:
-        """Búsqueda Phase 1: filename + body substring sobre el vault.
+    def brain_search(
+        q: str,
+        k: int = 5,
+        mode: Literal["hybrid", "dense", "bm25", "keyword"] = "hybrid",
+    ) -> dict:
+        """Búsqueda Phase 2: hybrid RRF (dense BGE-M3 + BM25) sobre LanceDB.
 
-        Phase 2 reemplaza con BM25 + dense embeddings + RRF + rerank.
+        Modos:
+          - hybrid (default): RRF de dense + BM25.
+          - dense:  solo BGE-M3 (cosine sim).
+          - bm25:   solo lexical (tantivy FTS).
+          - keyword: fallback Phase 1 sobre nombres de archivo del vault.
         """
-        hits = state.vault.search_by_name(q, k=k)
-        return {"q": q, "k": k, "hits": hits, "n": len(hits), "mode": "keyword-stub"}
+        lance = getattr(state, "lance", None)
+        if mode == "keyword" or lance is None:
+            hits = state.vault.search_by_name(q, k=k)
+            return {"q": q, "k": k, "mode": "keyword", "n": len(hits), "hits": hits}
+
+        user_id = state.settings.user_id
+        if mode == "bm25":
+            hits = lance.search_bm25(q, k=k, user_id=user_id)
+            return {"q": q, "k": k, "mode": "bm25", "n": len(hits), "hits": hits}
+
+        # dense / hybrid requieren embedding de la query
+        from brain.pipeline.embed import embed_query
+
+        qvec = embed_query(q, model_name=state.settings.embed_model)
+        if mode == "dense":
+            hits = lance.search_dense(qvec, k=k, user_id=user_id)
+            return {"q": q, "k": k, "mode": "dense", "n": len(hits), "hits": hits}
+
+        hits = lance.search_hybrid(q, qvec, k=k, user_id=user_id)
+        return {"q": q, "k": k, "mode": "hybrid", "n": len(hits), "hits": hits}
