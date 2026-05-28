@@ -82,9 +82,9 @@
     "priority": "improvement",
     "purpose": "Brain — Segundo Cerebro: PKM unificado (journal + knowledge + memoria conversacional) con MCP HTTP Streamable, hybrid retrieval (LanceDB+BGE-M3+Kuzu+LightRAG), captura multi-surface (voz, Telegram, email, web, móvil, CLI, MCP, Hermes).",
     "depends_on": [],
-    "status": "phase-0-done",
-    "verification": "curl -f https://brain.el80.space/health && curl -X POST https://brain.el80.space/api/v1/ingest/text -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -d '{\"text\":\"test\",\"tags\":[\"smoke\"]}' && ls /data/vault/notes/",
-    "evidence": "Phase 0 (research + arquitectura) completada 2026-05-28. Plan en /root/.claude/plans/quiero-que-cres-un-humming-journal.md. Handoff en /root/SESSION_HANDOFF.md.",
-    "notes": "Phase 1 = Skeleton + MCP vivo (1-2d). Phases: 1) skeleton MCP, 2) LanceDB+BGE-M3, 3) captura multi-surface, 4) KG + LightRAG, 5) Mem0, 6) auth+obs. Puerto 8765, Caddy brain.el80.space, network backend. Reusa OverCR para audit/lifecycle, wiki schema para frontmatter."
+    "status": "phase-1-done",
+    "verification": "curl -f https://brain.el80.space/health && curl -X POST https://brain.el80.space/api/v1/ingest/text -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -d '{\"text\":\"test\",\"tags\":[\"smoke\"]}' && curl -X POST https://brain.el80.space/mcp/ -H 'Accept: application/json, text/event-stream' -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"0.1\"}}}'",
+    "evidence": "Phase 1 completada 2026-05-28. /root/brain/ con FastAPI+FastMCP en :8765, vault git en /data/vault, events SQLite. brain.el80.space con cert Let's Encrypt válido. Acceptance: kn-9cb63c08 creado vía REST, encontrado por /search, worker procesó job, MCP initialize devuelve serverInfo brain v3.3.1.",
+    "notes": "Phase 2 = Retrieval real (LanceDB + BGE-M3 + late chunking, 3-4d). Phases restantes: 3) captura multi-surface, 4) KG + LightRAG, 5) Mem0, 6) auth+obs. Puerto 8765, Caddy brain.el80.space, network backend. Reusa OverCR para audit/lifecycle, wiki schema para frontmatter."
   }
 ]

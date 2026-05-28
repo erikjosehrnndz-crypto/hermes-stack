@@ -11,6 +11,8 @@ volumes:
   whisper_cache:
   9router_data:
   redis_data:
+  brain_vault:
+  brain_events:
 
 services:
   # ============================================
@@ -291,6 +293,67 @@ services:
       - "127.0.0.1:8095:80"
     networks:
       - backend
+
+  # ============================================
+  # BRAIN - Segundo cerebro (Phase 1: API + MCP skeleton)
+  # ============================================
+  brain:
+    build:
+      context: ./brain
+      dockerfile: Dockerfile
+    container_name: brain
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      BRAIN_API_TOKEN: ${BRAIN_API_TOKEN}
+      BRAIN_VAULT_PATH: /data/vault
+      BRAIN_EVENTS_PATH: /data/events
+      BRAIN_REDIS_URL: redis://redis:6379/2
+      BRAIN_USER_ID: erik
+    volumes:
+      - brain_vault:/data/vault
+      - brain_events:/data/events
+    networks:
+      - backend
+    ports:
+      - "127.0.0.1:8765:8765"
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8765/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  brain-worker:
+    build:
+      context: ./brain
+      dockerfile: Dockerfile
+    container_name: brain-worker
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - brain
+    environment:
+      BRAIN_API_TOKEN: ${BRAIN_API_TOKEN}
+      BRAIN_VAULT_PATH: /data/vault
+      BRAIN_EVENTS_PATH: /data/events
+      BRAIN_REDIS_URL: redis://redis:6379/2
+      BRAIN_USER_ID: erik
+    volumes:
+      - brain_vault:/data/vault
+      - brain_events:/data/events
+    networks:
+      - backend
+    command: ["python", "-m", "brain.workers.rq_worker"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import redis,os;redis.Redis.from_url(os.environ['BRAIN_REDIS_URL']).ping()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # ============================================
   # HERMES WORKSPACE - Panel de Control Web

@@ -1,0 +1,9 @@
+# Añadir a /etc/caddy/Caddyfile
+# Brain — segundo cerebro Hermes Stack
+brain.el80.space {
+    reverse_proxy 127.0.0.1:8765 {
+        # MCP HTTP Streamable necesita streaming completo (SSE-like)
+        flush_interval -1
+        header_up Host {host}
+    }
+}

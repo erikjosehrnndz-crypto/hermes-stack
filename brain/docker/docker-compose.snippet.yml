@@ -1,0 +1,60 @@
+# Snippet a fusionar en /root/docker-compose.yml
+# Servicios: brain (FastAPI+FastMCP), brain-worker (RQ)
+# Red: backend (compartida con redis, hermes, litellm)
+# Volúmenes nuevos: brain_vault, brain_events
+
+# volumes:
+#   brain_vault:
+#   brain_events:
+
+  brain:
+    build:
+      context: ./brain
+      dockerfile: Dockerfile
+    container_name: brain
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      BRAIN_API_TOKEN: ${BRAIN_API_TOKEN}
+      BRAIN_VAULT_PATH: /data/vault
+      BRAIN_EVENTS_PATH: /data/events
+      BRAIN_REDIS_URL: redis://redis:6379/2
+      BRAIN_USER_ID: erik
+    volumes:
+      - brain_vault:/data/vault
+      - brain_events:/data/events
+    networks:
+      - backend
+    ports:
+      - "127.0.0.1:8765:8765"
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8765/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  brain-worker:
+    build:
+      context: ./brain
+      dockerfile: Dockerfile
+    container_name: brain-worker
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - brain
+    environment:
+      BRAIN_API_TOKEN: ${BRAIN_API_TOKEN}
+      BRAIN_VAULT_PATH: /data/vault
+      BRAIN_EVENTS_PATH: /data/events
+      BRAIN_REDIS_URL: redis://redis:6379/2
+      BRAIN_USER_ID: erik
+    volumes:
+      - brain_vault:/data/vault
+      - brain_events:/data/events
+    networks:
+      - backend
+    command: ["python", "-m", "brain.workers.rq_worker"]
