@@ -62,7 +62,7 @@ LanceDB:       chunks=68, nodes=32, phase=2
 2. **Score híbrido**: RRF para ranking, `max(component_scores.values())` como score devuelto — semánticamente significativo (cosine sim ∈ [0,1]).
 3. **32 archivos** (no 34) ingested — 2 archivos vacíos skipeados por `sync_wiki.py`.
 
-## Siguiente paso recomendado
+## siguiente paso recomendado
 
 ```bash
 # 1. Startup

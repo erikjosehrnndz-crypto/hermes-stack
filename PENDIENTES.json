@@ -82,9 +82,9 @@
     "priority": "improvement",
     "purpose": "Brain — Segundo Cerebro: PKM unificado (journal + knowledge + memoria conversacional) con MCP HTTP Streamable, hybrid retrieval (LanceDB+BGE-M3+Kuzu+LightRAG), captura multi-surface (voz, Telegram, email, web, móvil, CLI, MCP, Hermes).",
     "depends_on": [],
-    "status": "phase-1-done",
-    "verification": "curl -f https://brain.el80.space/health && curl -X POST https://brain.el80.space/api/v1/ingest/text -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -d '{\"text\":\"test\",\"tags\":[\"smoke\"]}' && curl -X POST https://brain.el80.space/mcp/ -H 'Accept: application/json, text/event-stream' -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"0.1\"}}}'",
-    "evidence": "Phase 1 completada 2026-05-28. /root/brain/ con FastAPI+FastMCP en :8765, vault git en /data/vault, events SQLite. brain.el80.space con cert Let's Encrypt válido. Acceptance: kn-9cb63c08 creado vía REST, encontrado por /search, worker procesó job, MCP initialize devuelve serverInfo brain v3.3.1.",
-    "notes": "Phase 2 = Retrieval real (LanceDB + BGE-M3 + late chunking, 3-4d). Phases restantes: 3) captura multi-surface, 4) KG + LightRAG, 5) Mem0, 6) auth+obs. Puerto 8765, Caddy brain.el80.space, network backend. Reusa OverCR para audit/lifecycle, wiki schema para frontmatter."
+    "status": "done",
+    "verification": "BRAIN_API_TOKEN=$(grep ^BRAIN_API_TOKEN /root/.env | cut -d= -f2) && curl -f http://127.0.0.1:8765/health | python3 -c \"import sys,json; d=json.load(sys.stdin); assert d['phase']==2 and d['lance']['chunks']>0\" && curl -fsS -X POST http://127.0.0.1:8765/api/v1/search -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -H 'Content-Type: application/json' -d '{\"q\":\"litellm router prometheus\",\"k\":3,\"mode\":\"hybrid\"}' | python3 -c \"import sys,json; hits=json.load(sys.stdin)['hits']; assert any(h['score']>0.4 for h in hits[:3])\"",
+    "evidence": "Phase 2 completada 2026-05-28. commit 4dd10e2. LanceDB hybrid (multilingual-e5-large + BM25 tantivy + RRF). 32 wiki files ingested (68 chunks, 32 nodes). Acceptance test PASS: q='litellm router prometheus' top-3 score=0.84 (Prometheus + LiteLLM Router).",
+    "notes": "Modelo: intfloat/multilingual-e5-large (BAAI/bge-m3 no disponible en fastembed 0.4.x). Siguiente: Phase 3 (reranker Jina v3 + Kuzu graph + Mem0). Ver SESSION_HANDOFF.md."
   }
 ]

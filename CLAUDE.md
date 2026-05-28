@@ -219,13 +219,9 @@ Los sub-agentes que editan `CLAUDE.md` reciben un security warning ("self-modifi
 
 Previene: friction de warnings y posible bloqueo de edición desde sub-agentes.
 
-### Síntesis incremental con 4+ agentes en paralelo
+### Síntesis incremental y contexto en sub-agentes
 
-Con 4+ agentes en paralelo, lanzar el agente síntesis de forma incremental — no esperar todos los resultados simultáneamente. Excepción: si el sintetizador necesita TODOS los inputs (ej. consolidar CLAUDE.md), esperar es correcto.
-
-### El orquestador no debe investigar trabajo que delegó
-
-Incrustar contexto necesario (MEMORY.md, CLAUDE.md) en los prompts de sub-agentes — no hacer Bash/Read directamente sobre trabajo delegado.
+Con 4+ agentes en paralelo, lanzar síntesis de forma incremental (excepción: si necesita TODOS los inputs, esperar es correcto). Incrustar contexto necesario (MEMORY.md, CLAUDE.md) en los prompts — el orquestador no debe hacer Bash/Read sobre trabajo ya delegado.
 
 ### Economía de modelos en orquestación multi-agente
 
@@ -263,19 +259,7 @@ Cualquier sub-agente cuya tarea estimada exceda **60 segundos** debe lanzarse co
 
 ### Plan jerárquico explícito al inicio del swarm
 
-Antes de lanzar agentes, el plan debe documentar la jerarquía:
-
-```
-Orquestador (Opus 4.7)
-├── Agente A — <rol>     (Haiku, background, depende de: —)
-├── Agente B — <rol>     (Sonnet, background, depende de: —)
-├── Agente C — <rol>     (Haiku, background, depende de: A)
-├── Agente D — <rol>     (Sonnet, background, depende de: A)
-└── Agente E — <síntesis> (Sonnet, foreground, depende de: B, C, D)
-```
-
-Cada agente lleva: modelo asignado, modo (background/foreground), dependencias de output.
-Previene: lanzar agentes sin plan claro de dependencias, que termina en agentes esperando inputs que nunca llegan.
+Antes de lanzar agentes, documentar la jerarquía: cada agente lleva rol, modelo (Haiku/Sonnet/Opus), modo (background/foreground) y dependencias de output. Sin este plan, los agentes quedan esperando inputs que nunca llegan.
 
 ---
 
@@ -463,8 +447,8 @@ Cuando la tarea involucra investigación multi-dominio + síntesis y los agentes
 ### /plan con "máximo esfuerzo" o "state of the art" → WebSearch ANTES de diseñar
 
 Cuando el usuario pide arquitectura de máxima calidad / "lo mejor que existe hoy" / "SOTA" / "máximo esfuerzo", lanzar agentes Explore con WebSearch + WebFetch para validar tecnologías recientes ANTES de proponer el diseño. El conocimiento de entrenamiento de Claude tiene cutoff fijo — librerías líderes hace 12 meses pueden estar superadas (ej: GraphRAG → LightRAG 6000× más eficiente; sentence-transformers → BGE-M3 multilingüe).
-**Previene:** primer diseño obsoleto que requiere re-trabajo completo (sesión 2026-05-28 Brain: primera versión SQLite+sentence-transformers → tras research el SOTA real era LanceDB+Kuzu+Mem0+LightRAG+MCP HTTP Streamable).
-**Cómo aplicar:** trigger en frases del usuario "state of the art", "lo mejor", "máxima calidad", "máximo esfuerzo", "lo que exista hoy". Lanzar mínimo 2 Explore agents en paralelo con queries específicas a la fecha actual.
+**Previene:** primer diseño obsoleto que requiere re-trabajo completo.
+**Cómo aplicar:** trigger en frases "state of the art", "lo mejor", "máxima calidad", "máximo esfuerzo". Lanzar mínimo 2 Explore agents con WebSearch en paralelo antes de diseñar.
 
 ---
 
@@ -705,26 +689,11 @@ app.on_cleanup.append(lambda app: app["agent"].stop())
 ```
 **Previene:** latencia extra por reconexión TCP en cada LLM call.
 
-### Handlers externos también deben usar la sesión compartida del agente
+### Handlers externos — usar la sesión compartida del agente
 
-Funciones handler en módulos separados (ej. `api/health.py`) que reciben `request.app["agent"]` **también deben usar `agent._session`**, no crear la suya:
+Handlers en módulos separados deben recibir y usar `agent._session`, no crear `aiohttp.ClientSession()` propia. Patrón: `check_litellm(url, request.app["agent"]._session)` con fallback `async with aiohttp.ClientSession()` solo si `session is None or session.closed`.
 
-```python
-# health.py — CORRECTO
-async def check_litellm(litellm_url: str, session: aiohttp.ClientSession | None) -> bool:
-    if session is None or session.closed:
-        async with aiohttp.ClientSession() as s:   # fallback limpio
-            async with s.get(...) as resp: ...
-    async with session.get(...) as resp: ...        # ruta normal: sesión compartida
-
-# health_handler — pasar la sesión del agente
-async def health_handler(request):
-    agent = request.app["agent"]
-    session = agent._session
-    ok = await check_litellm(agent.litellm_url, session)
-```
-
-**Previene:** overhead TCP+TLS en cada healthcheck (autoheal cada 30s × 2 checks = 2 conexiones efímeras/30s).
+**Previene:** overhead TCP+TLS en healthcheck (autoheal cada 30s = 2 conexiones efímeras/30s).
 
 ### orjson en lugar de json stdlib
 
@@ -757,6 +726,33 @@ litellm_settings:
 ```
 
 Sin esto, queries LLM idénticas (misma sesión, mismo prompt) consumen tokens innecesariamente.
+
+---
+
+## Brain — retrieval pipeline
+
+### FastEmbed: verificar modelo disponible antes de codificar
+
+`BAAI/bge-m3` no está en fastembed 0.4.x. Modelo equivalente instalado (1024d, multilingüe): `intfloat/multilingual-e5-large`. Verificar lista real antes de commitear cualquier model_name:
+
+```bash
+docker compose exec brain-worker python3 -c \
+  "from fastembed import TextEmbedding; [print(m['model']) for m in TextEmbedding.list_supported_models()]"
+```
+
+**Previene:** `ValueError: Model X is not supported in TextEmbedding` al primer deploy.
+
+### RRF score ≠ similarity — exponer max(component_scores) como score de display
+
+RRF = 1/(rrf_k+rank); máximo ≈ 0.016 con rrf_k=60. Usar RRF solo para ordenar hits. El campo `score` devuelto al caller debe ser `max(component_scores.values())` (cosine sim ∈ [0,1]).
+
+**Previene:** acceptance tests con `score > 0.4` que fallan aunque el retrieval sea correcto.
+
+### Servicios con imagen compartida — reconstruir TODOS al mismo tiempo
+
+`brain` y `brain-worker` comparten Dockerfile y source. Un fix Python requiere: `docker compose build brain brain-worker`. Reconstruir solo uno deja el otro con el error anterior.
+
+**Previene:** worker crasheando con error ya corregido mientras brain funciona.
 
 ---
 
@@ -809,14 +805,7 @@ SHELL := /bin/bash
 
 Sin esto, Make usa `/bin/sh` por defecto y `source /root/.env` falla silenciosamente — las variables de entorno no se cargan y los health checks fallan aunque el servicio esté running.
 
-También: usar `set -a; source <env>; set +a` para exportar automáticamente todas las variables del archivo env:
-
-```makefile
-SHELL := /bin/bash
-health-check:
-    @set -a; source /root/.env 2>/dev/null; set +a; \
-    curl -sf -H "Authorization: Bearer $$LITELLM_MASTER_KEY" http://127.0.0.1:4000/health
-```
+También: usar `set -a; source /root/.env 2>/dev/null; set +a` al inicio de cada recipe que necesite variables de entorno — exporta todas automáticamente.
 
 **Previene:** health check que reporta DOWN por LITELLM_MASTER_KEY vacío.
 
