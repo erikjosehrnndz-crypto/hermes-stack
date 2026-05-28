@@ -390,16 +390,7 @@ Con `\usepackage[spanish]{babel}`, el carácter `>` se vuelve activo y rompe `>=
 
 ### YAML no existe en listings — definir en preámbulo
 
-```latex
-\lstdefinelanguage{yaml}{
-  keywords={true,false,null,yes,no},
-  keywordstyle=\color{hermesblue}\bfseries,
-  sensitive=false,
-  comment=[l]{\#},
-  morestring=[b]',
-  morestring=[b]",
-}
-```
+`\lstdefinelanguage{yaml}{...}` con `keywords`, `comment=[l]{\#}`, `morestring=[b]'` y `morestring=[b]"`. No está en los paquetes de listings por defecto.
 
 ### Fuentes disponibles en este VPS
 
@@ -442,13 +433,12 @@ pdfinfo main.pdf | grep Pages              # verificar página count
 
 ### /plan con Ruflo disponible → proponer swarm desde el inicio
 
-Cuando la tarea involucra investigación multi-dominio + síntesis y los agentes Ruflo están disponibles, el plan inicial debe ser una arquitectura swarm (Researcher / Memory Specialist / Reviewer / Coder), no un enfoque secuencial con bash. Proponer el swarm directamente evita que el plan sea rechazado y requiera revisión.
+Si la tarea involucra investigación multi-dominio + síntesis, proponer swarm (Researcher / Memory Specialist / Reviewer / Coder) — no enfoque secuencial con bash.
 
-### /plan con "máximo esfuerzo" o "state of the art" → WebSearch ANTES de diseñar
+### /plan con "SOTA" / "máximo esfuerzo" → WebSearch ANTES de diseñar
 
-Cuando el usuario pide arquitectura de máxima calidad / "lo mejor que existe hoy" / "SOTA" / "máximo esfuerzo", lanzar agentes Explore con WebSearch + WebFetch para validar tecnologías recientes ANTES de proponer el diseño. El conocimiento de entrenamiento de Claude tiene cutoff fijo — librerías líderes hace 12 meses pueden estar superadas (ej: GraphRAG → LightRAG 6000× más eficiente; sentence-transformers → BGE-M3 multilingüe).
-**Previene:** primer diseño obsoleto que requiere re-trabajo completo.
-**Cómo aplicar:** trigger en frases "state of the art", "lo mejor", "máxima calidad", "máximo esfuerzo". Lanzar mínimo 2 Explore agents con WebSearch en paralelo antes de diseñar.
+Trigger: "state of the art", "lo mejor", "máxima calidad", "máximo esfuerzo". Lanzar ≥2 Explore agents con WebSearch antes de diseñar — el conocimiento de entrenamiento tiene cutoff fijo y librerías líderes cambian (GraphRAG → LightRAG, etc.).
+**Previene:** diseño obsoleto que requiere re-trabajo completo.
 
 ---
 
@@ -632,10 +622,7 @@ A partir de 2026-05-25, la barra de progreso **no se imprime en el chat**. Está
 
 ### Reglas de implementación de la barra (para no romperla)
 
-- **No usar `set -euo pipefail`** en `statusline.sh` ni en `progress_tick.sh` — causa salidas silenciosas en casos límite (glob sin matches, archivos ausentes). Usar `|| true` por línea donde aplique.
-- **Construir la barra con string slicing**, no con loops `seq`: `bar="${FILLED:0:$filled}${EMPTY:0:$empty}"`. Los loops son lentos y el statusline se llama en cada tool call.
-- **Detectar sub-agentes solo si hay archivo de progreso activo** — sin esta condición, los archivos de tareas de la sesión principal se cuentan como sub-agentes falsos.
-**Previene:** barra siempre en 0%, salida silenciosa del script, falsos positivos de sub-agentes.
+No usar `set -euo pipefail` (salidas silenciosas) · construir con string slicing no `seq` · detectar sub-agentes solo si hay archivo de progreso activo. **Previene:** barra en 0%, salida silenciosa, falsos positivos de sub-agentes.
 
 **Regla del chat:** durante el trabajo, el chat permanece silencioso. Excepciones:
 - Bloqueo real (error, decisión que solo el usuario puede tomar) → mensaje claro.
@@ -747,6 +734,27 @@ docker compose exec brain-worker python3 -c \
 RRF = 1/(rrf_k+rank); máximo ≈ 0.016 con rrf_k=60. Usar RRF solo para ordenar hits. El campo `score` devuelto al caller debe ser `max(component_scores.values())` (cosine sim ∈ [0,1]).
 
 **Previene:** acceptance tests con `score > 0.4` que fallan aunque el retrieval sea correcto.
+
+### Embedded DBs — acceso multi-proceso
+
+Antes de integrar una DB embedded en arquitectura API + worker, verificar soporte concurrente:
+- **Kuzu** ❌ single-proceso — lanza "Could not set lock" si dos procesos abren el mismo archivo
+- **SQLite WAL** ✅ multi-proceso — múltiples readers + 1 writer concurrentes
+- **LanceDB** ⚠️ writes single — lecturas concurrentes OK
+
+**Previene:** "Could not set lock on file" en workers cuando el proceso API ya tiene la DB abierta.
+
+### fastembed TextCrossEncoder — devuelve floats, no objetos
+
+`TextCrossEncoder.rerank(query, passages)` retorna `list[float]` (logits crudos) en el mismo orden que `passages`. Normalizar con sigmoid para [0,1]: `1.0 / (1.0 + math.exp(-score))`.
+
+**Previene:** `AttributeError: 'float' object has no attribute 'document_id'`.
+
+### try/except pass en workers — usar logging mínimo
+
+`except: pass` en workers oculta errores críticos (locks de DB, permisos) y hace el debugging imposible. Mínimo aceptable: `except Exception as e: logging.warning("op failed: %s", e)`.
+
+**Previene:** horas de debugging por errores silenciados (Kuzu lock era silenciado por `pass`).
 
 ### Servicios con imagen compartida — reconstruir TODOS al mismo tiempo
 
