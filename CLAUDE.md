@@ -450,28 +450,21 @@ pdfinfo main.pdf | grep Pages              # verificar página count
 
 ## Slash commands globales (`~/.claude/commands/`)
 
-### El directorio no existe en instalaciones limpias
+### Directorio + /evolve — notas operativas
 
-`~/.claude/commands/` debe crearse manualmente antes de escribir el primer slash command global:
-
-```bash
-mkdir -p ~/.claude/commands/
-```
-
-No existe por defecto — escribir un archivo en esa ruta sin crear el directorio primero falla silenciosamente o con error de path.
-
-### /evolve es efectivo para la PRÓXIMA sesión, no la actual
-
-Las reglas añadidas con `/evolve` al final de una sesión benefician la sesión siguiente. El valor de `/evolve` es **prospectivo**.
-
-### /evolve multi-sesión — transcripts disponibles
-
-Transcripts anteriores: `/root/.claude/projects/-root/<sessionId>.jsonl`
-Índice de sesiones: `/root/.claude/history.jsonl`
+- `~/.claude/commands/` no existe por defecto — `mkdir -p` antes del primer slash command global.
+- `/evolve` es **prospectivo**: reglas añadidas al cerrar sesión benefician la siguiente, no rescatan la actual.
+- Transcripts multi-sesión en `/root/.claude/projects/-root/<sessionId>.jsonl`, índice en `/root/.claude/history.jsonl`.
 
 ### /plan con Ruflo disponible → proponer swarm desde el inicio
 
 Cuando la tarea involucra investigación multi-dominio + síntesis y los agentes Ruflo están disponibles, el plan inicial debe ser una arquitectura swarm (Researcher / Memory Specialist / Reviewer / Coder), no un enfoque secuencial con bash. Proponer el swarm directamente evita que el plan sea rechazado y requiera revisión.
+
+### /plan con "máximo esfuerzo" o "state of the art" → WebSearch ANTES de diseñar
+
+Cuando el usuario pide arquitectura de máxima calidad / "lo mejor que existe hoy" / "SOTA" / "máximo esfuerzo", lanzar agentes Explore con WebSearch + WebFetch para validar tecnologías recientes ANTES de proponer el diseño. El conocimiento de entrenamiento de Claude tiene cutoff fijo — librerías líderes hace 12 meses pueden estar superadas (ej: GraphRAG → LightRAG 6000× más eficiente; sentence-transformers → BGE-M3 multilingüe).
+**Previene:** primer diseño obsoleto que requiere re-trabajo completo (sesión 2026-05-28 Brain: primera versión SQLite+sentence-transformers → tras research el SOTA real era LanceDB+Kuzu+Mem0+LightRAG+MCP HTTP Streamable).
+**Cómo aplicar:** trigger en frases del usuario "state of the art", "lo mejor", "máxima calidad", "máximo esfuerzo", "lo que exista hoy". Lanzar mínimo 2 Explore agents en paralelo con queries específicas a la fecha actual.
 
 ---
 
@@ -911,35 +904,9 @@ El startup checklist ya incluye `rm -f /tmp/claude_progress`.
 
 ---
 
-## Infraestructura externa — Digital Ocean / Hostinger
+## Infraestructura externa — referencias compactas
 
-### Hostinger DNS API
-
-URL correcta: `https://developers.hostinger.com/api/dns/v1/zones/<dominio>` (no `api.hostinger.com` — CF 530). PUT con `overwrite:false` añade sin borrar. Spec: `/openapi/openapi.json` en ese mismo host.
-
-### Wildcard DNS + subdominio nuevo → SSL con DNS-01
-
-Con `* → IP` en DNS, ACME cachea esa IP para subdominios nuevos — HTTP-01/TLS-ALPN-01 fallan. Usar acme.sh con hook DNS (`/root/.acme.sh/dnsapi/dns_hostinger.sh`):
-
-```bash
-export HOSTINGER_API_KEY='...'
-~/.acme.sh/acme.sh --issue --dns dns_hostinger -d nuevo.el80.space --dnssleep 15
-~/.acme.sh/acme.sh --install-cert -d nuevo.el80.space --fullchain-file /certs/fullchain.pem --key-file /certs/key.pem
-```
-
-### Digital Ocean — límites y doctl
-
-Cuentas nuevas: solo droplets `s-*` (max $56/mes). GPU/Optimized requiere contactar soporte. `doctl` no está preinstalado — instalar desde `github.com/digitalocean/doctl/releases` (tar.gz → `/usr/local/bin/`).
-
-Control Center: `104.236.74.0`, SSH key `/root/.ssh/do_droplet_key`, panel `https://control.el80.space`, compose en `/root/control-center/`.
-
-### Tailscale — estado offline y autenticación
-
-`tailscale status` puede mostrar `active; relay X; offline` — sesión conocida, nodo actualmente desconectado. Verificar con `tailscale ping <100.x.x.x>` antes de intentar SSH.
-
-"Logged out" ≠ no instalado (`which tailscale`). Para autenticar sin pre-generar auth key:
-
-```bash
-tailscale up --advertise-tags=tag:infra --accept-routes
-# imprime URL: https://login.tailscale.com/a/<token>
-```
+- **Hostinger DNS:** `https://developers.hostinger.com/api/dns/v1/zones/<dom>` (no `api.hostinger.com` → CF 530). PUT `overwrite:false` añade sin borrar.
+- **SSL subdominio con wildcard `*→IP`:** HTTP-01/TLS-ALPN-01 fallan por caché ACME. Usar `~/.acme.sh/acme.sh --issue --dns dns_hostinger -d nuevo.el80.space --dnssleep 15` (key en `HOSTINGER_API_KEY`).
+- **Digital Ocean:** cuentas nuevas solo `s-*` (max $56/mes). `doctl` no preinstalado — descargar de `github.com/digitalocean/doctl/releases`. Control Center: `104.236.74.0`, SSH key `/root/.ssh/do_droplet_key`, compose en `/root/control-center/`.
+- **Tailscale:** `status` mostrando `active; offline` = sesión conocida pero nodo desconectado — verificar con `tailscale ping` antes de SSH. `tailscale up --advertise-tags=tag:infra --accept-routes` imprime URL de auth sin pre-generar key.

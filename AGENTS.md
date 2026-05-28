@@ -1,249 +1,97 @@
-# AGENTS.md — Arquitectura Hermes Stack v2.0 + Integración Modular
+# AGENTS.md — Hermes Stack (entry compacto)
 
-> **Este archivo define las reglas de convivencia y el comportamiento del sistema integrado.**
-> **Ubicación:** `/root/AGENTS.md` (raíz del proyecto)
-> **Generado:** 2026-05-26 — Post-integración Hermes Workspace + advanced-skills + OverCR
+Reglas operativas del sistema integrado. Detalle completo en `CLAUDE.md`. Este archivo es el **entry rápido** para agentes nuevos o contexto recién comprimido.
 
 ---
 
-## 1. Visión General de la Arquitectura
+## 1. Módulos
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        HUMANO (Tú)                                │
-│                   Chat en Workspace UI (3002)                      │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              HERMES WORKSPACE (3002) — Frontend Único            │
-│  • Chat SSE • Terminal PTY • Memory Browser • Skills Manager     │
-│  • Swarm Mode: builder │ reviewer │ qa (definidos, pendiente backend)│
-│  • Conductor Mode (falta conexión a Hermes Gateway 8642)          │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                ┌───────────────┴───────────────┐
-                │                               │
-                ▼                               ▼
-┌──────────────────────────┐      ┌──────────────────────────────────┐
-│  HERMES AGENT v2.0      │      │  HERMES AGENT (Docker)          │
-│  (Yo — CLI/Local)       │      │  (aiohttp :8080)               │
-│  • delegate_task         │      │  • Pipeline de voz /api/voice  │
-│  • skills/agents-dir    │      │  • Conectado a LiteLLM :4000    │
-│  • smart-replan.yaml    │      │  • Redis cache :6379            │
-└───────────┬──────────────┘      └───────────┬────────────────────┘
-            │                                  │
-            ▼                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    OVERCR (Gobernanza L1-L6)                     │
-│  • Approval Gates • Packet Validation • Audit Trail               │
-│  • Sandbox v2.6 (14-command allowlist)                         │
-│  • Intercepta: git push, docker compose, curl externo, emails  │
-│  • Estado: Instalado, tests 30/31 PASS, demo verificado         │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    INFRAESTRUCTURA DOCKER                         │
-│  • hermes (:8080) • website (:3001) • litellm (:4000)          │
-│  • prometheus (:9090) • grafana (:3000) • redis (:6379)        │
-│  • whisper-stt (:9000) • filebrowser (:8095) • autoheal        │
-│  • Redes: backend │ monitoring                                   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 2. Módulos y Responsabilidades
-
-### 2.1 Hermes Agent v2.0 (Núcleo de Orquestación)
-- **Rol:** Agent principal que ejecuta tareas, coordina sub-agentes, gestiona memoria.
-- **Skills cargados:**
-  - `agents-dir-rules` → Inyección automática de `AGENTS.md` por directorio en `delegate_task`.
-  - `smart-replan` → Failure Auto-Replan (1 reintento con análisis de `exit_reason`).
-- **Reglas de ejecución:**
-  - Antes de `delegate_task`, leer `AGENTS.md` del directorio destino.
-  - Si `delegate_task` falla, analizar `exit_reason` y reintentar 1 vez con estrategia ajustada.
-  - No ejecutar acciones mutativas sin confirmación si OverCR está activo.
-
-### 2.2 Hermes Workspace (Frontend Unificado)
-- **Rol:** Interfaz web única para chat, archivos, memoria, terminal y Swarm.
-- **Estado:** Corriendo en `http://127.0.0.1:3002` (modo demo, sin backend conectado).
-- **Swarm Mode:** Roles `builder`, `reviewer`, `qa` definidos en su `AGENTS.md` interno.
-- **Limitación actual:** Espera Hermes Gateway en puerto `8642` (nuestro stack usa `8080` para voz).
-- **Acción futura:** Adaptar Workspace para conectar a `/process` en `8080` o instalar Hermes upstream.
-
-### 2.3 OverCR (Capa de Gobernanza)
-- **Rol:** Guardián de acciones externas y mutaciones del sistema.
-- **Validación L1-L6:**
-  - **L1-L3 (Lecturas):** Pasan sin aprobación.
-  - **L4-L6 (Escrituras/Externas):** Requieren aprobación explícita.
-- **Acciones que intercepta:**
-  - `git push` (repositorios remotos)
-  - `docker compose up/down/restart`
-  - `curl -X POST` a hosts no locales
-  - `send_message` (Telegram, Discord, email)
-  - Cualquier comando que modifique archivos fuera de `/tmp/`
-- **Estado:** Instalado en `/root/integrations/overcr/`, runtime verificado, tests 30/31 PASS.
-- **Integración futura:** Necesita webhook a Workspace para diálogos de aprobación visual.
-
-### 2.4 LiteLLM Router + Modelos
-- **Rol:** Proxy unificado para modelos LLM (Gemini, GPT, Claude vía OpenRouter).
-- **Endpoint:** `http://litellm:4000` (red `backend` de Docker).
-- **Modelo activo:** `openrouter/google/gemini-2.5-flash`.
-- **Métricas:** Prometheus scrapea `/metrics/` en puerto `9090`.
-
----
-
-## 3. Reglas de Convivencia de Módulos
-
-### 3.1 Jerarquía de Autoridad
-1. **Humano** → Aprobación final de acciones L4-L6.
-2. **OverCR** → Rechaza o aprueba acciones mutativas basado en L1-L6.
-3. **Hermes Agent (yo)** → Ejecuta tareas, respeta reglas de OverCR.
-4. **Workspace** → Presenta información, no tiene autoridad de ejecución.
-
-### 3.2 Flujo de Tarea con Validación
-```
-Humano → Workspace (input) → Hermes Agent (procesa)
-         ↓
-         → Lee AGENTS.md local (agents-dir-rules)
-         ↓
-         → delegate_task con context inyectado
-         ↓
-         → Si acción mutativa: consulta OverCR
-         ↓
-         → OverCR evalúa L1-L6 → Aprobación Humano (si L4+)
-         ↓
-         → Ejecución → Auto-replan si falla (smart-replan)
-```
-
-### 3.3 Reglas de Archivos y Directorios
-- **`/root/AGENTS.md`** (este archivo): Reglas globales del proyecto.
-- **`/root/<subdir>/AGENTS.md`**: Reglas específicas por directorio de trabajo.
-- **`/root/.hermes/skills/`**: Skills cargados por Hermes Agent (yo).
-- **`/root/hermes/skills/`**: Skills dentro del contenedor Docker `hermes-agent`.
-- **`/root/integrations/`**: Repos clonados de integración (no commitear a main).
-
-### 3.4 Reglas de Commits y Git
-- **Nunca commitear:** `.env`, `*.db`, `node_modules/`, `.next/`, `*.log`, `backups/`.
-- **`git add` siempre desde `/root`** — nunca desde subdirectorio.
-- **Push HTTPS:** Incrustar token en remote URL, restaurar URL limpia después.
-- **Push require aprobación OverCR L4+** (cuando esté integrado completamente).
-- **Una tarea activa por sesión** — registrar otras en `PENDIENTES.md`.
-
-### 3.5 Reglas de Auto-Reparación (Failure Auto-Replan)
-- Si `delegate_task` falla:
-  1. Leer `exit_reason` del sub-agente.
-  2. Clasificar: `timeout`, `file_not_found`, `permission_denied`, `command_fail`.
-  3. Ajustar: cambiar `workdir`, añadir `context`, simplificar comando.
-  4. **Reintentar 1 sola vez** (evitar bucle infinito).
-  5. Si falla de nuevo: reportar cadena `[Original] → [Retry] → [Final]`.
-- **Log de reparaciones:** `/root/integrations/auto_repair.log`
-
-### 3.6 Reglas de Swarm Mode (Futuro)
-- **Roles disponibles:** `builder` (código), `reviewer` (código/revisión), `qa` (pruebas).
-- **Builder:** Implementa, usa TDD (`test-driven-development` skill).
-- **Reviewer:** Gated reviews, usa `requesting-code-review` skill.
-- **QA:** Verifica comportamiento, usa `dogfood` skill.
-- **Orquestador:** Yo (Hermes Agent) ruteo tareas basado en complejidad.
-
----
-
-## 4. Estado de la Integración (2026-05-27)
-
-### Mapa de puertos completo
-
-| Servicio | Puerto host | Subdominio | Estado |
-|---|---|---|---|
-| hermes-agent (docker) | `127.0.0.1:8080` | `hermes.el80.space` | ✅ Healthy |
-| hermes-gateway (CLI) | `127.0.0.1:8642` | — (interno) | ✅ Running |
-| hermes-dashboard (CLI) | `127.0.0.1:9119` | `dashboard.el80.space` | ✅ Running |
-| hermes-workspace (docker) | `127.0.0.1:3002` | `workspace.el80.space` | ✅ Healthy |
-| litellm-router | `127.0.0.1:4000` | `litellm.el80.space` | ✅ Healthy |
-| 9router | `127.0.0.1:20128` | `router.el80.space` | ✅ Healthy |
-| grafana | `127.0.0.1:3000` | `grafana.el80.space` | ✅ Up |
-| hermes-website | `127.0.0.1:3001` | `docs.el80.space` | ✅ Healthy |
-| filebrowser | `127.0.0.1:8095` | — | ✅ Healthy |
-| prometheus | `127.0.0.1:9090` | — | ✅ Up |
-| whisper-stt | `127.0.0.1:9000` | — | ✅ Healthy |
-
-### Componentes integrados
-
-| Componente | Estado | Notas |
+| Componente | Puerto | Rol |
 |---|---|---|
-| Hermes Workspace | ✅ **Conectado** | `HERMES_API_URL=http://127.0.0.1:8642`, `network_mode: host` |
-| Hermes Gateway CLI | ✅ **Activo** | `hermes_cli.main gateway run --replace` en `:8642` |
-| Hermes Dashboard CLI | ✅ **Activo** | `hermes dashboard` en `:9119`, sessions/skills/memory/jobs |
-| advanced-skills | ✅ Integrado | `/root/.hermes/skills/agents-dir-rules/` |
-| smart-replan | ✅ Disponible | `/root/.hermes/personalities/` |
-| OverCR Gate (plugin) | ✅ **Activo** | `~/.hermes/plugins/overcr-gate/plugin.py`, intercepta L4-L6 |
-| 9router | ✅ **Restaurado** | 16 provider connections (Claude, Codex, GitHub, Gemini, etc.) |
-| Stack Docker | ✅ 13 servicios Up | `/root/docker-compose.yml` |
+| Hermes Agent (Docker) | `:8080` | Pipeline de voz `/api/voice`, conectado a LiteLLM, Redis cache |
+| Hermes Gateway (CLI) | `:8642` | `/v1/chat/completions`, `/api/sessions`, OverCR approval `/v1/runs/{id}/approval` |
+| Hermes Dashboard (CLI) | `:9119` | sessions / skills / memory / jobs |
+| Hermes Workspace | `:3002` | Frontend unificado: chat SSE, terminal PTY, memory browser, swarm |
+| Hermes Website | `:3001` | Next.js docs + bridge `/api/voice` |
+| LiteLLM Router | `:4000` | Proxy LLM → OpenRouter (gemini-2.5-flash default) |
+| 9router | `:20128` | 16 provider connections (Claude, Codex, GitHub, Gemini…) |
+| Whisper STT | `:9000` | Transcripción |
+| Grafana / Prometheus / Redis | `:3000` / `:9090` / `:6379` | Observabilidad + cache |
+| Filebrowser | `:8095` | Acceso archivos |
 
-### Workspace → Gateway connection
-```
-Workspace (:3002) → HTTP → hermes-gateway (:8642) → /v1/chat/completions
-                         → /api/sessions, /v1/models, /health
-                         → /v1/runs/{id}/approval (OverCR gate)
-Workspace (:3002) → HTTP → hermes-dashboard (:9119) → sessions/skills/memory
-```
+Redes: `backend` (servicios) · `monitoring` (métricas).
 
-### OverCR Gate (plugin.py)
-- Intercepta `pre_tool_call` en Hermes Agent CLI
+## 2. Skills + personalidades activos
+
+- `/root/.hermes/skills/agents-dir-rules/` — inyecta `AGENTS.md` del directorio destino antes de `delegate_task`
+- `/root/.hermes/personalities/smart-replan.yaml` — failure auto-replan, 1 reintento con `exit_reason` ajustado
+- `~/.hermes/plugins/overcr-gate/plugin.py` — intercepta `pre_tool_call` L4-L6
+
+## 3. Hard constraints
+
+**Autoridad:** Humano > OverCR > Hermes Agent > Workspace. Workspace nunca ejecuta sin pasar por Agent.
+
+**OverCR L4-L6 (requieren aprobación):**
 - L4: `git push`, `docker compose up -d`, `kubectl apply`, `crontab -e`
-- L5: `curl -X POST <external>`, `wget --post-data <external>`, `mail/sendmail`
+- L5: `curl -X POST` externo, `mail/sendmail`, webhooks
 - L6: escritura en `AGENTS.md`, `CLAUDE.md`, `soul.md`
-- Bloqueo → mensaje con instrucción de aprobar vía `workspace.el80.space` → ícono campana
 
-### Pendiente de completar
-1. **Hermes dashboard persistencia** — actualmente `nohup` manual; añadir a systemd o supervisord.
-2. **OverCR approval webhook** — integrar `/v1/runs/{id}/approval` con el botón de aprobación de Workspace.
-3. **Tokens OAuth** — los 9 tokens OAuth del backup expiraron (2026-05-23); reautenticar via `router.el80.space`.
+**Git (resumen — detalle en CLAUDE.md):**
+- Nunca commitear `.env`, `*.db`, `node_modules/`, `.next/`, `*.log`, `backups/`
+- `git add` siempre desde `/root` (no desde subdirectorio)
+- Push HTTPS con token incrustado, restaurar URL limpia después
+- `git push` requiere aprobación OverCR L4
 
----
+**Scope:**
+- ≤ 1 tarea activa por sesión — registrar el resto en `PENDIENTES.md`
+- Auto-replan: máximo 1 reintento, luego reportar cadena `[Original]→[Retry]→[Final]`
 
-## 5. Comandos de Verificación
+**Archivos:**
+- `/root/AGENTS.md` — reglas globales (este archivo)
+- `/root/<subdir>/AGENTS.md` — reglas locales por directorio
+- `/root/.hermes/skills/` — skills del Agent CLI · `/root/hermes/skills/` — skills dentro del contenedor Docker
+- `/root/integrations/` — repos clonados, no commitear a main
+
+## 4. Definition of Done (toda tarea)
+
+1. Implementación existe en código
+2. Verificación ejecutada (no "debería funcionar")
+3. Evidencia: commit hash o output en `PENDIENTES.json/.md` o `SESSION_HANDOFF.md`
+4. `docker compose ps` muestra todos los servicios Up
+
+## 5. Comandos críticos
 
 ```bash
-# Estado completo del stack
-cd /root && docker compose ps
+# Pipeline único
+make doctor                                              # 6 pasos: repo → docker → health → lint → harness → pendientes
+make check                                               # build + health + lint
 
-# Workspace
-curl -sf http://127.0.0.1:3002/ | head -1         # → <!DOCTYPE html>
-curl -sf http://127.0.0.1:8642/health              # → {"status":"ok","platform":"hermes-agent"}
-curl -sf http://127.0.0.1:9119/health | head -3    # → HTML del dashboard
+# Stack
+docker compose ps
+curl -sf http://127.0.0.1:8080/health                    # hermes
+curl -sf http://127.0.0.1:8642/health                    # gateway CLI
+curl -sf http://127.0.0.1:20128/api/health               # 9router
+source /root/.env && curl -sf -H "Authorization: Bearer $LITELLM_MASTER_KEY" http://127.0.0.1:4000/health
 
-# 9router
-curl -sf http://127.0.0.1:20128/api/health         # → {"ok":true}
-
-# OverCR gate
-python3 -c "
-import sys; sys.path.insert(0,'/root/.hermes/plugins/overcr-gate')
-from plugin import _classify_command
-print(_classify_command('git push origin main'))   # → ('L4', 'git push ...')
-print(_classify_command('ls /tmp'))                # → (None, None)
-"
-
-# Hermes health checks
-source /root/.env
-curl -sf -H "Authorization: Bearer $LITELLM_MASTER_KEY" http://127.0.0.1:4000/health
-curl -sf http://127.0.0.1:8080/health
-
-# Ver log de auto-reparación
-cat /root/integrations/auto_repair.log 2>/dev/null || echo "no log yet"
+# OverCR classifier (sanity)
+python3 -c "import sys; sys.path.insert(0,'/root/.hermes/plugins/overcr-gate'); from plugin import _classify_command; print(_classify_command('git push origin main'))"
 ```
 
+## 6. Pendientes activos / handoff
+
+Estado autoritativo en `/root/PENDIENTES.json`. Resumen visible en `/root/PENDIENTES.md`. Trabajo en curso entre sesiones en `/root/SESSION_HANDOFF.md`.
+
+Pendientes operativos conocidos:
+1. Hermes dashboard `:9119` — actualmente `nohup`, falta systemd/supervisord
+2. OverCR approval webhook → botón aprobación en Workspace
+3. 9 tokens OAuth expiraron 2026-05-23 — reautenticar via `router.el80.space`
+
+## 7. Notas de seguridad
+
+- OverCR L6 bloquea modificación de `AGENTS.md` / `CLAUDE.md` / `soul.md` sin aprobación triple.
+- Workspace en modo demo no tiene auth (`HERMES_ALLOW_INSECURE_REMOTE=1`) — activar `HERMES_PASSWORD` antes de exposición externa.
+- Redes Docker `backend` y `monitoring` aisladas; solo `filebrowser` y `grafana` exponen puertos en localhost.
+
 ---
 
-## 6. Notas de Seguridad
-
-- **OverCR L6:** Bloquea cualquier intento de modificar `AGENTS.md` o reglas de gobernanza sin aprobación triple.
-- **Workspace:** Modo demo actual no tiene auth (`HERMES_ALLOW_INSECURE_REMOTE=1`). Activar `HERMES_PASSWORD` antes de exposición externa.
-- **Docker:** Redes `backend` y `monitoring` aisladas. Solo `filebrowser` y `grafana` exponen puertos a localhost.
-
----
-
-*Documento generado automáticamente por Hermes Architect Agent.*
-*Integración ejecutada: 2026-05-26. Spike report: `/root/.hermes/plans/spike-report.md`.*
-*Log de auto-reparación: `/root/integrations/auto_repair.log`.*
+*Para detalle de cualquier sección → `CLAUDE.md`. Spike report integración: `/root/.hermes/plans/spike-report.md`.*
