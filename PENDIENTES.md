@@ -11,7 +11,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
 | hs-006 | infra | 🔵 mejora | ✅ done | Merge + push main c218fe2; CI/CD activado |
 | hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
-| hs-008 | brain | 🟢 nueva | phase-2-done | Brain Phase 2 done: LanceDB + multilingual-e5-large + BM25 + RRF hybrid. 32 wiki files ingested, acceptance test PASS (score=0.84). Arrancar Phase 3 (reranking + Kuzu graph). |
+| hs-008 | brain | 🟢 nueva | phase-3-done | Brain Phase 3 done: Jina v2 reranker + SQLite graph (32 nodos, 14 aristas) + memory layer. Arrancar Phase 4 (9router MCP integration). |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 

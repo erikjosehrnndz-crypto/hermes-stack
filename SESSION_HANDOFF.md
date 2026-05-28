@@ -1,103 +1,98 @@
 # SESSION_HANDOFF — 2026-05-28 → próxima sesión
 
 ## Objetivo actual
-**Brain Phase 3 — Reranker + Kuzu graph + Mem0 memory layer**.
+**Brain Phase 4 — 9router MCP integration + wiki expansion**.
 
-## Estado: Phase 2 (LanceDB hybrid retrieval) **completada y desplegada**. Phase 3 pendiente.
+## Estado: Phase 3 (Reranker + Graph + Memory) **completada y desplegada**. Phase 4 pendiente.
 
-Rama: `main` · Último commit Phase 2: `4dd10e2`
+Rama: `main` · Commits Phase 3: `6d30828` (3a) · `5fa9847` (3b) · `f2c29bc` (3c)
 
 ## Plan canónico
 **`/root/.claude/plans/quiero-que-cres-un-humming-journal.md`** — arquitectura completa de 6 fases. Contrato no opcional.
 
-## Completado Phase 2 (esta sesión)
-- [x] LanceDB 0.16 embedded: tablas `chunks` + `nodes`, schema pyarrow 1024-dim
-- [x] FastEmbed `intfloat/multilingual-e5-large` (ONNX CPU, 1024d, multilingual) — nota: BAAI/bge-m3 no disponible en esta versión de fastembed
-- [x] Chunker late-chunking: ~480 tokens soft cap, 64 overlap, split por bloques de párrafo
-- [x] `LanceStore`: delete_node (idempotente), upsert_chunks, upsert_node, ensure_fts_index (tantivy)
-- [x] `search_dense` (cosine sim), `search_bm25` (tantivy FTS + sigmoid), `search_hybrid` (RRF + max component score)
-- [x] `process_node` worker reescrito: chunk→embed→upsert idempotente, job_timeout=300
-- [x] `/api/v1/search` + MCP `brain_search`: hybrid/dense/bm25/keyword
-- [x] `scripts/sync_wiki.py`: 32 wikis ingested, node_id = `kn-wiki-{sha1[:8]}` (estable)
-- [x] Volumes `brain_lance:/data/lance` + `brain_models:/data/models`
-- [x] **Acceptance test PASS**: q="litellm router prometheus" → top-3 score=0.84 (Prometheus, LiteLLM Router)
+## Completado Phase 3 (esta sesión)
 
-## Estado del stack Phase 2
+### Phase 3a — Reranker (Jina v2 multilingual)
+- [x] `fastembed.rerank.cross_encoder.TextCrossEncoder` — `jinaai/jina-reranker-v2-base-multilingual`
+- [x] `brain/pipeline/rerank.py`: singleton, scores sigmoid-normalized a [0,1]
+- [x] `lance.search_hybrid(..., rerank=True)`: k*3 candidatos RRF → Jina → top-k
+- [x] API + MCP: campo `rerank: bool`, mode label `"hybrid+rerank"`
+- [x] Acceptance: score separación 3× mayor que hybrid puro
+
+### Phase 3b — Grafo de menciones (SQLite WAL)
+- [x] `brain/storage/graph.py`: KuzuGraph impl SQLite WAL — multi-proceso safe
+  - Tablas: nodes + edges; upsert_node/delete_node/upsert_mention/expand_1hop
+  - Nota: Kuzu descartado (single-proceso); SQLite WAL permite API+worker concurrentes
+- [x] `brain/pipeline/extract_mentions.py`: extractor `[[wikilink]]` (pipe/hash support)
+- [x] `process_node.py v3`: extrae menciones → graph tras lance upsert (best-effort)
+- [x] `lance.search_hybrid_graph()`: hybrid → expand 1-hop → merge scores dampened
+- [x] API mode=`"graph"` + MCP `rerank`+`graph`
+- [x] docker-compose: volumen `brain_graph:/data/graph`, BRAIN_GRAPH_PATH env var
+
+**Estado grafo:** 32 nodos / 14 aristas (32 wiki files procesadas)
+
+### Phase 3c — Memory layer
+- [x] LanceDB tabla `memories` (memory_id, user_id, text, vector, created_at, source)
+- [x] `lance.remember/forget/search_memories/count_memories`
+- [x] MCP tools: `brain_remember(text)`, `brain_forget(memory_id)`, `brain_search(include_memories=True)`
+- [x] API REST: POST /remember, DELETE /remember/{id}, GET /memories
+- [x] `brain_search` response incluye `memories: []` cuando hay contexto relevante (threshold=0.65)
+- [x] Acceptance: remember → search score=0.86 → forget → memories=0
+
+## Estado del stack Phase 3
 ```
 brain          Up (healthy)  127.0.0.1:8765→8765
 brain-worker   Up (healthy)  worker RQ escuchando
-LanceDB:       chunks=68, nodes=32, phase=2
+LanceDB:       chunks=68, nodes=32, memories=0 (vacío hasta que se usen)
+Graph:         32 nodos, 14 aristas
+Phase:         3
 ```
 
-## Pendiente / no bloqueado (Phase 3)
+## Pendiente / no bloqueado (Phase 4)
 
-### Phase 3a — Reranker (Jina v3)
-- Añadir `jinaai/jina-reranker-v2-base-multilingual` vía FastEmbed `Reranker`
-- Rerank top-k*3 dense → return top-k con scores más precisos
-- Actualizar `lance.py` → `search_hybrid()` acepta `rerank=True`
+Leer `/root/.claude/plans/quiero-que-cres-un-humming-journal.md` para el detalle de Phase 4+.
 
-### Phase 3b — Kuzu graph
-- Añadir `kuzu>=0.10.0` a requirements.txt
-- Volume `brain_graph:/data/graph`
-- Schema: nodos `Node(id, type, title)` + aristas `MENTIONS(from, to, weight)`
-- Extraer menciones `[[wikilink]]` del body al procesar cada nodo
-- `LanceStore.search_hybrid_graph()`: hits dense → expand por Kuzu (1-hop) → merge scores
+### Phase 4 — 9router MCP integration
+- Conectar el 9router (puerto 20128) como MCP gateway para brain
+- Configurar el cliente Claude Code para usar brain MCP via brain.el80.space
 
-### Phase 3c — Mem0 memory layer
-- `mem0ai>=0.1.0` con backend LanceDB (reusar volumen)
-- `brain_remember(text, user_id)` → MCP tool
-- `brain_forget(memory_id)` → MCP tool
-- Integrar en `brain_search()` si memories relevantes → anteponer al contexto
+### Phase 5 — Ingesta enriquecida
+- Crawl4ai para fuentes externas (papers, docs)
+- Procesado periódico via RQ scheduled jobs
 
-## Archivos clave Phase 2 (no tocar sin entender)
-- `/root/brain/brain/storage/lance.py` — LanceStore completo
-- `/root/brain/brain/pipeline/chunk.py` — chunker late-chunking
-- `/root/brain/brain/pipeline/embed.py` — FastEmbed singleton, `embed_texts` + `embed_query`
-- `/root/brain/brain/workers/jobs/process_node.py` — worker principal
-- `/root/brain/brain/api/search.py` — REST endpoint
-- `/root/brain/brain/mcp/tools.py` — MCP tools
+### Phase 6 — UI / chat interface
+- Widget de memoria en hermes-website (docs.el80.space)
+- Historial de búsquedas y memorias del usuario
 
-## Decisiones tomadas en Phase 2
-1. **Modelo**: `intfloat/multilingual-e5-large` en lugar de `BAAI/bge-m3` — bge-m3 no disponible en fastembed 0.4.x con esta build. E5-large es 1024d multilingüe, igual de bueno.
-2. **Score híbrido**: RRF para ranking, `max(component_scores.values())` como score devuelto — semánticamente significativo (cosine sim ∈ [0,1]).
-3. **32 archivos** (no 34) ingested — 2 archivos vacíos skipeados por `sync_wiki.py`.
+## Archivos clave Phase 3
+- `brain/brain/pipeline/rerank.py` — Jina v2 singleton
+- `brain/brain/pipeline/extract_mentions.py` — wikilink extractor
+- `brain/brain/storage/graph.py` — KuzuGraph (SQLite WAL impl)
+- `brain/brain/storage/lance.py` — LanceStore + memories table
+- `brain/brain/mcp/tools.py` — brain_capture/search/remember/forget
+- `brain/brain/api/search.py` — REST endpoints incl. /remember
+
+## Decisiones tomadas en Phase 3
+1. **Reranker**: `jinaai/jina-reranker-v2-base-multilingual` vía fastembed (ONNX CPU) — disponible en 0.8.0
+2. **Scores reranker**: sigmoid(logit) → [0,1] para consistencia con cosine sim
+3. **Graph DB**: SQLite WAL en lugar de Kuzu — Kuzu embedded es single-proceso; SQLite WAL soporta API+worker concurrentes
+4. **Memory storage**: LanceDB tabla `memories` en lugar de mem0ai — mem0ai requiere LLM para consolidar, sin soporte LanceDB nativo; esta impl es self-contained y sin coste extra por storage
 
 ## siguiente paso recomendado
 
 ```bash
 # 1. Startup
 git status && git log --oneline -5 && docker compose ps brain brain-worker
-rm -f /tmp/claude_progress
 curl -fsS http://127.0.0.1:8765/health | python3 -m json.tool
 
-# 2. Phase 3a — reranker
-pip install fastembed --upgrade   # verificar si Reranker disponible
-# Editar brain/brain/storage/lance.py → search_hybrid(..., rerank=True)
-# Editar brain/requirements.txt → añadir reranker dep si distinto
-# docker compose build brain brain-worker && docker compose up -d brain brain-worker
+# 2. Leer plan Phase 4
+cat /root/.claude/plans/quiero-que-cres-un-humming-journal.md | grep -A20 "Phase 4"
 
-# 3. Test reranker
+# 3. Test rápido Phase 3 para confirmar estado
 BRAIN_API_TOKEN=$(grep ^BRAIN_API_TOKEN /root/.env | cut -d= -f2)
 curl -fsS -X POST http://127.0.0.1:8765/api/v1/search \
   -H "Authorization: Bearer $BRAIN_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"q":"litellm router prometheus","k":5,"mode":"hybrid"}' \
+  -d '{"q":"litellm router prometheus","k":3,"mode":"hybrid","rerank":true}' \
   | python3 -m json.tool
-# Esperado: mismos top-3 con scores más diferenciados
-
-# 4. Phase 3b — Kuzu graph (si reranker funciona)
-# 5. Commit + actualizar SESSION_HANDOFF → Phase 4
-```
-
-## Cómo conectar Brain MCP desde Claude Code
-```json
-{
-  "mcpServers": {
-    "brain": {
-      "type": "http",
-      "url": "https://brain.el80.space/mcp/",
-      "headers": { "Authorization": "Bearer ${BRAIN_API_TOKEN}" }
-    }
-  }
-}
 ```
