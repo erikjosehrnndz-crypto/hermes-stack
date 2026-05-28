@@ -1,42 +1,47 @@
 {
-    email erikjosehernandez@gmail.com
+	email erikjosehernandez@gmail.com
 }
 
 # Configuración de subdominios para el80.space
 # Caddy gestionará los certificados SSL (HTTPS) automáticamente con Let's Encrypt
 
 hermes.el80.space {
-    reverse_proxy 127.0.0.1:8080
+	reverse_proxy 127.0.0.1:8080
 }
 
 litellm.el80.space {
-    reverse_proxy 127.0.0.1:4000
+	reverse_proxy 127.0.0.1:4000
 }
 
 grafana.el80.space {
-    reverse_proxy 127.0.0.1:3000
+	reverse_proxy 127.0.0.1:3000
 }
 
 docs.el80.space {
-    reverse_proxy 127.0.0.1:3001
+	reverse_proxy 127.0.0.1:3001
 }
 
 syncthing.el80.space {
-    reverse_proxy 127.0.0.1:8384
+	reverse_proxy 127.0.0.1:8384
+}
+
+# CouchDB backend de Obsidian Self-hosted LiveSync (vault móvil ↔ servidor)
+livesync.el80.space {
+	reverse_proxy 127.0.0.1:5984
+	encode gzip
 }
 
 router.el80.space {
-    reverse_proxy 127.0.0.1:20128
+	reverse_proxy 127.0.0.1:20128
 }
 
 # Endpoint de federación Prometheus — solo accesible con auth
 # Usado por el control center (Droplet DO) para agregar métricas
 metrics.el80.space {
-    basic_auth {
-        prometheus $2a$14$xS3qCTRrcbWclzwVeTwAB.1NiSdvZf91uEGcozHA2eeMnDJ4a6lq.
-    }
-    reverse_proxy /federate 127.0.0.1:9090
-    reverse_proxy /metrics/* 127.0.0.1:9090
-    respond /health 200
+	basic_auth {
+		prometheus $2a$14$xS3qCTRrcbWclzwVeTwAB.1NiSdvZf91uEGcozHA2eeMnDJ4a6lq.
+	}
+	reverse_proxy /federate 127.0.0.1:9090
+	reverse_proxy /metrics/* 127.0.0.1:9090
+	respond /health 200
 }
-

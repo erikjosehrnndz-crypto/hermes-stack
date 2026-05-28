@@ -574,6 +574,7 @@ Al añadir un servicio que llama a otro, copiar las env vars relevantes en docke
 | grafana | `127.0.0.1:3000` | `grafana.el80.space` |
 | hermes-website | `127.0.0.1:3001` | `docs.el80.space` |
 | filebrowser | `127.0.0.1:8095` | `files.el80.space` |
+| couchdb-obsidian | `127.0.0.1:5984` | `livesync.el80.space` |
 | whisper-stt | `127.0.0.1:9000` | — interno |
 | prometheus | `127.0.0.1:9090` | — interno |
 
@@ -618,15 +619,11 @@ El usuario paga por cada token de output. La regla para esta sesión y todas las
 
 **No mostrar el contenido completo de archivos editados** salvo petición explícita del usuario.
 
-### La barra de progreso vive en la status line del sistema, no en el chat
+### Barra de progreso y chat
 
-La barra **no se imprime en el chat** — vive en la `statusLine` via hook `PostToolUse` + `statusline.sh`. Iniciar: `echo "0|<N_pasos>|<task>|0|$(date +%s)" > /tmp/claude_progress`. Auto-incrementa, auto-limpia al 100%.
+Barra vive en `statusLine` via hook `PostToolUse` + `statusline.sh` (NO en chat). Iniciar: `echo "0|<N_pasos>|<task>|0|$(date +%s)" > /tmp/claude_progress`. Auto-incrementa, auto-limpia al 100%. Implementación: sin `set -euo pipefail`, string slicing no `seq`, detectar sub-agentes solo si hay archivo de progreso activo.
 
-### Reglas de implementación de la barra (para no romperla)
-
-No usar `set -euo pipefail` · construir con string slicing no `seq` · detectar sub-agentes solo si hay archivo de progreso activo. **Previene:** barra en 0%, salida silenciosa.
-
-**Regla del chat:** silencioso durante el trabajo. Excepciones: bloqueo real → mensaje claro · cierre de turno → UNA línea con commit hash · petición explícita → explicar.
+**Chat:** silencioso durante el trabajo. Excepciones: bloqueo real → mensaje claro · cierre de turno → UNA línea con commit hash · petición explícita → explicar.
 
 ---
 

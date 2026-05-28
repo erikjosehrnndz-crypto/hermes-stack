@@ -23,3 +23,6 @@ __pycache__/
 hermes/logs/*
 hermes/data/*
 hermes/tmp/*
+
+# CouchDB local.ini se auto-actualiza con UUID + hash de admin (secret)
+config/couchdb/local.ini

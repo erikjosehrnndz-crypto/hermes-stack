@@ -16,6 +16,7 @@ volumes:
   brain_lance:
   brain_models:
   brain_graph:
+  couchdb_data:
 
 services:
   # ============================================
@@ -407,3 +408,33 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # ============================================
+  # COUCHDB - Backend de Obsidian Self-hosted LiveSync
+  # Expuesto en livesync.el80.space via Caddy
+  # Sin esto, sync móvil bidireccional no funciona
+  # ============================================
+  couchdb-obsidian:
+    image: couchdb:3.3
+    container_name: couchdb-obsidian
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      COUCHDB_USER: obsidian
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./config/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
+    ports:
+      - "127.0.0.1:5984:5984"
+    networks:
+      - backend
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u obsidian:$$COUCHDB_PASSWORD http://127.0.0.1:5984/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

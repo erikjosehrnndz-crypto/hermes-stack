@@ -1,0 +1,27 @@
+; CouchDB local.ini — TEMPLATE versionable
+; El archivo real /root/config/couchdb/local.ini es gitignored porque CouchDB
+; lo modifica en runtime (añade uuid y hash de admin password).
+;
+; Si necesitas recrearlo: copiar este template a local.ini, chown 5984:5984,
+; levantar el contenedor — CouchDB añadirá uuid + admins automáticamente.
+;
+; Docs: https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/setup_own_server.md
+
+[couchdb]
+single_node = true
+max_document_size = 50000000
+
+[chttpd]
+require_valid_user = true
+max_http_request_size = 4294967296
+enable_cors = true
+
+[chttpd_auth]
+require_valid_user = true
+authentication_redirect = /_utils/session.html
+
+[cors]
+origins = app://obsidian.md,capacitor://localhost,http://localhost
+credentials = true
+methods = GET, PUT, POST, HEAD, DELETE
+headers = accept, authorization, content-type, origin, referer, x-csrf-token

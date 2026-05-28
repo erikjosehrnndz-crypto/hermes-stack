@@ -129,7 +129,7 @@ echo "   ✓ $DEST ($SIZE)"
 echo "→ [2/4] Volúmenes Docker..."
 
 # Docker Compose en /root genera volúmenes con prefijo "root_"
-for vol in root_brain_vault root_brain_lance root_brain_models root_brain_events root_brain_graph root_grafana_data root_litellm_data root_prometheus_data; do
+for vol in root_brain_vault root_brain_lance root_brain_models root_brain_events root_brain_graph root_grafana_data root_litellm_data root_prometheus_data root_couchdb_data; do
     if docker volume inspect "$vol" &>/dev/null; then
         VOL_DEST="$BACKUP_DIR/vol-${vol}-${TS}.tar.gz"
         docker run --rm \
