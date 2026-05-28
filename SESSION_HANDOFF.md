@@ -1,32 +1,35 @@
 # SESSION_HANDOFF — 2026-05-28 → próxima sesión
 
 ## Objetivo actual
-**Brain Phase 5 — Ingesta enriquecida**.
+**Brain Phase 6 — Memoria conversacional (Mem0)**.
 
-## Estado: Phase 4 (MCP Integration) **completada y verificada**. Phase 5 pendiente.
+## Estado: Phase 5 (Ingesta enriquecida) **completada y verificada**. Phase 6 pendiente.
 
-Rama: `main`
+Rama: `main` — commit `cef0166`
 
 ## Plan canónico
 **`/root/.claude/plans/quiero-que-cres-un-humming-journal.md`** — arquitectura completa de 6 fases.
 
-## Completado Phase 4 (esta sesión)
+## Completado Phase 5 (esta sesión)
 
-### Phase 4 — MCP Integration
-- [x] `~/.claude.json` → `mcpServers.brain` configurado con `https://brain.el80.space/mcp/` + Bearer token
-- [x] 9router `settings.mcpServers` → entry brain añadida (transport: http, 4 toolNames)
-- [x] Acceptance: `brain_search(rerank=True)` → score=0.80 ✅
-- [x] Acceptance: `brain_remember` → mem-8742f7f73ee9 ✅
-- [x] Acceptance: `brain_capture` → kn-d5d8f731 queued ✅
-- [x] 4 tools MCP disponibles en Claude Code: `mcp__brain__brain_{search,capture,remember,forget}`
+### Phase 5 — Ingesta enriquecida
+- [x] `POST /api/v1/ingest/url` — descarga URL + trafilatura, 202 en <100ms
+- [x] `brain_ingest_url` MCP tool (5to tool activo en Claude Code)
+- [x] `fetch_url` RQ job — httpx + trafilatura → vault → process_node
+- [x] `daily_summary` cron — 23:00 UTC, gemini-flash resume nodos del día → journal
+- [x] `vault_sync` cron — cada hora, git add -A + commit del vault
+- [x] RQ Scheduler habilitado (`with_scheduler=True`) + `cron.schedule_all()` al inicio
+- [x] `LITELLM_MASTER_KEY` añadida a brain-worker en docker-compose
+- [x] Acceptance: URL Anthropic docs ingestada → src-b6243b62, 72 chunks, 34 nodos ✅
 
-## Estado del stack Phase 4
+## Estado del stack Phase 5
 ```
 brain          Up (healthy)  127.0.0.1:8765→8765
-brain-worker   Up (healthy)  worker RQ escuchando
-LanceDB:       chunks=68+, nodes=32+, memories=1
-Graph:         32 nodos, 14 aristas
-MCP:           brain.el80.space/mcp/ → Claude Code conectado
+brain-worker   Up (healthy)  RQ + Scheduler activos
+LanceDB:       chunks=72, nodes=34, memories=1
+Graph:         34 nodos, 14 aristas
+MCP tools:     brain_capture, brain_search, brain_remember, brain_forget, brain_ingest_url
+Crons:         daily_summary → 23:00 UTC | vault_sync → cada hora
 ```
 
 ## siguiente paso recomendado
@@ -41,25 +44,23 @@ git remote set-url origin "https://github.com/erikjosehrnndz-crypto/hermes-stack
 
 # 2. Health check
 curl -fsS http://127.0.0.1:8765/health | python3 -m json.tool
-
-# 3. MCP tools activos automáticamente en Claude Code (mcp__brain__*)
 ```
 
-## Pendiente / no bloqueado (Phase 5)
+## Pendiente / no bloqueado (Phase 6)
 
-Leer `/root/.claude/plans/quiero-que-cres-un-humming-journal.md` para el detalle de Phase 5+.
+Leer `/root/.claude/plans/quiero-que-cres-un-humming-journal.md` para el detalle de Phase 6.
 
-### Phase 5 — Ingesta enriquecida
-- Crawl4ai para fuentes externas (papers, docs, URLs)
-- Procesado periódico via RQ scheduled jobs (cron)
-- `daily_summary` cron (23:00) — resume el día en journal
-- `vault_sync` cron (horario) — git commit + push automático del vault
+### Phase 6 — Memoria conversacional (Mem0)
+Del plan canónico:
+- Mem0 instalado, namespace por session_id
+- Hook en Hermes Agent: cada interacción → `brain_capture` con type=conversation
+- Plugin Claude Code → captura conversaciones al cerrar sesión
 
-### Phase 6 — UI / chat interface
-- Widget de memoria en hermes-website (docs.el80.space)
-- Historial de búsquedas y memorias del usuario
+### Decisiones pendientes para Phase 6
+1. **Mem0** — self-hosted en docker-compose (recomendado: soberanía total)
+2. Formato de captura de conversaciones Claude Code — ¿via hook PostToolUse? ¿SESSION_HANDOFF automático?
 
-## Decisiones tomadas en Phase 4
-1. **Claude Code MCP**: `~/.claude.json` con Bearer token hardcoded (archivo local, no en git, VPS seguro)
-2. **9router MCP**: registrado como `mcpServers` entry en settings — expone brain para clients Android vía 9router
-3. **FastMCP 3.3.1**: HTTP Streamable con trailing slash (`/mcp/`), no SSE legacy
+## Decisiones tomadas en Phase 5
+1. **trafilatura** como extractor de URLs (Python puro, sin browser, mejor calidad que html2text)
+2. **Auto-rescheduling**: cada cron job se reagenda al finalizar — no hay cron externo, solo RQ scheduler
+3. **daily_summary** usa gemini-flash via litellm interno (`http://litellm:4000`)

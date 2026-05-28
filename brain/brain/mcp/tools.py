@@ -1,4 +1,5 @@
-"""MCP tools — Phase 3: brain_capture, brain_search, brain_remember, brain_forget.
+"""MCP tools — Phase 3+6: brain_capture, brain_search, brain_remember, brain_forget,
+brain_ingest_url, brain_recall, brain_conversation.
 
 Las tools delegan en los mismos componentes (vault, lance, events, queue, graph) que la
 API REST. Una sola implementación, dos transportes.
@@ -208,3 +209,86 @@ def register_tools(mcp, state) -> None:
         hits = lance.search_hybrid(q, qvec, k=k, user_id=user_id, rerank=rerank)
         mode_label = "hybrid+rerank" if rerank else "hybrid"
         return {"q": q, "k": k, "mode": mode_label, "n": len(hits), "hits": hits, "memories": memories}
+
+    @mcp.tool
+    def brain_recall(topic: str, k: int = 6) -> dict:
+        """Recupera memorias y contexto relevante sobre un tema.
+
+        Busca en memorias persistentes + nodos del vault. Ideal para
+        "¿qué discutimos sobre X?" o "¿qué sé sobre Y?".
+        Devuelve memorias ordenadas por relevancia + nodos relacionados.
+        """
+        from brain.pipeline.embed import embed_query
+
+        lance = getattr(state, "lance", None)
+        if lance is None:
+            return {"topic": topic, "memories": [], "nodes": []}
+
+        user_id = state.settings.user_id
+        qvec = embed_query(topic, model_name=state.settings.embed_model)
+
+        memories = lance.search_memories(qvec, k=k, user_id=user_id, threshold=0.5)
+        nodes = lance.search_dense(qvec, k=min(k, 5), user_id=user_id)
+
+        return {
+            "topic": topic,
+            "memories": memories,
+            "nodes": nodes,
+            "total_memories": len(memories),
+            "total_nodes": len(nodes),
+        }
+
+    @mcp.tool
+    def brain_conversation(
+        text: str,
+        session_id: str | None = None,
+        source: str = "claude_code",
+        extract: bool = True,
+    ) -> dict:
+        """Ingesta un extracto de conversación en el vault y extrae hechos clave.
+
+        - Escribe el texto como memory node en el vault.
+        - Si extract=True, encola extracción de hechos vía LLM (gemini-flash).
+        - Los hechos extraídos quedan disponibles para brain_recall.
+
+        Úsalo al cerrar una sesión importante o capturar insights de una conversación.
+        """
+        node_id, path = state.vault.write_node(
+            node_type="memory",
+            user_id=state.settings.user_id,
+            body=text,
+            tags=["conversation", source],
+            source=source,
+            title=f"conv-{session_id or _now_iso()[:10]}",
+        )
+        state.events.append(
+            event_type="ingest_conversation",
+            user_id=state.settings.user_id,
+            source=source,
+            node_id=node_id,
+            payload={"session_id": session_id, "len": len(text), "extract": extract},
+        )
+        # Embed del nodo completo
+        state.queue.enqueue(
+            "brain.workers.jobs.process_node.process_node",
+            node_id,
+            job_timeout=300,
+            result_ttl=600,
+        )
+        job_extract = None
+        if extract:
+            job = state.queue.enqueue(
+                "brain.workers.jobs.extract_memories.extract_memories",
+                text,
+                node_id,
+                job_timeout=120,
+                result_ttl=600,
+            )
+            job_extract = job.id
+
+        return {
+            "id": node_id,
+            "status": "queued",
+            "path": str(path.relative_to(state.vault.root)),
+            "extract_job": job_extract,
+        }

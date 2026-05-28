@@ -1,3 +1,4 @@
+import asyncio
 import os
 from aiohttp import web
 from prometheus_client import (
@@ -55,6 +56,14 @@ async def process_handler(request):
         HTTP_REQUESTS_TOTAL.labels(
             method="POST", endpoint="/process", status="200"
         ).inc()
+
+        # Fire-and-forget: captura Q&A en Brain (no bloquea la respuesta)
+        response_text = result.get("text") or result.get("response") or ""
+        if response_text and len(text_input) > 10:
+            asyncio.ensure_future(
+                _capture_to_brain(request.app, text_input, response_text)
+            )
+
         return web.json_response(result)
 
     except Exception as e:
@@ -64,6 +73,27 @@ async def process_handler(request):
         return web.json_response(
             {"error": f"Fallo al procesar la tarea: {str(e)}"}, status=500
         )
+
+
+async def _capture_to_brain(app, query: str, response: str) -> None:
+    """Fire-and-forget: envía el par Q&A a Brain para memoria conversacional."""
+    brain_url = os.getenv("BRAIN_URL", "")
+    brain_token = os.getenv("BRAIN_API_TOKEN", "")
+    if not brain_url or not brain_token:
+        return
+    try:
+        session = app["agent"]._session
+        if session is None or session.closed:
+            return
+        text = f"Usuario: {query}\nHermes: {response}"
+        await session.post(
+            f"{brain_url}/api/v1/ingest/text",
+            json={"text": text, "type": "memory", "tags": ["hermes", "conversation"], "source": "hermes"},
+            headers={"Authorization": f"Bearer {brain_token}"},
+            timeout=5,
+        )
+    except Exception:
+        pass  # Best-effort, no bloquea
 
 
 async def on_startup(app):
