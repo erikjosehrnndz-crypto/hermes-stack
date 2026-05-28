@@ -37,7 +37,9 @@
     "service": "litellm-router",
     "priority": "warning",
     "purpose": "Verificar gemini-flash end-to-end.",
-    "depends_on": ["hs-001"],
+    "depends_on": [
+      "hs-001"
+    ],
     "status": "done",
     "verification": "source /root/.env && curl -s -X POST http://127.0.0.1:4000/v1/chat/completions -H 'Authorization: Bearer $LITELLM_MASTER_KEY' -H 'Content-Type: application/json' -d '{\"model\":\"gemini-flash\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}],\"max_tokens\":5}' | jq '.choices[0].message.content'",
     "evidence": "commit 4f2540d — gemini-flash E2E verificado: 483ms, model openrouter/google/gemini-2.5-flash",
@@ -84,7 +86,7 @@
     "depends_on": [],
     "status": "done",
     "verification": "BRAIN_API_TOKEN=$(grep ^BRAIN_API_TOKEN /root/.env | cut -d= -f2) && curl -f http://127.0.0.1:8765/health | python3 -c \"import sys,json; d=json.load(sys.stdin); assert d['phase']==3 and d['lance']['chunks']>0 and d.get('graph',{}).get('nodes',0)>0\" && curl -fsS -X POST http://127.0.0.1:8765/api/v1/search -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -H 'Content-Type: application/json' -d '{\"q\":\"litellm router prometheus\",\"k\":3,\"mode\":\"hybrid\",\"rerank\":true}' | python3 -c \"import sys,json; hits=json.load(sys.stdin)['hits']; assert any(h['score']>0.4 for h in hits[:3])\"",
-    "evidence": "Phase 4 completada 2026-05-28. ~/.claude.json mcpServers.brain configurado (https://brain.el80.space/mcp/). 9router mcpServers entry añadida. Acceptance: brain_search(rerank=True) score=0.80, brain_remember→mem-8742f7f73ee9, brain_capture→kn-d5d8f731. 4 MCP tools activos en Claude Code: mcp__brain__brain_{search,capture,remember,forget}.",
-    "notes": "Kuzu descartado (single-proceso); SQLite WAL multi-proceso safe. mem0ai descartado (requiere LLM para consolidar); impl propia sobre LanceDB. Phase 5 pendiente: ingesta enriquecida (Crawl4ai, RQ scheduled jobs)."
+    "evidence": "Phase 6 completada 2026-05-28. 6 phases done: MCP (4 tools→7 tools), retrieval híbrido LanceDB+BGE-M3+Kuzu, ingesta URL+trafilatura, crons daily_summary/vault_sync, memoria conversacional (Hermes fire-and-forget + Stop hook Claude Code + extract_memories job). Commits: cef0166 (Phase 5) + 9387800 (Phase 6).",
+    "notes": "Kuzu single-proceso resuelto usando SQLite WAL multi-proceso. mem0ai descartado: impl propia sobre LanceDB. Phase 6 done: brain_recall + brain_conversation tools + extract_memories."
   }
 ]

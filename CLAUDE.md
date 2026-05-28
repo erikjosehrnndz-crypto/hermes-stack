@@ -547,6 +547,12 @@ test: ["CMD", "wget", "--spider", "http://127.0.0.1:3000/api/health"]  # ✓
 
 **Previene:** healthcheck always-failing que oculta el estado real del contenedor.
 
+### Env vars entre servicios dependientes — copiar del servicio fuente
+
+Al añadir un servicio que llama a otro, copiar las env vars relevantes en docker-compose.yml. No asumir disponibilidad por red compartida.
+
+**Previene:** `KeyError: 'LITELLM_MASTER_KEY'` en cron jobs de brain-worker que llaman a litellm.
+
 ---
 
 ## Stack de producción — referencia rápida
@@ -755,31 +761,19 @@ Antes de integrar una DB embedded en arquitectura API + worker, verificar soport
 
 ### FastMCP 3.x — trailing slash obligatorio en URL del cliente
 
-FastMCP 3.x redirige `/mcp` → `/mcp/` (307). Configurar siempre con trailing slash en `~/.claude.json` y en 9router:
+FastMCP 3.x redirige `/mcp` → `/mcp/` (307). Usar siempre `"url": "https://brain.el80.space/mcp/"` (con slash) en `~/.claude.json` y 9router.
 
-```json
-"url": "https://brain.el80.space/mcp/"
-```
-
-**Previene:** loop de redirección o fallo silencioso en clientes que no siguen redirects automáticamente.
+**Previene:** loop de redirección o fallo silencioso.
 
 ### Claude Code — MCP en `~/.claude.json`, no en archivo separado
 
-La key `mcpServers` vive en `~/.claude.json`. No existe `mcp.json` independiente. Formato HTTP Streamable:
-
-```json
-"mcpServers": { "brain": { "type": "http", "url": "https://brain.el80.space/mcp/", "headers": { "Authorization": "Bearer TOKEN" } } }
-```
-
-Los tools aparecen como `mcp__<server>__<tool>` en la lista de deferred tools al inicio de sesión.
+`mcpServers` vive en `~/.claude.json` (no existe `mcp.json` separado). Formato HTTP Streamable: `{"type":"http","url":"https://brain.el80.space/mcp/","headers":{"Authorization":"Bearer TOKEN"}}`. Tools aparecen como `mcp__<server>__<tool>`.
 
 ### 9router MCP — stdio vs. HTTP remoto son mecanismos distintos
 
-- **Plugins stdio:** `/api/mcp/[plugin]/sse` ejecuta `npx`/`python3` local. No proxia HTTP.
-- **HTTP remoto:** `PATCH /api/settings {"mcpServers":[{name,url,transport:"http"}]}`.
-- **Auth:** `POST /api/auth/login {"password":"..."}` → cookie `auth_token` (header `set-cookie`).
+Plugins stdio: `/api/mcp/[plugin]/sse` (ejecuta npx/python3 local). HTTP remoto: `PATCH /api/settings {"mcpServers":[{name,url,transport:"http"}]}`. Auth: `POST /api/auth/login` → cookie.
 
-**Previene:** usar la ruta SSE de 9router para proxiar brain (solo funciona con stdio).
+**Previene:** usar ruta SSE de 9router para proxiar HTTP remoto (son mecanismos distintos).
 
 ---
 

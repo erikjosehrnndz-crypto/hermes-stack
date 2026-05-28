@@ -11,7 +11,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
 | hs-006 | infra | 🔵 mejora | ✅ done | Merge + push main c218fe2; CI/CD activado |
 | hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
-| hs-008 | brain | 🟢 nueva | phase-5-done | Brain Phase 5 done: /ingest/url + fetch_url job + daily_summary cron (23:00 UTC) + vault_sync cron (cada hora) + brain_ingest_url MCP tool. Siguiente: Phase 6 (Mem0 conversacional). |
+| hs-008 | brain | 🟢 nueva | ✅ done | Brain Phase 6 done: 7 MCP tools, crons, memoria conversacional (Hermes + Claude Code). Commits cef0166 + 9387800. |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
@@ -55,4 +55,4 @@ Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
 ---
 
-*Actualizado: 2026-05-28 (Phase 4 done) · Estado formal: `/root/PENDIENTES.json`*
+*Actualizado: 2026-05-28 (Phase 6 done — Brain Stack completo) · Estado formal: `/root/PENDIENTES.json`*
