@@ -17,6 +17,7 @@ class SearchIn(BaseModel):
     q: str = Field(min_length=1, max_length=512)
     k: int = Field(default=5, ge=1, le=50)
     mode: Literal["hybrid", "dense", "bm25", "keyword"] = "hybrid"
+    rerank: bool = False
 
 
 @router.post("/search")
@@ -49,5 +50,6 @@ async def search(payload: SearchIn, request: Request) -> dict:
         return {"q": payload.q, "mode": "dense", "k": payload.k, "n": len(hits), "hits": hits}
 
     # hybrid (default)
-    hits = lance.search_hybrid(payload.q, qvec, k=payload.k, user_id=user_id)
-    return {"q": payload.q, "mode": "hybrid", "k": payload.k, "n": len(hits), "hits": hits}
+    hits = lance.search_hybrid(payload.q, qvec, k=payload.k, user_id=user_id, rerank=payload.rerank)
+    mode_label = "hybrid+rerank" if payload.rerank else "hybrid"
+    return {"q": payload.q, "mode": mode_label, "k": payload.k, "n": len(hits), "hits": hits}

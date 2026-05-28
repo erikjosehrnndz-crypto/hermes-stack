@@ -169,10 +169,15 @@ class LanceStore:
         k: int = 10,
         rrf_k: int = 60,
         user_id: str | None = None,
+        rerank: bool = False,
     ) -> list[dict]:
-        """Fusión RRF de dense + BM25. Devuelve top-k deduplicado por chunk_id."""
-        dense = self.search_dense(query_vec, k=max(k * 3, 20), user_id=user_id)
-        bm25 = self.search_bm25(query, k=max(k * 3, 20), user_id=user_id)
+        """Fusión RRF de dense + BM25, con reranking opcional (Jina v2 multilingual).
+
+        Con rerank=True: candidatos = k*3 → RRF → Jina cross-encoder → top-k.
+        """
+        fetch_k = max(k * 3, 20)
+        dense = self.search_dense(query_vec, k=fetch_k, user_id=user_id)
+        bm25 = self.search_bm25(query, k=fetch_k, user_id=user_id)
 
         fused: dict[str, dict] = {}
 
@@ -202,7 +207,19 @@ class LanceStore:
             h.pop("rrf")
             h["score"] = round(max(h["component_scores"].values()), 4)
             h["source"] = "+".join(h.pop("sources"))
-        return out[:k]
+
+        candidates = out  # ya ordenados por RRF
+
+        if rerank:
+            from brain.pipeline.rerank import rerank as _rerank
+
+            candidates = _rerank(query, candidates, top_k=k)
+            for h in candidates:
+                # Sustituir score por rerank_score para que el caller reciba un valor semánticamente coherente
+                h["score"] = round(h.pop("rerank_score"), 4)
+            return candidates
+
+        return candidates[:k]
 
     # ----- Utilidades --------------------------------------------------
 

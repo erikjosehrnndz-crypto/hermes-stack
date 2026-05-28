@@ -62,14 +62,18 @@ def register_tools(mcp, state) -> None:
         q: str,
         k: int = 5,
         mode: Literal["hybrid", "dense", "bm25", "keyword"] = "hybrid",
+        rerank: bool = False,
     ) -> dict:
-        """Búsqueda Phase 2: hybrid RRF (dense BGE-M3 + BM25) sobre LanceDB.
+        """Búsqueda Phase 3: hybrid RRF (dense + BM25) + reranking opcional (Jina v2 multilingual).
 
         Modos:
-          - hybrid (default): RRF de dense + BM25.
-          - dense:  solo BGE-M3 (cosine sim).
+          - hybrid (default): RRF de dense + BM25, opcionalmente rerankeado.
+          - dense:  solo embedding cosine sim.
           - bm25:   solo lexical (tantivy FTS).
-          - keyword: fallback Phase 1 sobre nombres de archivo del vault.
+          - keyword: fallback sobre nombres de archivo del vault.
+
+        rerank=True: aplica Jina jina-reranker-v2-base-multilingual sobre los candidatos
+                     antes de devolver top-k. Más preciso, ~200ms extra.
         """
         lance = getattr(state, "lance", None)
         if mode == "keyword" or lance is None:
@@ -81,7 +85,6 @@ def register_tools(mcp, state) -> None:
             hits = lance.search_bm25(q, k=k, user_id=user_id)
             return {"q": q, "k": k, "mode": "bm25", "n": len(hits), "hits": hits}
 
-        # dense / hybrid requieren embedding de la query
         from brain.pipeline.embed import embed_query
 
         qvec = embed_query(q, model_name=state.settings.embed_model)
@@ -89,5 +92,6 @@ def register_tools(mcp, state) -> None:
             hits = lance.search_dense(qvec, k=k, user_id=user_id)
             return {"q": q, "k": k, "mode": "dense", "n": len(hits), "hits": hits}
 
-        hits = lance.search_hybrid(q, qvec, k=k, user_id=user_id)
-        return {"q": q, "k": k, "mode": "hybrid", "n": len(hits), "hits": hits}
+        hits = lance.search_hybrid(q, qvec, k=k, user_id=user_id, rerank=rerank)
+        mode_label = "hybrid+rerank" if rerank else "hybrid"
+        return {"q": q, "k": k, "mode": mode_label, "n": len(hits), "hits": hits}
