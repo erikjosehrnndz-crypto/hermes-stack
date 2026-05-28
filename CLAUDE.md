@@ -614,22 +614,13 @@ El usuario paga por cada token de output. La regla para esta sesión y todas las
 
 ### La barra de progreso vive en la status line del sistema, no en el chat
 
-A partir de 2026-05-25, la barra de progreso **no se imprime en el chat**. Está integrada en la `statusLine` de Claude Code y se actualiza en vivo con cada tool call mediante un hook `PostToolUse`. Mostrar barras ASCII en el chat duplica el coste sin valor — la status line ya las renderiza.
-
-**Infraestructura instalada:** `statusline.sh` (lee `/tmp/claude_progress`, emite barra ANSI+ETA), `hooks/progress_tick.sh` (PostToolUse, auto-incrementa), `settings.json` (registra ambos).
-
-**Iniciar tarea:** `echo "0|<N_pasos>|<task>|0|$(date +%s)" > /tmp/claude_progress` — el hook incrementa automáticamente. Auto-inicializa con total=40 si no existe. Auto-limpia al llegar al 100%.
+La barra **no se imprime en el chat** — vive en la `statusLine` via hook `PostToolUse` + `statusline.sh`. Iniciar: `echo "0|<N_pasos>|<task>|0|$(date +%s)" > /tmp/claude_progress`. Auto-incrementa, auto-limpia al 100%.
 
 ### Reglas de implementación de la barra (para no romperla)
 
-No usar `set -euo pipefail` (salidas silenciosas) · construir con string slicing no `seq` · detectar sub-agentes solo si hay archivo de progreso activo. **Previene:** barra en 0%, salida silenciosa, falsos positivos de sub-agentes.
+No usar `set -euo pipefail` · construir con string slicing no `seq` · detectar sub-agentes solo si hay archivo de progreso activo. **Previene:** barra en 0%, salida silenciosa.
 
-**Regla del chat:** durante el trabajo, el chat permanece silencioso. Excepciones:
-- Bloqueo real (error, decisión que solo el usuario puede tomar) → mensaje claro.
-- Cierre de turno → UNA línea final con commit hash o artefacto. Nada más.
-- Petición explícita del usuario ("qué hiciste", "muéstrame") → explicar.
-
-Previene: gasto de tokens en narración redundante.
+**Regla del chat:** silencioso durante el trabajo. Excepciones: bloqueo real → mensaje claro · cierre de turno → UNA línea con commit hash · petición explícita → explicar.
 
 ---
 
@@ -762,6 +753,34 @@ Antes de integrar una DB embedded en arquitectura API + worker, verificar soport
 
 **Previene:** worker crasheando con error ya corregido mientras brain funciona.
 
+### FastMCP 3.x — trailing slash obligatorio en URL del cliente
+
+FastMCP 3.x redirige `/mcp` → `/mcp/` (307). Configurar siempre con trailing slash en `~/.claude.json` y en 9router:
+
+```json
+"url": "https://brain.el80.space/mcp/"
+```
+
+**Previene:** loop de redirección o fallo silencioso en clientes que no siguen redirects automáticamente.
+
+### Claude Code — MCP en `~/.claude.json`, no en archivo separado
+
+La key `mcpServers` vive en `~/.claude.json`. No existe `mcp.json` independiente. Formato HTTP Streamable:
+
+```json
+"mcpServers": { "brain": { "type": "http", "url": "https://brain.el80.space/mcp/", "headers": { "Authorization": "Bearer TOKEN" } } }
+```
+
+Los tools aparecen como `mcp__<server>__<tool>` en la lista de deferred tools al inicio de sesión.
+
+### 9router MCP — stdio vs. HTTP remoto son mecanismos distintos
+
+- **Plugins stdio:** `/api/mcp/[plugin]/sse` ejecuta `npx`/`python3` local. No proxia HTTP.
+- **HTTP remoto:** `PATCH /api/settings {"mcpServers":[{name,url,transport:"http"}]}`.
+- **Auth:** `POST /api/auth/login {"password":"..."}` → cookie `auth_token` (header `set-cookie`).
+
+**Previene:** usar la ruta SSE de 9router para proxiar brain (solo funciona con stdio).
+
 ---
 
 ## Next.js — API Routes con fetch interno a Docker
@@ -830,17 +849,11 @@ El comando `docker compose ps` muestra el estado como `Up X days (healthy)`, no 
 
 ### `make doctor` — pipeline principal único
 
-Para cualquier duda sobre el estado del stack, ejecutar UN solo comando:
-
 ```bash
-make doctor
+make doctor   # 6 pasos: repo → Docker → health → lint → harness → pendientes
 ```
 
-Corre los 6 pasos en orden: repositorio → servicios Docker → health → calidad de código → harness → tareas pendientes. Output con emojis: ✅ OK, ❌ problema, ⚠️ advertencia.
-
-**Regla:** cuando un usuario no-programador pregunta "qué pasa con el stack", ejecutar `make doctor` primero y explicar el output en lenguaje simple.
-
-Skill alternativo: `/pipeline` — hace lo mismo pero con explicaciones en lenguaje no técnico y puede actualizar el Makefile si detecta nuevos servicios o scripts.
+Output: ✅ OK / ❌ problema / ⚠️ advertencia. Skill alternativo: `/pipeline` (explicaciones no-técnicas).
 
 ### Makefile — `|| true` en condiciones de archivo
 
