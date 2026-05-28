@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     vault_path: str = "/data/vault"
     events_path: str = "/data/events"
     lance_path: str = "/data/lance"
+    graph_path: str = "/data/graph/brain.db"
     redis_url: str = "redis://redis:6379/2"
     user_id: str = "erik"
     git_remote: str | None = None

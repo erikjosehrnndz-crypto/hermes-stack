@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1", dependencies=[Depends(require_bearer)])
 class SearchIn(BaseModel):
     q: str = Field(min_length=1, max_length=512)
     k: int = Field(default=5, ge=1, le=50)
-    mode: Literal["hybrid", "dense", "bm25", "keyword"] = "hybrid"
+    mode: Literal["hybrid", "dense", "bm25", "keyword", "graph"] = "hybrid"
     rerank: bool = False
 
 
@@ -48,6 +48,15 @@ async def search(payload: SearchIn, request: Request) -> dict:
     if payload.mode == "dense":
         hits = lance.search_dense(qvec, k=payload.k, user_id=user_id)
         return {"q": payload.q, "mode": "dense", "k": payload.k, "n": len(hits), "hits": hits}
+
+    # hybrid con expansión graph (si mode="graph")
+    if payload.mode == "graph":
+        graph = getattr(state, "graph", None)
+        hits = lance.search_hybrid_graph(
+            payload.q, qvec, k=payload.k, user_id=user_id, rerank=payload.rerank, graph=graph
+        )
+        mode_label = "graph+rerank" if payload.rerank else "graph"
+        return {"q": payload.q, "mode": mode_label, "k": payload.k, "n": len(hits), "hits": hits}
 
     # hybrid (default)
     hits = lance.search_hybrid(payload.q, qvec, k=payload.k, user_id=user_id, rerank=payload.rerank)

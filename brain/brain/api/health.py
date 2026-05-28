@@ -46,6 +46,18 @@ async def health(request: Request) -> JSONResponse:
             "nodes": lance_nodes,
             "error": lance_err,
         },
-        "phase": 2,
+        "phase": 3,
     }
+
+    graph = getattr(state, "graph", None)
+    if graph is not None:
+        try:
+            body["graph"] = {
+                "ok": True,
+                "nodes": graph.count_nodes(),
+                "edges": graph.count_edges(),
+            }
+        except Exception as exc:
+            body["graph"] = {"ok": False, "error": str(exc)}
+
     return JSONResponse(body, status_code=200 if status == "ok" else 503)

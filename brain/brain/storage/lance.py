@@ -221,6 +221,84 @@ class LanceStore:
 
         return candidates[:k]
 
+    def search_hybrid_graph(
+        self,
+        query: str,
+        query_vec,
+        *,
+        k: int = 10,
+        rrf_k: int = 60,
+        user_id: str | None = None,
+        rerank: bool = False,
+        graph=None,
+    ) -> list[dict]:
+        """Hybrid + expansión 1-hop Kuzu.
+
+        Si graph es None, delega a search_hybrid sin expansión.
+        """
+        if graph is None:
+            return self.search_hybrid(
+                query, query_vec, k=k, rrf_k=rrf_k, user_id=user_id, rerank=rerank
+            )
+
+        fetch_k = max(k * 2, 15)
+        initial = self.search_hybrid(
+            query, query_vec, k=fetch_k, rrf_k=rrf_k, user_id=user_id, rerank=False
+        )
+
+        if not initial:
+            return []
+
+        top_node_ids = list(dict.fromkeys(h["id"] for h in initial[:k] if h.get("id")))
+        initial_ids = {h["id"] for h in initial if h.get("id")}
+
+        try:
+            neighbors = graph.expand_1hop(top_node_ids)
+        except Exception:
+            neighbors = []
+
+        new_neighbors = [(nid, w) for nid, w in neighbors if nid not in initial_ids]
+
+        expanded: list[dict] = []
+        top_score = initial[0]["score"] if initial else 1.0
+        qvec_list = query_vec.tolist() if hasattr(query_vec, "tolist") else list(query_vec)
+
+        for nid, edge_weight in new_neighbors:
+            try:
+                nid_safe = nid.replace("'", "''")
+                rows = (
+                    self.chunks
+                    .search(qvec_list)
+                    .where(f"node_id = '{nid_safe}'", prefilter=True)
+                    .limit(1)
+                    .to_list()
+                )
+                if rows:
+                    dist = float(rows[0].get("_distance", 0.0))
+                    sim = max(0.0, 1.0 - dist / 2.0)
+                    score = round(sim * edge_weight * 0.7, 4)
+                    expanded.append(self._row_to_hit(rows[0], score=score, source="graph"))
+            except Exception:
+                pass
+
+        # Merge: initial top-k + graph-expanded, dedup by chunk_id
+        seen: dict[str, dict] = {}
+        for h in list(initial[:k]) + expanded:
+            cid = h.get("chunk_id") or f"{h.get('id')}::{h.get('position')}"
+            if cid not in seen or h["score"] > seen[cid]["score"]:
+                seen[cid] = h
+
+        out = sorted(seen.values(), key=lambda x: x["score"], reverse=True)[:k]
+
+        if rerank:
+            from brain.pipeline.rerank import rerank as _rerank
+
+            out = _rerank(query, out, top_k=k)
+            for h in out:
+                h["score"] = round(h.pop("rerank_score"), 4)
+
+        return out
+
     # ----- Utilidades --------------------------------------------------
 
     def count_chunks(self) -> int:

@@ -16,8 +16,10 @@ import frontmatter
 
 from brain.pipeline.chunk import chunk_text
 from brain.pipeline.embed import embed_texts, embed_dim
+from brain.pipeline.extract_mentions import extract_wikilinks
 from brain.settings import get_settings
 from brain.storage.events import EventLog
+from brain.storage.graph import KuzuGraph
 from brain.storage.lance import LanceStore
 from brain.storage.vault import Vault
 
@@ -157,13 +159,51 @@ def process_node(node_id: str) -> dict:
     store.upsert_node(node_row)
     store.ensure_fts_index()
 
+    # Phase 3b: actualizar grafo de menciones
+    n_mentions = 0
+    try:
+        graph = KuzuGraph(settings.graph_path)
+        graph.delete_node(node_id)
+        graph.upsert_node(node_id, node_type, title or node_id)
+
+        wikilinks = extract_wikilinks(body)
+        if wikilinks:
+            # Construir índice title → node_id desde la tabla nodes de LanceDB
+            nodes_arrow = store.nodes.to_arrow()
+            nodes_dict = nodes_arrow.to_pydict()
+            title_to_nid: dict[str, str] = {
+                (t.lower() if t else ""): nid
+                for t, nid in zip(nodes_dict.get("title", []), nodes_dict.get("node_id", []))
+                if t
+            }
+            for link in wikilinks:
+                target_nid = title_to_nid.get(link.lower())
+                if target_nid and target_nid != node_id:
+                    # Asegurar que el nodo destino existe en el grafo
+                    target_title = link
+                    target_type = "knowledge"
+                    for t, nid, nt in zip(
+                        nodes_dict.get("title", []),
+                        nodes_dict.get("node_id", []),
+                        nodes_dict.get("node_type", []),
+                    ):
+                        if nid == target_nid:
+                            target_title = t or link
+                            target_type = nt or "knowledge"
+                            break
+                    graph.upsert_node(target_nid, target_type, target_title)
+                    graph.upsert_mention(node_id, target_nid, weight=1.0)
+                    n_mentions += 1
+    except Exception:
+        pass  # Grafo es best-effort; no bloquea el pipeline principal
+
     ms = int((time.perf_counter() - t0) * 1000)
     events.append(
         event_type="process_done",
         user_id=settings.user_id,
         source="worker",
         node_id=node_id,
-        provenance_rule="brain.workers.process_node.v2",
-        payload={"n_chunks": len(chunks), "dim": dim, "ms": ms, "title": bool(title)},
+        provenance_rule="brain.workers.process_node.v3",
+        payload={"n_chunks": len(chunks), "dim": dim, "ms": ms, "title": bool(title), "n_mentions": n_mentions},
     )
-    return {"node_id": node_id, "status": "ok", "n_chunks": len(chunks), "dim": dim, "ms": ms}
+    return {"node_id": node_id, "status": "ok", "n_chunks": len(chunks), "dim": dim, "ms": ms, "n_mentions": n_mentions}

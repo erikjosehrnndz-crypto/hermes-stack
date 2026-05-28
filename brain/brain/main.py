@@ -17,6 +17,7 @@ from brain.api import health, ingest, search
 from brain.mcp.server import build_mcp
 from brain.settings import get_settings
 from brain.storage.events import EventLog
+from brain.storage.graph import KuzuGraph
 from brain.storage.lance import LanceStore
 from brain.storage.vault import Vault
 
@@ -28,6 +29,7 @@ events = EventLog(f"{settings.events_path}/events.db")
 redis_conn = redis.Redis.from_url(settings.redis_url)
 queue = Queue("brain", connection=redis_conn)
 lance = LanceStore(settings.lance_path, dim=settings.embed_dim)
+graph = KuzuGraph(settings.graph_path)
 
 
 class _State:
@@ -40,6 +42,7 @@ class _State:
         self.redis = redis_conn
         self.queue = queue
         self.lance = lance
+        self.graph = graph
 
 
 _state = _State()
@@ -71,6 +74,7 @@ app.state.events = _state.events
 app.state.redis = _state.redis
 app.state.queue = _state.queue
 app.state.lance = _state.lance
+app.state.graph = _state.graph
 
 app.include_router(health.router)
 app.include_router(ingest.router)

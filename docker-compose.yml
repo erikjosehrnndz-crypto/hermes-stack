@@ -15,6 +15,7 @@ volumes:
   brain_events:
   brain_lance:
   brain_models:
+  brain_graph:
 
 services:
   # ============================================
@@ -312,6 +313,7 @@ services:
       BRAIN_VAULT_PATH: /data/vault
       BRAIN_EVENTS_PATH: /data/events
       BRAIN_LANCE_PATH: /data/lance
+      BRAIN_GRAPH_PATH: /data/graph/brain.db
       BRAIN_REDIS_URL: redis://redis:6379/2
       BRAIN_USER_ID: erik
       BRAIN_EMBED_MODEL: intfloat/multilingual-e5-large
@@ -321,6 +323,7 @@ services:
       - brain_events:/data/events
       - brain_lance:/data/lance
       - brain_models:/data/models
+      - brain_graph:/data/graph
     networks:
       - backend
     ports:
@@ -348,6 +351,7 @@ services:
       BRAIN_VAULT_PATH: /data/vault
       BRAIN_EVENTS_PATH: /data/events
       BRAIN_LANCE_PATH: /data/lance
+      BRAIN_GRAPH_PATH: /data/graph/brain.db
       BRAIN_REDIS_URL: redis://redis:6379/2
       BRAIN_USER_ID: erik
       BRAIN_EMBED_MODEL: intfloat/multilingual-e5-large
@@ -357,6 +361,7 @@ services:
       - brain_events:/data/events
       - brain_lance:/data/lance
       - brain_models:/data/models
+      - brain_graph:/data/graph
     networks:
       - backend
     command: ["python", "-m", "brain.workers.rq_worker"]

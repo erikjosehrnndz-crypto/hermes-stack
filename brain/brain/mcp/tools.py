@@ -61,7 +61,7 @@ def register_tools(mcp, state) -> None:
     def brain_search(
         q: str,
         k: int = 5,
-        mode: Literal["hybrid", "dense", "bm25", "keyword"] = "hybrid",
+        mode: Literal["hybrid", "dense", "bm25", "keyword", "graph"] = "hybrid",
         rerank: bool = False,
     ) -> dict:
         """Búsqueda Phase 3: hybrid RRF (dense + BM25) + reranking opcional (Jina v2 multilingual).
@@ -91,6 +91,12 @@ def register_tools(mcp, state) -> None:
         if mode == "dense":
             hits = lance.search_dense(qvec, k=k, user_id=user_id)
             return {"q": q, "k": k, "mode": "dense", "n": len(hits), "hits": hits}
+
+        if mode == "graph":
+            graph = getattr(state, "graph", None)
+            hits = lance.search_hybrid_graph(q, qvec, k=k, user_id=user_id, rerank=rerank, graph=graph)
+            mode_label = "graph+rerank" if rerank else "graph"
+            return {"q": q, "k": k, "mode": mode_label, "n": len(hits), "hits": hits}
 
         hits = lance.search_hybrid(q, qvec, k=k, user_id=user_id, rerank=rerank)
         mode_label = "hybrid+rerank" if rerank else "hybrid"
