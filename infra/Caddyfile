@@ -31,6 +31,11 @@ livesync.el80.space {
 	encode gzip
 }
 
+# Filebrowser — acceso web al filesystem del VPS
+files.el80.space {
+	reverse_proxy 127.0.0.1:8095
+}
+
 router.el80.space {
 	reverse_proxy 127.0.0.1:20128
 }
