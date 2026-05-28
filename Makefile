@@ -116,3 +116,12 @@ clean-tmp:
 	@rm -f /tmp/claude_progress 2>/dev/null; \
 	rm -f /tmp/harness/*.md 2>/dev/null; \
 	echo "  /tmp cleaned"
+
+backup: ## Backup completo del sistema → /root/backups/ + sync a droplet DO
+	@bash /root/scripts/backup.sh
+
+backup-list: ## Listar backups disponibles con tamaños
+	@echo "Backups locales en /root/backups/:"; \
+	ls -lh /root/backups/hermes-*.tar.gz 2>/dev/null | awk '{print "  " $$5 "  " $$9}' || echo "  (ninguno)"; \
+	echo "Volúmenes Docker:"; \
+	ls -lh /root/backups/vol-*.tar.gz 2>/dev/null | awk '{print "  " $$5 "  " $$9}' || echo "  (ninguno)"
