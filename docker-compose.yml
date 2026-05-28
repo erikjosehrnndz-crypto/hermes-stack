@@ -356,6 +356,7 @@ services:
       BRAIN_USER_ID: erik
       BRAIN_EMBED_MODEL: intfloat/multilingual-e5-large
       FASTEMBED_CACHE_PATH: /data/models
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
     volumes:
       - brain_vault:/data/vault
       - brain_events:/data/events

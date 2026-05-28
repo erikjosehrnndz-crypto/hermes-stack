@@ -1,4 +1,4 @@
-"""Ingesta — Phase 1: solo /ingest/text. Async, 202 Accepted."""
+"""Ingesta — Phase 1+5: /ingest/text y /ingest/url. Async, 202 Accepted."""
 from __future__ import annotations
 
 from typing import Literal
@@ -66,5 +66,37 @@ async def ingest_text(payload: IngestTextIn, request: Request) -> JSONResponse:
             "path": str(path.relative_to(state.vault.root)),
             "job_id": job.id,
         },
+        status_code=202,
+    )
+
+
+class IngestUrlIn(BaseModel):
+    url: str = Field(min_length=10, max_length=2048)
+    tags: list[str] = Field(default_factory=list)
+    title: str | None = None
+
+
+@router.post("/url", status_code=202)
+async def ingest_url(payload: IngestUrlIn, request: Request) -> JSONResponse:
+    """Ingesta una URL: descarga + extrae texto en background, escribe al vault."""
+    state = request.app.state
+    queue: Queue = state.queue
+    job = queue.enqueue(
+        "brain.workers.jobs.fetch_url.fetch_url",
+        payload.url,
+        payload.tags,
+        payload.title,
+        job_timeout=120,
+        result_ttl=600,
+    )
+    state.events.append(
+        event_type="ingest_url_queued",
+        user_id=state.settings.user_id,
+        source="api",
+        node_id=job.id,
+        payload={"url": payload.url, "tags": payload.tags},
+    )
+    return JSONResponse(
+        {"status": "queued", "job_id": job.id, "url": payload.url},
         status_code=202,
     )

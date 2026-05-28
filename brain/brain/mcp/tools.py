@@ -125,6 +125,35 @@ def register_tools(mcp, state) -> None:
         return {"memory_id": memory_id, "ok": ok}
 
     @mcp.tool
+    def brain_ingest_url(
+        url: str,
+        tags: list[str] | None = None,
+        title: str | None = None,
+    ) -> dict:
+        """Ingesta una URL web en el vault.
+
+        Descarga el contenido, extrae el texto limpio y lo guarda como source node.
+        El procesado (chunks + embeddings) ocurre en background.
+        Devuelve el job_id para seguimiento.
+        """
+        job = state.queue.enqueue(
+            "brain.workers.jobs.fetch_url.fetch_url",
+            url,
+            tags,
+            title,
+            job_timeout=120,
+            result_ttl=600,
+        )
+        state.events.append(
+            event_type="ingest_url_queued",
+            user_id=state.settings.user_id,
+            source="mcp",
+            node_id=job.id,
+            payload={"url": url, "tags": tags or [], "via": "mcp"},
+        )
+        return {"status": "queued", "job_id": job.id, "url": url}
+
+    @mcp.tool
     def brain_search(
         q: str,
         k: int = 5,
