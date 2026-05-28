@@ -1,5 +1,6 @@
 import asyncio
 import os
+import aiohttp
 from aiohttp import web
 from prometheus_client import (
     generate_latest,
@@ -90,7 +91,7 @@ async def _capture_to_brain(app, query: str, response: str) -> None:
             f"{brain_url}/api/v1/ingest/text",
             json={"text": text, "type": "memory", "tags": ["hermes", "conversation"], "source": "hermes"},
             headers={"Authorization": f"Bearer {brain_token}"},
-            timeout=5,
+            timeout=aiohttp.ClientTimeout(total=5),
         )
     except Exception:
         pass  # Best-effort, no bloquea

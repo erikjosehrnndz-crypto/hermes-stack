@@ -135,7 +135,7 @@ class HermesAgent:
             headers["Authorization"] = f"Bearer {self.litellm_key}"
 
         messages = [{"role": "system", "content": self.system_prompt}]
-        for hist in self.conversation_history[-4:]:
+        for hist in list(self.conversation_history)[-4:]:
             messages.append(hist)
         messages.append({"role": "user", "content": text_input})
 
