@@ -1,0 +1,2339 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.85]
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usetikzlibrary{babel,arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric,shadows}
+\usepackage{longtable,booktabs,array,xcolor,listings,geometry,hyperref,amssymb,fancyhdr,titlesec,enumitem,multicol,tabularx,colortbl}
+\geometry{margin=2.2cm,top=2.5cm,bottom=2.5cm}
+
+% Colores corporativos Hermes
+\definecolor{hermesblue}{HTML}{0B2447}
+\definecolor{hermescyan}{HTML}{19A7CE}
+\definecolor{hermesaccent}{HTML}{F2EE9D}
+\definecolor{hermesgreen}{HTML}{146C94}
+\definecolor{hermesgray}{HTML}{576CBC}
+\definecolor{rowalt}{HTML}{EEF5FF}
+\definecolor{boxbg}{HTML}{F1F6F9}
+\definecolor{warnbg}{HTML}{FFF3CD}
+\definecolor{okbg}{HTML}{D4EDDA}
+\definecolor{codebg}{HTML}{F8F9FA}
+
+% Headers / Footers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{hermesblue}\textbf{Hermes Stack} · Ficha Técnica}
+\fancyhead[R]{\small\sffamily\color{hermesgray}v3.0 · 2026-05-28}
+\fancyfoot[C]{\small\sffamily\color{hermesgray}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{hermescyan}\leaders\hrule height \headrulewidth\hfill}}
+
+% Section formatting
+\titleformat{\section}
+  {\Large\sffamily\bfseries\color{hermesblue}}
+  {\thesection.}{0.6em}{}
+  [\vspace{2pt}{\color{hermescyan}\titlerule[1pt]}]
+\titleformat{\subsection}
+  {\large\sffamily\bfseries\color{hermesgreen}}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\normalsize\sffamily\bfseries\color{hermesgray}}
+  {}{0em}{}
+
+% Hyperref
+\hypersetup{
+  colorlinks=true,
+  linkcolor=hermesblue,
+  urlcolor=hermescyan,
+  pdftitle={Hermes Stack - Ficha Técnica},
+  pdfauthor={Erik José Hernández},
+  pdfsubject={Documentación técnica integral del sistema Hermes Stack},
+  pdfkeywords={Hermes, IA, Docker, LiteLLM, Whisper, ElevenLabs, Next.js, Brain, MCP}
+}
+
+% YAML lang para listings
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,y,n,on,off},
+  keywordstyle=\color{hermesblue}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=true,
+  comment=[l]{\#},
+  commentstyle=\color{hermesgray}\itshape,
+  morestring=[b]',
+  morestring=[b]",
+  stringstyle=\color{hermesgreen},
+  showstringspaces=false
+}
+\lstdefinelanguage{bashx}{
+  keywords={docker,compose,curl,git,make,xelatex,grep,cat,echo,export,source,if,then,fi,for,do,done,sudo},
+  keywordstyle=\color{hermesblue}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=true,
+  comment=[l]{\#},
+  commentstyle=\color{hermesgray}\itshape,
+  morestring=[b]',
+  morestring=[b]",
+  stringstyle=\color{hermesgreen},
+  showstringspaces=false
+}
+\lstset{
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framerule=0pt,
+  rulecolor=\color{codebg},
+  framesep=8pt,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  breaklines=true,
+  basicstyle=\ttfamily\footnotesize
+}
+
+% Cajas personalizadas
+\newcommand{\infobox}[2]{%
+  \begin{center}
+  \fcolorbox{hermescyan}{boxbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{hermesblue}#1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\warnbox}[2]{%
+  \begin{center}
+  \fcolorbox{orange}{warnbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{orange!80!black}⚠ #1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\okbox}[2]{%
+  \begin{center}
+  \fcolorbox{hermesgreen}{okbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{hermesgreen}✓ #1}\\[2pt]#2}}
+  \end{center}
+}
+
+% Mini headers para puntos clave
+\newcommand{\dato}[2]{\textbf{\color{hermesblue}#1:} #2}
+\newcommand{\hr}{\vspace{4pt}{\color{hermescyan}\hrule height 0.6pt}\vspace{6pt}}
+
+\begin{document}
+
+% =====================================================================
+% PORTADA
+% =====================================================================
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[hermesblue] (current page.north west) rectangle ([yshift=-7cm]current page.north east);
+  \fill[hermescyan] ([yshift=-7cm]current page.north west) rectangle ([yshift=-7.4cm]current page.north east);
+\end{tikzpicture}
+
+\vspace*{0.8cm}
+\begin{center}
+{\Huge\sffamily\bfseries\color{white}HERMES STACK}\\[6pt]
+{\Large\sffamily\color{hermesaccent}Ficha Técnica Integral del Sistema}\\[3.5cm]
+\end{center}
+
+\vspace{1cm}
+\begin{center}
+\begin{tikzpicture}
+\node[draw=hermesblue, line width=1pt, fill=boxbg, rounded corners=8pt, inner sep=18pt, minimum width=14cm] (caja) {
+\begin{minipage}{12.5cm}
+\centering
+{\large\sffamily\bfseries\color{hermesblue}Sistema Operativo de IA Autohospedada}\\[6pt]
+{\small\sffamily Plataforma conversacional con pipeline de voz, segundo cerebro,\\
+router LLM multi-proveedor y observabilidad integral}\\[12pt]
+\begin{tabular}{rl}
+\textbf{\color{hermesblue}Versión:} & 3.0 · Auto-mejora consolidada\\
+\textbf{\color{hermesblue}Fecha:} & 28 de mayo de 2026\\
+\textbf{\color{hermesblue}Servicios:} & 15 contenedores activos\\
+\textbf{\color{hermesblue}Dominio base:} & \texttt{el80.space}\\
+\textbf{\color{hermesblue}SLO latencia E2E:} & < 500 ms (medido: 483 ms)\\
+\textbf{\color{hermesblue}Estado:} & {\color{hermesgreen}\textbf{Producción · 100\% healthy}}\\
+\textbf{\color{hermesblue}Propietario:} & Erik José Hernández\\
+\end{tabular}
+\end{minipage}
+};
+\end{tikzpicture}
+\end{center}
+
+\vspace{2cm}
+\begin{center}
+{\small\sffamily\color{hermesgray}
+Documento técnico canónico — referencia operativa\\
+Compilado el \today\ con XeLaTeX · DejaVu Fonts}\\[6pt]
+{\footnotesize\sffamily\color{hermesgray}
+github.com/erikjosehrnndz-crypto/hermes-stack}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% ÍNDICE
+% =====================================================================
+\thispagestyle{fancy}
+{\color{hermesblue}\sffamily\Large\bfseries Índice de contenidos}\\[4pt]
+{\color{hermescyan}\hrule height 1.2pt}
+\vspace{12pt}
+\setcounter{tocdepth}{2}
+\renewcommand{\contentsname}{}
+\tableofcontents
+
+\newpage
+
+% =====================================================================
+% 1. RESUMEN EJECUTIVO
+% =====================================================================
+\section{Resumen ejecutivo}
+
+\textbf{Hermes Stack} es un sistema de IA conversacional autohospedado, diseñado para correr sobre un VPS único con \textbf{Docker Compose} y entregar interacción por voz de baja latencia (\textbf{SLO < 500 ms} extremo a extremo). El stack integra agente Python autónomo, router LLM multi-proveedor (LiteLLM), Speech-to-Text local (Whisper), síntesis de voz premium (ElevenLabs Flash v2.5), segundo cerebro con memoria persistente (Brain con LanceDB + Kuzu) y observabilidad completa (Prometheus + Grafana).
+
+\subsection{Métricas clave}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|>{\bfseries\color{hermesblue}}p{5.5cm}|p{8cm}|}
+\hline
+\rowcolor{hermesblue}\multicolumn{2}{|l|}{\color{white}\sffamily\textbf{Indicadores principales del sistema}}\\
+\hline
+Contenedores activos & 15 servicios dockerizados\\
+Redes Docker aisladas & 2 (\texttt{backend} + \texttt{monitoring})\\
+Puertos localhost expuestos & 8 (4000, 3000, 3001, 3002, 8080, 8095, 8765, 9000, 9090, 20128)\\
+Subdominios públicos & 6 bajo \texttt{el80.space}\\
+SLO latencia E2E & < 500 ms (medido: 483 ms)\\
+Modelos LLM disponibles & 5 (Gemini, GPT-4o, GPT-4o-mini, Claude Sonnet 4.6, Llama 3.1 70B)\\
+Volúmenes Docker persistentes & 11 \\
+Embedding model & intfloat/multilingual-e5-large (1024 dims)\\
+Vector DB & LanceDB embedded\\
+Graph DB & Kuzu (single-process)\\
+Cache & Redis 7 (LRU 256 MB, TTL 3600 s)\\
+Healthcheck interval & 30 s (autoheal cada 30 s)\\
+Build frontend & Next.js 14 App Router (TypeScript estricto)\\
+CI/CD & GitHub Actions con rollback automático a \texttt{HEAD\textasciitilde 1}\\
+TLS & ACME automático vía Caddy\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Valor diferencial}
+
+\infobox{Tres ventajas estructurales sobre stacks comerciales}{
+\textbf{(1) Cero vendor lock-in:} todas las piezas son open-source o sustituibles vía LiteLLM. \textbf{(2) Privacidad total:} STT corre local (Whisper), memoria reside en volúmenes propios (LanceDB + Kuzu). \textbf{(3) Costo operativo bajo:} un único VPS sostiene todo el stack — sin Kubernetes, sin servicios SaaS de observabilidad, sin DBs gestionadas.}
+
+\subsection{Hechos verificables}
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \dato{Pipeline de voz}{Whisper STT (200 ms) → LiteLLM Gemini Flash (300 ms) → ElevenLabs Flash v2.5 (75 ms) = 575 ms agregado, optimizado a 483 ms en caché-hit.}
+\item \dato{Resiliencia}{Healthcheck cada 30 s + Autoheal reinicia contenedores tras 3 fallos consecutivos.}
+\item \dato{Despliegue}{Push a \texttt{main} → GitHub Actions → SSH a VPS → \texttt{docker compose up -d --build} → healthcheck autenticado → rollback automático si falla.}
+\item \dato{Observabilidad}{Prometheus scraping cada 15 s a \texttt{litellm}, \texttt{hermes}, \texttt{node-exporter}, \texttt{cadvisor}; dashboards Grafana en tiempo real.}
+\item \dato{Hardening}{Servicios sensibles bound a \texttt{127.0.0.1}; Caddy reverse proxy expone los públicos con TLS automático.}
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 2. OBJETIVOS Y PRINCIPIOS DE DISEÑO
+% =====================================================================
+\section{Objetivos y principios de diseño}
+
+\subsection{Objetivo primario}
+
+Construir y operar una plataforma de IA conversacional \textbf{autohospedada}, controlada extremo a extremo por el propietario, con latencia suficientemente baja para conversación natural y memoria persistente que sostenga sesiones largas sin pérdida de contexto.
+
+\subsection{Cinco principios arquitectónicos}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|>{\bfseries\color{hermesblue}}p{2.6cm}|X|}
+\hline
+\rowcolor{hermesblue}\multicolumn{2}{|l|}{\color{white}\sffamily\textbf{Principios — Hermes Stack}}\\
+\hline
+Privacidad & Whisper STT corre local; memoria en volúmenes propios; ningún audio sale del VPS antes del LLM.\\
+Modularidad & Cada servicio es contenedor independiente; sustituir Whisper, ElevenLabs o un modelo no requiere refactor.\\
+Resiliencia & Healthchecks cada 30 s + Autoheal + CI/CD con rollback HEAD\textasciitilde 1.\\
+Observabilidad & Métricas Prometheus, dashboards Grafana, logs estructurados, todo desde el primer día.\\
+Costo bajo & Un único VPS Linux (Hostinger/DigitalOcean); sin K8s, sin SaaS de observabilidad, sin DBs gestionadas.\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Restricciones operativas declaradas}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Un único host físico.} Hardening por aislamiento de red Docker y bindings localhost, no por multi-AZ.
+\item \textbf{Sin Kubernetes.} La complejidad operacional de K8s no se justifica para un single-host workload con < 100 RPS.
+\item \textbf{Sin servicios SaaS de observabilidad.} Prometheus + Grafana cumplen sin costo recurrente.
+\item \textbf{Repositorio único.} Toda la infraestructura, configuración y código viven en \texttt{github.com/erikjosehrnndz-crypto/hermes-stack}.
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 3. TOPOLOGÍA GENERAL
+% =====================================================================
+\section{Topología general del sistema}
+
+\subsection{Diagrama de bloques}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.5cm and 0.5cm,
+  block/.style={draw=hermesblue, fill=boxbg, rounded corners=4pt, minimum height=0.9cm, minimum width=2.5cm, font=\small\sffamily, align=center, drop shadow},
+  core/.style={draw=hermescyan, fill=hermescyan!10, rounded corners=4pt, minimum height=0.9cm, minimum width=2.5cm, font=\small\sffamily\bfseries, align=center, drop shadow},
+  mon/.style={draw=hermesgreen, fill=okbg, rounded corners=4pt, minimum height=0.9cm, minimum width=2.5cm, font=\small\sffamily, align=center, drop shadow},
+  user/.style={draw=hermesblue, fill=hermesaccent, rounded corners=12pt, minimum height=0.9cm, minimum width=2.5cm, font=\small\sffamily\bfseries, align=center, drop shadow},
+  ext/.style={draw=orange, fill=warnbg, rounded corners=4pt, minimum height=0.9cm, minimum width=2.5cm, font=\small\sffamily, align=center, drop shadow},
+  arr/.style={->, >=Stealth, thick, color=hermesblue},
+  arrcyan/.style={->, >=Stealth, thick, color=hermescyan}
+]
+% Usuario
+\node[user] (user) {Usuario\\(Web / Voice)};
+
+% Caddy edge
+\node[block, below=of user] (caddy) {Caddy\\:80 / :443};
+
+% Frontend
+\node[core, below left=of caddy] (web) {Website\\Next.js 14\\:3001};
+\node[core, below right=of caddy] (workspace) {Workspace\\:3002};
+
+% Agente
+\node[core, below=1cm of web] (hermes) {Hermes Agent\\:8080};
+
+% Pipeline
+\node[block, left=of hermes] (whisper) {Whisper STT\\:9000};
+\node[block, below=of hermes] (litellm) {LiteLLM Router\\:4000};
+\node[block, right=of hermes] (brain) {Brain\\:8765};
+
+% Brain worker
+\node[block, right=of brain] (worker) {Brain Worker\\(RQ async)};
+
+% Cache
+\node[block, below=of litellm] (redis) {Redis 7\\:6379};
+
+% LLM externos
+\node[ext, left=of litellm] (openrouter) {OpenRouter\\Gemini, GPT, Claude};
+\node[ext, below=of redis] (elevenlabs) {ElevenLabs\\Flash v2.5};
+
+% Storage
+\node[block, right=of worker] (lance) {LanceDB\\Vector};
+
+% Observabilidad
+\node[mon, below=of redis, yshift=-1.2cm] (prom) {Prometheus\\:9090};
+\node[mon, right=of prom] (graf) {Grafana\\:3000};
+\node[mon, left=of prom] (autoheal) {Autoheal};
+
+% Conexiones
+\draw[arr] (user) -- (caddy);
+\draw[arr] (caddy) -- (web);
+\draw[arr] (caddy) -- (workspace);
+\draw[arrcyan] (web) -- (hermes);
+\draw[arrcyan] (hermes) -- (whisper);
+\draw[arrcyan] (hermes) -- (litellm);
+\draw[arrcyan] (hermes) -- (brain);
+\draw[arrcyan] (litellm) -- (redis);
+\draw[arrcyan] (litellm) -- (openrouter);
+\draw[arrcyan] (litellm) -- (elevenlabs);
+\draw[arrcyan] (brain) -- (worker);
+\draw[arrcyan] (worker) -- (lance);
+\draw[arrcyan] (brain) -- (redis);
+\draw[arr, dashed] (prom) -- (litellm);
+\draw[arr, dashed] (prom) -- (hermes);
+\draw[arr, dashed] (graf) -- (prom);
+\draw[arr, dashed] (autoheal) -- (hermes);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Lectura del diagrama}
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Bloques amarillos:} usuarios externos.
+\item \textbf{Bloques cyan:} servicios core que procesan la conversación.
+\item \textbf{Bloques azul claro:} infraestructura de soporte (caché, vector DB, almacenamiento).
+\item \textbf{Bloques verdes:} observabilidad y auto-curación.
+\item \textbf{Bloques anaranjados:} proveedores externos (LLMs y TTS).
+\item \textbf{Flechas continuas:} datos en tiempo real.
+\item \textbf{Flechas discontinuas:} métricas / telemetría.
+\end{itemize}
+
+\subsection{Capas lógicas del sistema}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|>{\bfseries\color{hermesblue}}p{3.0cm}|X|}
+\hline
+\rowcolor{hermesblue}\multicolumn{2}{|l|}{\color{white}\sffamily\textbf{Capas y responsabilidades}}\\
+\hline
+Edge & Caddy reverse proxy con ACME automático; expone subdominios públicos sobre TLS.\\
+Presentación & Hermes Website (Next.js 14) + Hermes Workspace (chat SSE + terminal PTY + memory browser).\\
+Aplicación & Hermes Agent (Python async, aiohttp); orquesta voz, LLM, memoria, skills.\\
+Inferencia & LiteLLM Router con 5 modelos; Whisper STT local; ElevenLabs TTS externo.\\
+Memoria & Brain (API + Worker) sobre LanceDB (vector), Kuzu (graph), Redis (queue).\\
+Datos & Volúmenes Docker persistentes (vault, eventos, embeddings, modelos).\\
+Observabilidad & Prometheus + Grafana + cAdvisor + Node Exporter + Autoheal.\\
+\hline
+\end{tabularx}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 4. INVENTARIO DE SERVICIOS - TIER 1
+% =====================================================================
+\section{Inventario de servicios — Tier 1: núcleo de procesamiento}
+
+Los servicios de \textbf{Tier 1} son los que procesan directamente la conversación: agente, router LLM, frontend, STT, proxy LLM alternativo.
+
+\subsection{Hermes Agent}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{hermes-agent}}
+\item \dato{Imagen}{\texttt{root-hermes} (build local desde \texttt{./hermes/Dockerfile})}
+\item \dato{Puerto host}{\texttt{127.0.0.1:8080}}
+\item \dato{Rol}{Agente Python autónomo con pipeline de voz, WebSocket de salida en streaming y MCP skills.}
+\item \dato{Dependencias internas}{\texttt{redis}, \texttt{litellm}, \texttt{brain}, \texttt{whisper-stt}}
+\item \dato{Endpoints clave}{\texttt{GET /health}, \texttt{POST /api/voice}, \texttt{WS /process}}
+\item \dato{Hot-reload}{bind mount \texttt{./hermes/skills:/app/skills}}
+\item \dato{Autoheal}{habilitado}
+\end{itemize}
+
+\subsection{LiteLLM Router}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{litellm-router}}
+\item \dato{Imagen}{\texttt{ghcr.io/berriai/litellm:main-latest}}
+\item \dato{Puerto host}{\texttt{127.0.0.1:4000}}
+\item \dato{Rol}{Gateway LLM multi-proveedor (OpenRouter, Google, Claude, etc.) con caché Redis y métricas Prometheus.}
+\item \dato{Estrategia de routing}{latency-based (selecciona la ruta más rápida)}
+\item \dato{Caché}{Redis con TTL 3600 s}
+\item \dato{Fallback}{tras 2 fallos, marca modelo en cooldown 60 s y conmuta}
+\item \dato{Autenticación}{Bearer Token (\texttt{LITELLM\_MASTER\_KEY})}
+\item \dato{Métricas}{\texttt{/metrics/} (con trailing slash) para Prometheus}
+\end{itemize}
+
+\subsection{Hermes Website}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{hermes-website}}
+\item \dato{Imagen}{\texttt{root-website} (build local desde \texttt{./website/Dockerfile} multi-stage)}
+\item \dato{Puerto host}{\texttt{127.0.0.1:3001}}
+\item \dato{Dominio público}{\texttt{docs.el80.space}}
+\item \dato{Framework}{Next.js 14.2 con App Router (\texttt{output: 'standalone'})}
+\item \dato{API Routes}{\texttt{/api/voice} (bridge a hermes-agent), \texttt{/api/health}, \texttt{/api/tree}}
+\item \dato{Configuración}{\texttt{next.config.mjs} (no \texttt{.ts} en v14)}
+\end{itemize}
+
+\subsection{Hermes Workspace}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{hermes-workspace}}
+\item \dato{Imagen}{\texttt{ghcr.io/outsourc-e/hermes-workspace:latest}}
+\item \dato{Puerto host}{\texttt{127.0.0.1:3002}}
+\item \dato{Rol}{UI unificada: chat SSE + terminal PTY + memory browser + swarm monitor}
+\item \dato{Gateway}{\texttt{hermes-agent:8642}}
+\end{itemize}
+
+\subsection{Whisper STT}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{whisper-stt}}
+\item \dato{Imagen}{\texttt{onerahmet/openai-whisper-asr-webservice:latest}}
+\item \dato{Puerto host}{\texttt{127.0.0.1:9000}}
+\item \dato{Modelo}{Whisper \texttt{base} (multilingüe, ~140 MB)}
+\item \dato{Latencia típica}{< 200 ms para frases cortas}
+\item \dato{Caché de modelos}{volumen \texttt{whisper\_cache} (~1 GB)}
+\item \dato{Healthcheck}{\texttt{curl /docs} cada 30 s con \texttt{start\_delay} de 30 s}
+\end{itemize}
+
+\subsection{9Router}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{9router}}
+\item \dato{Imagen}{\texttt{root-9router} (build local)}
+\item \dato{Puerto host}{\texttt{127.0.0.1:20128}}
+\item \dato{Rol}{Proxy LLM alternativo con 16 provider connections, gestión de MCP servers remotos, autenticación JWT.}
+\item \dato{Autenticación}{JWT (\texttt{ROUTER\_JWT\_SECRET}), password inicial vía \texttt{ROUTER\_INITIAL\_PASSWORD}}
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 5. INVENTARIO DE SERVICIOS - TIER 2
+% =====================================================================
+\section{Inventario de servicios — Tier 2: almacenamiento y caché}
+
+\subsection{Redis}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{redis-cache}}
+\item \dato{Imagen}{\texttt{redis:7-alpine}}
+\item \dato{Puerto interno}{\texttt{6379} (NO expuesto al host)}
+\item \dato{Rol}{Caché LiteLLM (DB 0), sesiones Hermes (DB 1), job queue Brain-Worker (DB 2)}
+\item \dato{Política de evicción}{LRU sobre 256 MB}
+\item \dato{Persistencia}{RDB snapshot cada 60 s si > 100 keys mutadas}
+\item \dato{Volumen}{\texttt{redis\_data:/data}}
+\end{itemize}
+
+\subsection{Brain (API)}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{brain}}
+\item \dato{Imagen}{\texttt{root-brain} (build local desde \texttt{./brain/Dockerfile})}
+\item \dato{Puerto host}{\texttt{127.0.0.1:8765}}
+\item \dato{Dominio}{\texttt{brain.el80.space}}
+\item \dato{Rol}{API de segundo cerebro — captura, recall, MCP server.}
+\item \dato{Subsistemas}{\texttt{vault} (Markdown), \texttt{events} (JSONL append-only), \texttt{lance} (vector DB), \texttt{graph} (Kuzu), \texttt{models} (FastEmbed cache)}
+\item \dato{Embedding model}{\texttt{intfloat/multilingual-e5-large} (1024 dims)}
+\item \dato{Protocolo}{FastMCP 3.x sobre HTTP Streamable; endpoint \texttt{/mcp/} (trailing slash obligatorio)}
+\item \dato{Autenticación}{Bearer Token (\texttt{BRAIN\_API\_TOKEN})}
+\end{itemize}
+
+\subsection{Brain-Worker}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{brain-worker}}
+\item \dato{Imagen}{misma que \texttt{brain} (entrypoint distinto)}
+\item \dato{Rol}{Worker async RQ que consume jobs de Redis DB 2 (embeddings, consolidación de memoria, cron jobs nocturnos).}
+\item \dato{Volúmenes compartidos}{los mismos que \texttt{brain} (vault, events, lance, graph)}
+\item \dato{Healthcheck}{\texttt{redis.ping()} cada 30 s}
+\item \dato{Autoheal}{deshabilitado (no es servicio HTTP)}
+\end{itemize}
+
+\warnbox{Servicios con imagen compartida}{Si se aplica un fix Python en \texttt{./brain/}, ejecutar \texttt{docker compose build brain brain-worker} para reconstruir ambos. Reconstruir solo uno deja el otro con código viejo y produce errores asimétricos difíciles de diagnosticar.}
+
+\subsection{Capacidad y crecimiento esperado}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Subsistema} & \color{white}\textbf{Tamaño actual} & \color{white}\textbf{Crecimiento/mes} & \color{white}\textbf{Política}\\
+\hline
+Redis (cache) & 256 MB cap & LRU & evicción automática\\
+Brain Vault (md) & ~50 MB & ~50 MB & sin límite\\
+Brain Events (JSONL) & ~10 MB & ~30 MB & rotación trimestral\\
+Brain Lance (vector) & ~80 MB & ~80 MB & re-indexación trimestral\\
+Brain Graph (Kuzu) & ~5 MB & ~5 MB & compactación mensual\\
+Brain Models (cache) & ~500 MB & estable & sin crecimiento\\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 6. INVENTARIO DE SERVICIOS - TIER 3
+% =====================================================================
+\section{Inventario de servicios — Tier 3: observabilidad}
+
+\subsection{Prometheus}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{prometheus}}
+\item \dato{Imagen}{\texttt{prom/prometheus:v2.52.0}}
+\item \dato{Puerto host}{\texttt{127.0.0.1:9090}}
+\item \dato{Rol}{Scraping de métricas + alerting rules + serie temporal.}
+\item \dato{Intervalo de scrape}{15 s (global), configurable por job en \texttt{prometheus.yml}}
+\item \dato{Retención de datos}{15 d por defecto (configurable con \texttt{--storage.tsdb.retention.time})}
+\item \dato{Volumen}{\texttt{prometheus\_data:/prometheus}}
+\end{itemize}
+
+\subsection{Grafana}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{grafana}}
+\item \dato{Imagen}{\texttt{grafana/grafana:11.0.0}}
+\item \dato{Puerto host}{\texttt{127.0.0.1:3000}}
+\item \dato{Dominio público}{\texttt{grafana.el80.space}}
+\item \dato{Datasource principal}{Prometheus (provisionado desde \texttt{config/grafana-datasources.yml})}
+\item \dato{Dashboards}{LLM Performance, Container Status, Agent Metrics, System Health}
+\item \dato{Volumen}{\texttt{grafana\_data:/var/lib/grafana} (incluye usuarios, dashboards)}
+\end{itemize}
+
+\subsection{cAdvisor}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{cadvisor}}
+\item \dato{Imagen}{\texttt{gcr.io/cadvisor/cadvisor:v0.49.1}}
+\item \dato{Puerto interno}{\texttt{8080}}
+\item \dato{Rol}{Métricas por contenedor (CPU, memoria, red, I/O).}
+\item \dato{Acceso}{\texttt{/var/run/docker.sock:ro}, \texttt{/sys:ro}, \texttt{/var/lib/docker:ro}, \texttt{/:ro}}
+\end{itemize}
+
+\subsection{Node Exporter}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{node-exporter}}
+\item \dato{Imagen}{\texttt{prom/node-exporter:v1.8.1}}
+\item \dato{Puerto interno}{\texttt{9100}}
+\item \dato{Rol}{Métricas del host (CPU, memoria, disco, network, file system).}
+\end{itemize}
+
+\subsection{Targets Prometheus}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Target} & \color{white}\textbf{Endpoint} & \color{white}\textbf{Frecuencia}\\
+\hline
+litellm & \texttt{litellm:4000/metrics/} & 15 s\\
+hermes-agent & \texttt{hermes:8080/metrics} & 15 s\\
+prometheus (self) & \texttt{localhost:9090/metrics} & 15 s\\
+node-exporter & \texttt{node-exporter:9100/metrics} & 15 s\\
+cadvisor & \texttt{cadvisor:8080/metrics} & 15 s\\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 7. INVENTARIO DE SERVICIOS - TIER 4
+% =====================================================================
+\section{Inventario de servicios — Tier 4: utilidades y orquestación}
+
+\subsection{Filebrowser}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{filebrowser}}
+\item \dato{Imagen}{\texttt{filebrowser/filebrowser:latest}}
+\item \dato{Puerto host}{\texttt{127.0.0.1:8095}}
+\item \dato{Dominio público}{\texttt{files.el80.space}}
+\item \dato{Rol}{Gestor de archivos web sobre \texttt{/root}.}
+\item \dato{Volumen bind}{\texttt{/root:/srv:rw}}
+\item \dato{Persistencia}{\texttt{filebrowser.db} en el host}
+\end{itemize}
+
+\subsection{Autoheal}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Contenedor}{\texttt{autoheal}}
+\item \dato{Imagen}{\texttt{willfarrell/autoheal:1.2.0}}
+\item \dato{Rol}{Reinicia contenedores marcados con \texttt{label=autoheal.enabled=true} cuando fallan healthcheck 3 veces consecutivas.}
+\item \dato{Frecuencia}{Polling cada 30 s al daemon Docker (via socket bind \texttt{/var/run/docker.sock})}
+\item \dato{Sin puertos}{servicio sidecar puro, no expone red}
+\end{itemize}
+
+\subsection{Caddy (host, no contenedor)}
+
+Caddy corre como \textbf{servicio systemd del host}, no como contenedor Docker, para gestionar puertos 80/443 con menor overhead y mejor integración con ACME.
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \dato{Rol}{Reverse proxy + terminación TLS + ACME automático (Let's Encrypt).}
+\item \dato{Configuración}{\texttt{/etc/caddy/Caddyfile}}
+\item \dato{Subdominios servidos}{6 (hermes, litellm, grafana, docs, brain, files, router)}
+\item \dato{Renovación TLS}{automática, sin intervención manual; logs en \texttt{/var/log/caddy/}}
+\end{itemize}
+
+\subsection{Resumen visual — 15 servicios}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.3cm and 0.2cm,
+  T1/.style={draw=hermescyan, fill=hermescyan!15, minimum width=2.6cm, minimum height=0.7cm, rounded corners=3pt, font=\footnotesize\sffamily, align=center},
+  T2/.style={draw=hermesblue, fill=boxbg, minimum width=2.6cm, minimum height=0.7cm, rounded corners=3pt, font=\footnotesize\sffamily, align=center},
+  T3/.style={draw=hermesgreen, fill=okbg, minimum width=2.6cm, minimum height=0.7cm, rounded corners=3pt, font=\footnotesize\sffamily, align=center},
+  T4/.style={draw=orange, fill=warnbg, minimum width=2.6cm, minimum height=0.7cm, rounded corners=3pt, font=\footnotesize\sffamily, align=center}
+]
+\node[T1] (s1) {hermes-agent};
+\node[T1, right=of s1] (s2) {litellm-router};
+\node[T1, right=of s2] (s3) {hermes-website};
+\node[T1, right=of s3] (s4) {hermes-workspace};
+\node[T1, below=of s1] (s5) {whisper-stt};
+\node[T1, right=of s5] (s6) {9router};
+\node[T2, right=of s6] (s7) {redis-cache};
+\node[T2, right=of s7] (s8) {brain};
+\node[T2, below=of s5] (s9) {brain-worker};
+\node[T3, right=of s9] (s10) {prometheus};
+\node[T3, right=of s10] (s11) {grafana};
+\node[T3, right=of s11] (s12) {cadvisor};
+\node[T3, below=of s9] (s13) {node-exporter};
+\node[T4, right=of s13] (s14) {filebrowser};
+\node[T4, right=of s14] (s15) {autoheal};
+\end{tikzpicture}\\[4pt]
+{\footnotesize\sffamily \fcolorbox{hermescyan}{hermescyan!15}{\strut\,} Tier 1 — Núcleo \quad \fcolorbox{hermesblue}{boxbg}{\strut\,} Tier 2 — Datos \quad \fcolorbox{hermesgreen}{okbg}{\strut\,} Tier 3 — Observabilidad \quad \fcolorbox{orange}{warnbg}{\strut\,} Tier 4 — Utilidades}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 8. ARQUITECTURA DE REDES DOCKER
+% =====================================================================
+\section{Arquitectura de redes Docker}
+
+El stack usa dos redes \texttt{bridge} aisladas. La separación es lógica: \texttt{monitoring} no debe acceder a contenedores de \texttt{backend} salvo por sus endpoints de \texttt{/metrics}, lo que permite hardening adicional con políticas iptables.
+
+\subsection{Red \texttt{backend}}
+
+\dato{Tipo}{bridge, driver default}\\
+\dato{Servicios conectados}{hermes-agent, hermes-website, hermes-workspace, whisper-stt, litellm-router, redis-cache, brain, brain-worker, 9router, filebrowser, autoheal}\\
+\dato{Resolución DNS interna}{cada servicio es accesible por su nombre de servicio (\texttt{redis}, \texttt{litellm}, \texttt{brain}, etc.)}\\
+\dato{Aislamiento del host}{no se exponen puertos al exterior salvo los \texttt{127.0.0.1:XXXX} declarados}
+
+\subsection{Red \texttt{monitoring}}
+
+\dato{Tipo}{bridge, driver default}\\
+\dato{Servicios conectados}{prometheus, grafana, cadvisor, node-exporter, litellm (multi-red)}\\
+\dato{LiteLLM como puente}{conectado a ambas redes — backend para servir, monitoring para exponer \texttt{/metrics/}}
+
+\subsection{Tabla de conectividad inter-servicios}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Origen} & \color{white}\textbf{Destino(s)}\\
+\hline
+hermes-agent & litellm, redis, brain, whisper-stt\\
+hermes-website & hermes-agent (para \texttt{/api/voice})\\
+hermes-workspace & hermes-agent gateway \texttt{:8642}\\
+brain & redis (jobs queue), volúmenes locales (vault, lance, graph)\\
+brain-worker & redis, brain (lectura compartida), volúmenes\\
+litellm-router & redis (cache), proveedores LLM externos (HTTPS salida)\\
+prometheus & litellm, hermes-agent, node-exporter, cadvisor, self\\
+grafana & prometheus (datasource)\\
+autoheal & socket Docker (no IP de red)\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Política de puertos host}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Binding} & \color{white}\textbf{Razón} & \color{white}\textbf{Acceso externo}\\
+\hline
+\texttt{127.0.0.1:4000} & LiteLLM con Bearer auth & vía Caddy + TLS\\
+\texttt{127.0.0.1:8080} & Hermes Agent & vía Caddy + TLS\\
+\texttt{127.0.0.1:8765} & Brain API & vía Caddy + Bearer token\\
+\texttt{127.0.0.1:3000} & Grafana & vía Caddy + TLS\\
+\texttt{127.0.0.1:3001} & Website & vía Caddy + TLS\\
+\texttt{127.0.0.1:3002} & Workspace & loopback solo (SSH tunnel)\\
+\texttt{127.0.0.1:8095} & Filebrowser & vía Caddy + TLS\\
+\texttt{127.0.0.1:9000} & Whisper STT & sólo loopback (interno)\\
+\texttt{127.0.0.1:9090} & Prometheus & sólo loopback (interno)\\
+\texttt{127.0.0.1:20128} & 9Router & vía Caddy + JWT\\
+\hline
+\end{tabular}
+\end{center}
+
+\okbox{Diseño minimalista de exposición}{Ningún servicio escucha en \texttt{0.0.0.0}. Toda la superficie expuesta al exterior pasa por Caddy, que añade TLS y opcionalmente reglas de rate-limiting. Aunque un atacante comprometa el bind localhost, no puede alcanzar el servicio sin acceso shell al VPS.}
+
+\newpage
+
+% =====================================================================
+% 9. MAPA DE SUBDOMINIOS Y CADDY
+% =====================================================================
+\section{Mapa de subdominios y routing Caddy}
+
+\subsection{Subdominios bajo \texttt{el80.space}}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Subdominio} & \color{white}\textbf{Upstream} & \color{white}\textbf{Auth} & \color{white}\textbf{Uso}\\
+\hline
+\texttt{hermes.el80.space} & \texttt{127.0.0.1:8080} & — & API + WebSocket voz\\
+\texttt{litellm.el80.space} & \texttt{127.0.0.1:4000} & Bearer & Gateway LLM público\\
+\texttt{grafana.el80.space} & \texttt{127.0.0.1:3000} & login & Dashboards observabilidad\\
+\texttt{docs.el80.space} & \texttt{127.0.0.1:3001} & — & Website Next.js\\
+\texttt{brain.el80.space} & \texttt{127.0.0.1:8765} & Bearer & API memoria + MCP\\
+\texttt{files.el80.space} & \texttt{127.0.0.1:8095} & login & Filebrowser\\
+\texttt{router.el80.space} & \texttt{127.0.0.1:20128} & JWT & 9Router\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{ACME automático}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Provider:} Let's Encrypt (con fallback a ZeroSSL).
+\item \textbf{Renovación:} Caddy renueva certificados ~30 días antes de expirar; sin cron, sin scripts.
+\item \textbf{Almacenamiento:} \texttt{/var/lib/caddy/.local/share/caddy/} (no en repo).
+\item \textbf{Wildcards:} no usado — un cert por subdominio (más simple para HTTP-01).
+\end{itemize}
+
+\subsection{Patrón típico de bloque Caddyfile}
+
+\begin{lstlisting}[language=bashx]
+brain.el80.space {
+    encode gzip
+    reverse_proxy 127.0.0.1:8765
+    log {
+        output file /var/log/caddy/brain.log
+        format json
+    }
+}
+\end{lstlisting}
+
+\subsection{DNS}
+
+\dato{Proveedor}{Hostinger}\\
+\dato{API base}{\texttt{https://developers.hostinger.com/api/dns/v1/zones/<dom>}}\\
+\dato{Wildcard CNAME}{\texttt{*.el80.space → IP del VPS}}\\
+\dato{Subdominios con A record explícito}{los listados arriba, para que Caddy pueda validar HTTP-01 individualmente.}
+
+\warnbox{Caché ACME con wildcard}{El uso de wildcard DNS combinado con HTTP-01/TLS-ALPN-01 puede romper la emisión inicial de un subdominio nuevo por caché ACME. Para subdominios nuevos: usar DNS-01 con \texttt{acme.sh --dns dns\_hostinger}.}
+
+\newpage
+
+% =====================================================================
+% 10. STACK TECNOLÓGICO - BACKEND PYTHON
+% =====================================================================
+\section{Stack tecnológico — Backend Python}
+
+\subsection{Runtime}
+
+\dato{Versión Python}{3.10+ (base image \texttt{python:3.10-slim} en \texttt{hermes/Dockerfile})}\\
+\dato{Loop async}{asyncio + uvloop (instalado opcionalmente)}\\
+\dato{Servidor HTTP}{aiohttp \textgreater= 3.9 (no FastAPI / uvicorn — aiohttp ofrece WebSocket nativo más bajo nivel)}
+
+\subsection{Dependencias principales del agente}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Paquete} & \color{white}\textbf{Versión mínima} & \color{white}\textbf{Uso}\\
+\hline
+aiohttp & 3.9.0 & servidor HTTP + cliente async + WebSocket\\
+websockets & 12.0 & WebSocket client/server independiente\\
+tenacity & 8.2.0 & retry decorators con backoff exponencial\\
+prometheus\_client & 0.20.0 & exposición de \texttt{/metrics}\\
+orjson & 3.9.0 & serialización JSON ultra-rápida (3-10× stdlib)\\
+cachetools & 5.3.0 & TTLCache para dedup de queries de voz\\
+PyYAML & 6.0 & lectura de personalidades YAML\\
+python-dotenv & 1.0.0 & carga de \texttt{.env}\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Patrones de performance aplicados}
+
+\subsubsection{aiohttp ClientSession compartida}
+
+Una única \texttt{ClientSession} con \texttt{TCPConnector(limit=20, ttl\_dns\_cache=300)} creada en \texttt{start()} y cerrada en \texttt{stop()}. Evita 50-200 ms de overhead TCP+TLS por request.
+
+\begin{lstlisting}[language=Python]
+async def start(self):
+    connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
+    self._session = aiohttp.ClientSession(connector=connector)
+\end{lstlisting}
+
+\subsubsection{orjson en lugar de json stdlib}
+
+\texttt{orjson.dumps()} devuelve \texttt{bytes}, no \texttt{str}. Diferencias clave:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Para archivos: abrir en modo \texttt{"ab"}, escribir \texttt{f.write(orjson.dumps(obj) + b"\textbackslash n")}.
+\item Para aiohttp requests: pasar \texttt{data=orjson.dumps(payload)} con header \texttt{Content-Type: application/json}.
+\end{itemize}
+
+\subsubsection{Dedup de queries con TTLCache}
+
+\texttt{TTLCache(maxsize=256, ttl=60)} con clave \texttt{hash(model+text)}. Previene doble gasto de tokens cuando Whisper transcribe la misma frase dos veces en segundos (eco de micrófono).
+
+\subsubsection{LiteLLM Redis cache activado por defecto}
+
+En \texttt{config/litellm.yaml}:
+
+\begin{lstlisting}[language=yaml]
+litellm_settings:
+  cache: True
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    ttl: 3600
+\end{lstlisting}
+
+\subsection{Estructura del paquete \texttt{hermes/}}
+
+\begin{lstlisting}[language=bashx]
+hermes/
+|-- main.py                # Entry point (aiohttp.web.Application)
+|-- core/
+|   `-- agent.py           # Clase Agent (estado, sesion, _session aiohttp)
+|-- api/
+|   |-- health.py          # GET /health (con session compartida)
+|   |-- voice.py           # POST /api/voice + WS /process
+|   `-- skills.py          # MCP-style skill invocation
+|-- voice/
+|   |-- resilient_ws.py    # WebSocket cliente resiliente con reconexion
+|   |-- elevenlabs_ws.py   # TTS streaming a ElevenLabs
+|   `-- whisper_client.py  # HTTP client async al servicio Whisper
+|-- memory/
+|   `-- brain_client.py    # Cliente del Brain API
+|-- skills/                # *.py con skills hot-reload (bind mount)
+|-- personalities/         # *.yaml con perfiles de personalidad
+|-- Dockerfile             # python:3.10-slim + requirements + COPY
+`-- requirements.txt
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 11. STACK TECNOLÓGICO - FRONTEND
+% =====================================================================
+\section{Stack tecnológico — Frontend Next.js 14}
+
+\subsection{Runtime y framework}
+
+\dato{Next.js}{14.2.x (App Router obligatorio)}\\
+\dato{React}{18.3.0}\\
+\dato{TypeScript}{5.5.2 con \texttt{strict: true}}\\
+\dato{Estilos}{Tailwind CSS 3.4.1 + PostCSS}\\
+\dato{Animaciones}{Framer Motion 11.5.5}\\
+\dato{Iconos}{Heroicons 2.1.3}
+
+\warnbox{Next.js 14 NO soporta \texttt{next.config.ts}}{Solo \texttt{next.config.mjs} funciona en 14.x. El soporte para \texttt{.ts} llegó en Next.js 15. Si se intenta \texttt{.ts}, el error es: \texttt{Configuring Next.js via 'next.config.ts' is not supported}.}
+
+\subsection{App Router — directiva \texttt{'use client'}}
+
+Todo componente que use \texttt{useState}, \texttt{useEffect}, \texttt{fetch}, \texttt{window}, \texttt{document} u otras APIs de browser \textbf{debe} declarar \texttt{'use client'} como primera línea:
+
+\begin{lstlisting}[language=java]
+'use client';
+
+import React, { useState, useEffect } from 'react';
+
+export default function ChatComponent() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  // ...
+}
+\end{lstlisting}
+
+\subsection{Estructura del frontend}
+
+\begin{lstlisting}[language=bashx]
+website/
+|-- app/
+|   |-- layout.tsx          # Root layout (importa globals CSS, define metadata)
+|   |-- page.tsx            # Home page renderiza el SPA
+|   `-- api/
+|       |-- voice/route.ts  # POST /api/voice (bridge -> hermes-agent /process)
+|       |-- tree/route.ts   # GET /api/tree (file tree JSON)
+|       `-- health/route.ts # GET /api/health (force-dynamic)
+|-- src/
+|   |-- App.tsx             # SPA principal ('use client')
+|   |-- index.css           # Tailwind + custom styles
+|   `-- components/         # Componentes reutilizables ('use client' si usan hooks)
+|-- public/                 # Assets estaticos (.gitkeep si vacio)
+|-- next.config.mjs         # output: 'standalone'
+|-- tsconfig.json
+|-- tailwind.config.js      # content paths: app/ y src/
+|-- postcss.config.js
+`-- Dockerfile              # multi-stage: build + production
+\end{lstlisting}
+
+\subsection{API Routes — patrón estándar}
+
+\begin{lstlisting}[language=java]
+// app/api/health/route.ts
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';  // OBLIGATORIO para datos dinamicos
+
+export async function GET() {
+  const HERMES = process.env.HERMES_URL_INTERNAL ?? 'http://hermes:8080';
+  try {
+    const res = await fetch(`${HERMES}/health`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    return NextResponse.json({ status: res.ok ? 'up' : 'down' });
+  } catch {
+    return NextResponse.json({ status: 'down' }, { status: 503 });
+  }
+}
+\end{lstlisting}
+
+\warnbox{\texttt{force-dynamic} obligatorio}{Sin la directiva, Next.js 14 cachea el response del route en build-time y \texttt{/api/health} responde always-up aunque el servicio esté caído. Síntoma en \texttt{npm run build}: la ruta aparece como \texttt{○ (Static)} en lugar de \texttt{ƒ (Dynamic)}.}
+
+\subsection{Dockerfile multi-stage}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Stage 1 (\texttt{deps}):} \texttt{node:20-alpine} + \texttt{npm ci}.
+\item \textbf{Stage 2 (\texttt{builder}):} copia source + \texttt{npm run build} (output \texttt{.next/standalone/}).
+\item \textbf{Stage 3 (\texttt{runner}):} \texttt{node:20-alpine} + copy de \texttt{.next/standalone/} + \texttt{public/} + \texttt{.next/static/} + \texttt{CMD ["node","server.js"]}.
+\end{itemize}
+
+\warnbox{\texttt{public/} debe existir}{El Dockerfile incluye \texttt{COPY --from=builder /app/public ./public}. Si \texttt{public/} no existe en el repo, el build falla. Crear siempre \texttt{public/.gitkeep} cuando no haya assets estáticos.}
+
+\newpage
+
+% =====================================================================
+% 12. STACK TECNOLÓGICO - BRAIN
+% =====================================================================
+\section{Stack tecnológico — Brain (memoria)}
+
+\subsection{Componentes}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|X|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Componente} & \color{white}\textbf{Rol}\\
+\hline
+FastEmbed & generación de embeddings con \texttt{intfloat/multilingual-e5-large} (1024 dims)\\
+LanceDB & vector DB embedded; almacena embeddings + metadata; soporta búsqueda híbrida\\
+Kuzu & graph DB embedded; aristas entre conceptos para Graph RAG\\
+Redis & job queue async (RQ); cola 3 — \texttt{redis://redis:6379/2}\\
+FastMCP 3.x & servidor MCP HTTP Streamable para integración con Claude\\
+Uvicorn & ASGI server para la API HTTP\\
+TextCrossEncoder & reranking de candidatos tras hybrid retrieval\\
+\hline
+\end{tabularx}
+\end{center}
+
+\subsection{Modelo de embeddings}
+
+\dato{Nombre}{\texttt{intfloat/multilingual-e5-large}}\\
+\dato{Dimensiones}{1024}\\
+\dato{Idiomas soportados}{100+ (incluye español nativo)}\\
+\dato{Por qué este y no BAAI/bge-m3}{\texttt{BAAI/bge-m3} no está en fastembed 0.4.x. \texttt{multilingual-e5-large} es el equivalente disponible.}
+
+\subsection{Pipeline de retrieval}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Query} llega como texto al endpoint \texttt{/recall}.
+\item \textbf{Embedding} de la query con FastEmbed.
+\item \textbf{Hybrid retrieval:} búsqueda dense (cosine sobre LanceDB) + sparse (BM25 sobre vault).
+\item \textbf{Fusión RRF} (Reciprocal Rank Fusion) con \texttt{rrf\_k=60}.
+\item \textbf{Graph expansion} opcional (1-hop sobre Kuzu) para multi-hop RAG.
+\item \textbf{Reranking} con TextCrossEncoder (sigmoid sobre logits crudos).
+\item \textbf{Top-k} retornado al caller con \texttt{score = max(component\_scores.values())} (NO el RRF score, que es ~0.016 max).
+\end{enumerate}
+
+\warnbox{RRF score ≠ similarity score}{El score RRF tiene techo ~0.016 con \texttt{rrf\_k=60}. Si se devuelve al caller como \texttt{score}, los acceptance tests con \texttt{assert score > 0.4} fallan aunque el retrieval sea correcto. Siempre devolver \texttt{max(component\_scores)} (cosine sim ∈ [0,1]) como score de display.}
+
+\subsection{Volúmenes de Brain}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Volumen} & \color{white}\textbf{Contenedor} & \color{white}\textbf{Contenido}\\
+\hline
+\texttt{brain\_vault} & \texttt{/data/vault} & Markdown docs (knowledge base)\\
+\texttt{brain\_events} & \texttt{/data/events} & JSONL append-only event log\\
+\texttt{brain\_lance} & \texttt{/data/lance} & Vector DB (LanceDB tables)\\
+\texttt{brain\_graph} & \texttt{/data/graph} & Graph DB (Kuzu)\\
+\texttt{brain\_models} & \texttt{/data/models} & Modelos FastEmbed cacheados\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Acceso multi-proceso}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Kuzu:} single-proceso. \textbf{Solo} \texttt{brain-worker} abre Kuzu writes; \texttt{brain} lee a través del worker vía Redis. Si ambos abren Kuzu, \texttt{Could not set lock on file}.
+\item \textbf{LanceDB:} writes single, reads concurrentes OK.
+\item \textbf{Redis:} multi-proceso natural.
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 13. STACK TECNOLÓGICO - LITELLM
+% =====================================================================
+\section{Stack tecnológico — LiteLLM Router}
+
+\subsection{Configuración \texttt{config/litellm.yaml}}
+
+\begin{lstlisting}[language=yaml]
+model_list:
+  - model_name: gpt-4o
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_base: https://openrouter.ai/api/v1
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 200
+      timeout: 30
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openrouter/openai/gpt-4o-mini
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 500
+      timeout: 15
+
+  - model_name: claude-sonnet-4.6
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4-6
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 150
+      timeout: 30
+
+  - model_name: llama-3.1-70b
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.1-70b-instruct
+      rpm: 1000
+      timeout: 10
+
+  - model_name: gemini-flash
+    litellm_params:
+      model: openrouter/google/gemini-2.5-flash
+      rpm: 1000
+      timeout: 10
+
+router_settings:
+  routing_strategy: "latency-based-routing"
+  allowed_fails: 2
+  cooldown_time: 60
+
+litellm_settings:
+  cache: True
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    ttl: 3600
+  callbacks: ["prometheus"]
+\end{lstlisting}
+
+\subsection{Modelo por defecto: gemini-flash}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|r|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Modelo} & \color{white}\textbf{Latencia} & \color{white}\textbf{Costo (\$/1M tok)} & \color{white}\textbf{Uso típico}\\
+\hline
+gemini-flash & ~300 ms & 0.075 in / 0.30 out & \textbf{default}\\
+gpt-4o-mini & ~450 ms & 0.15 in / 0.60 out & fallback rápido\\
+llama-3.1-70b & ~800 ms & 0.50 in / 0.75 out & bulk processing\\
+gpt-4o & ~1200 ms & 5.00 in / 15.00 out & razonamiento complejo\\
+claude-sonnet-4.6 & ~1500 ms & 3.00 in / 15.00 out & código + razonamiento\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Fallback chain en caso de error}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Modelo solicitado falla → contador \texttt{allowed\_fails} incrementa.
+\item Si llega a 2 → modelo entra en cooldown 60 s.
+\item LiteLLM selecciona automáticamente el siguiente con menor latencia disponible.
+\item Si todos los modelos del tier están en cooldown → degrada al tier inferior (gpt-4o-mini → llama-3.1-70b).
+\end{enumerate}
+
+\subsection{Endpoint OpenAI-compatible}
+
+\begin{lstlisting}[language=bashx]
+curl -X POST http://127.0.0.1:4000/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-flash",
+    "messages": [{"role": "user", "content": "Hola Hermes"}],
+    "stream": true
+  }'
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 14. TABLA DE PUERTOS Y DOMINIOS (CONSOLIDADA)
+% =====================================================================
+\section{Tabla consolidada de puertos y dominios}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|l|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Servicio} & \color{white}\textbf{Puerto host} & \color{white}\textbf{Puerto contenedor} & \color{white}\textbf{Dominio} & \color{white}\textbf{Acceso}\\
+\hline
+\endhead
+hermes-agent      & 127.0.0.1:8080  & 8080  & hermes.el80.space  & Caddy + WS\\
+litellm-router    & 127.0.0.1:4000  & 4000  & litellm.el80.space & Caddy + Bearer\\
+grafana           & 127.0.0.1:3000  & 3000  & grafana.el80.space & Caddy + login\\
+hermes-website    & 127.0.0.1:3001  & 3000  & docs.el80.space    & Caddy público\\
+hermes-workspace  & 127.0.0.1:3002  & 3000  & —                  & Loopback SSH\\
+whisper-stt       & 127.0.0.1:9000  & 9000  & —                  & Solo interno\\
+prometheus        & 127.0.0.1:9090  & 9090  & —                  & Solo loopback\\
+redis-cache       & —               & 6379  & —                  & Solo red backend\\
+brain             & 127.0.0.1:8765  & 8765  & brain.el80.space   & Caddy + Bearer\\
+filebrowser       & 127.0.0.1:8095  & 80    & files.el80.space   & Caddy + login\\
+9router           & 127.0.0.1:20128 & 20128 & router.el80.space  & Caddy + JWT\\
+cadvisor          & —               & 8080  & —                  & Solo red monitoring\\
+node-exporter     & —               & 9100  & —                  & Solo red monitoring\\
+brain-worker      & —               & —     & —                  & Sin HTTP (RQ)\\
+autoheal          & —               & —     & —                  & Solo Docker socket\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Mapping de servicio → contenedor}
+
+Hay un detalle operativo importante: los nombres de \textbf{servicio} en \texttt{docker-compose.yml} no siempre coinciden con los nombres de \textbf{contenedor} (\texttt{container\_name}).
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Servicio (compose)} & \color{white}\textbf{Contenedor (docker)}\\
+\hline
+\texttt{litellm} & \texttt{litellm-router}\\
+\texttt{hermes} & \texttt{hermes-agent}\\
+\texttt{whisper-stt} & \texttt{whisper-stt}\\
+\texttt{redis} & \texttt{redis-cache}\\
+\texttt{website} & \texttt{hermes-website}\\
+\texttt{workspace} & \texttt{hermes-workspace}\\
+\hline
+\end{tabular}
+\end{center}
+
+\warnbox{Uso correcto en \texttt{docker compose up --no-deps <servicio>}}{Pasar el \textbf{nombre de servicio}, no el de contenedor. Watchdogs, scripts de despliegue y el comando manual: \texttt{docker compose up --no-deps litellm} (no \texttt{litellm-router}).}
+
+\newpage
+
+% =====================================================================
+% 15. VARIABLES DE ENTORNO
+% =====================================================================
+\section{Variables de entorno críticas}
+
+Las variables viven en \texttt{/root/.env} (NO versionado). Plantilla en \texttt{/root/.env.template}.
+
+\subsection{Seguridad y autenticación}
+
+\begin{lstlisting}[language=bashx]
+# Auth Bearer para LiteLLM
+LITELLM_MASTER_KEY=sk-litellm-master-key-XXXXX
+
+# JWT para 9router
+ROUTER_JWT_SECRET=<64 caracteres hex>
+ROUTER_INITIAL_PASSWORD=<password fuerte>
+
+# Auth Bearer para Brain API
+BRAIN_API_TOKEN=<32 caracteres hex>
+\end{lstlisting}
+
+\subsection{Proveedores de IA y voz}
+
+\begin{lstlisting}[language=bashx]
+# OpenRouter (proveedor principal de LLM)
+OPENROUTER_API_KEY=sk-or-v1-XXXXX
+
+# Google Gemini (fallback directo)
+GEMINI_API_KEY=AIzaSyXXXXX
+
+# ElevenLabs (TTS premium)
+ELEVENLABS_API_KEY=sk_XXXXX
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM   # Voice Rachel (default)
+\end{lstlisting}
+
+\subsection{URLs internas (Docker DNS)}
+
+\begin{lstlisting}[language=bashx]
+LITELLM_URL=http://litellm:4000
+BRAIN_URL=http://brain:8765
+WHISPER_URL=http://whisper-stt:9000
+
+# Para fetch desde Next.js API routes (server-side)
+HERMES_URL_INTERNAL=http://hermes:8080
+LITELLM_URL_INTERNAL=http://litellm:4000
+\end{lstlisting}
+
+\subsection{Brain paths y configuración}
+
+\begin{lstlisting}[language=bashx]
+BRAIN_VAULT_PATH=/data/vault
+BRAIN_EVENTS_PATH=/data/events
+BRAIN_LANCE_PATH=/data/lance
+BRAIN_GRAPH_PATH=/data/graph
+BRAIN_MODELS_PATH=/data/models
+BRAIN_REDIS_URL=redis://redis:6379/2
+BRAIN_EMBED_MODEL=intfloat/multilingual-e5-large
+\end{lstlisting}
+
+\subsection{Hermes Agent}
+
+\begin{lstlisting}[language=bashx]
+HERMES_MODEL=gemini-flash         # Modelo LLM default
+HERMES_PERSONALITY=default        # Carga personalities/default.yaml
+HERMES_LOG_LEVEL=INFO
+\end{lstlisting}
+
+\subsection{Infraestructura cloud (opcional)}
+
+\begin{lstlisting}[language=bashx]
+DIGITALOCEAN_TOKEN=dop_v1_XXXXX   # Para droplets de Mesh / Control Center
+RUNPOD_API_KEY=rpa_XXXXX          # Para GPU on-demand (training)
+HOSTINGER_API_KEY=<key>           # Para gestion DNS
+\end{lstlisting}
+
+\warnbox{\texttt{.env} es secreto absoluto}{El \texttt{.gitignore} raíz contiene \texttt{.*} que ignora todos los dotfiles, incluyendo \texttt{.env}. Si el VPS se reinicia o se clona el repo, hay que recrear \texttt{.env} a partir de \texttt{.env.template}.}
+
+\newpage
+
+% =====================================================================
+% 16. VOLÚMENES Y ALMACENAMIENTO
+% =====================================================================
+\section{Volúmenes y almacenamiento}
+
+\subsection{Volúmenes Docker nombrados}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Volumen} & \color{white}\textbf{Servicio} & \color{white}\textbf{Mount point} & \color{white}\textbf{Uso}\\
+\hline
+\endhead
+litellm\_data & litellm & /app/data & Cache + métricas internas\\
+redis\_data & redis-cache & /data & Snapshot RDB\\
+whisper\_cache & whisper-stt & /root/.cache/whisper & Modelos Whisper\\
+prometheus\_data & prometheus & /prometheus & Series temporales\\
+grafana\_data & grafana & /var/lib/grafana & Dashboards + users\\
+9router\_data & 9router & /data & Configuración + estado\\
+brain\_vault & brain, brain-worker & /data/vault & Markdown docs\\
+brain\_events & brain, brain-worker & /data/events & Event journal JSONL\\
+brain\_lance & brain, brain-worker & /data/lance & Vector DB\\
+brain\_graph & brain-worker & /data/graph & Graph DB Kuzu\\
+brain\_models & brain, brain-worker & /data/models & FastEmbed cache\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Bind mounts (host ↔ contenedor)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Host} & \color{white}\textbf{Contenedor} & \color{white}\textbf{Modo} & \color{white}\textbf{Propósito}\\
+\hline
+\texttt{./hermes/skills} & \texttt{/app/skills} & rw & Skills hot-reload\\
+\texttt{./hermes/data} & \texttt{/app/data} & rw & Datos de sesión\\
+\texttt{./hermes/logs} & \texttt{/app/logs} & rw & Logs estructurados\\
+\texttt{./config/litellm.yaml} & \texttt{/app/config.yaml} & ro & LiteLLM config\\
+\texttt{./config/prometheus.yml} & \texttt{/etc/prometheus/prometheus.yml} & ro & Targets\\
+\texttt{./config/alerts.yml} & \texttt{/etc/prometheus/alerts.yml} & ro & Alert rules\\
+\texttt{/root} & \texttt{/host-root} & ro & Website read-only\\
+\texttt{/root} & \texttt{/srv} & rw & Filebrowser\\
+\texttt{/var/run/docker.sock} & \texttt{/var/run/docker.sock} & ro & Autoheal + cadvisor\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Estrategia de backup}
+
+\dato{Frecuencia}{semanal (cron en host)}\\
+\dato{Comando}{\texttt{make backup} (definido en Makefile)}\\
+\dato{Destino}{\texttt{/root/backups/<fecha>/} (incluye volúmenes Docker + \texttt{/root/config/} + \texttt{.env})}\\
+\dato{Retención}{4 últimas semanas}\\
+\dato{Restore}{copiar archivos de \texttt{backups/<fecha>/} y \texttt{docker compose up -d}}
+
+\okbox{Volúmenes Docker son robustos}{Los volúmenes nombrados de Docker (\texttt{litellm\_data}, \texttt{brain\_vault}, etc.) persisten al \texttt{docker compose down}. Solo \texttt{docker compose down -v} los borra. El \texttt{down -v} jamás debe ejecutarse en producción sin backup previo.}
+
+\newpage
+
+% =====================================================================
+% 17. HEALTHCHECKS Y RESILIENCIA
+% =====================================================================
+\section{Healthchecks y política de autoheal}
+
+\subsection{Tabla por servicio}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|l|r|r|r|c|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Servicio} & \color{white}\textbf{Test} & \color{white}\textbf{Int.} & \color{white}\textbf{Time.} & \color{white}\textbf{Retries} & \color{white}\textbf{Autoheal}\\
+\hline
+\endhead
+litellm & curl Bearer /health & 30 s & 5 s & 3 & ✓\\
+hermes-agent & curl /health & 30 s & 5 s & 3 & ✓\\
+hermes-website & wget /api/health & 30 s & 5 s & 3 & ✓\\
+hermes-workspace & curl /:3002 & 30 s & 10 s & 3 & ✓\\
+whisper-stt & curl /docs & 30 s & 10 s & 3 & ✓\\
+brain & curl /health & 30 s & 5 s & 3 & ✓\\
+brain-worker & redis.ping() & 30 s & 5 s & 3 & ✗\\
+9router & nc :20128 & 30 s & 10 s & 3 & ✓\\
+redis-cache & redis-cli ping & 10 s & 3 s & 5 & ✓\\
+prometheus & wget /-/healthy & 30 s & 5 s & 3 & ✓\\
+grafana & wget /api/health & 30 s & 5 s & 3 & ✓\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Política Autoheal}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Autoheal lee el socket Docker cada 30 s.
+\item Identifica contenedores con label \texttt{autoheal.enabled=true}.
+\item Para cada uno, lee su estado (\texttt{starting}, \texttt{healthy}, \texttt{unhealthy}).
+\item Si encuentra \texttt{unhealthy} → \texttt{docker restart <container>}.
+\item Espera el \texttt{start\_period} del contenedor antes de re-evaluar.
+\end{enumerate}
+
+\subsection{Docker healthcheck — usar \texttt{127.0.0.1}, no \texttt{localhost}}
+
+\warnbox{Trampa de DNS Alpine}{En contenedores Alpine, \texttt{localhost} puede resolver a \texttt{[::1]} (IPv6) mientras el proceso escucha solo en IPv4 → \texttt{Connection refused} y healthcheck always-failing. Usar siempre \texttt{127.0.0.1} en healthchecks.}
+
+Ejemplo:
+\begin{lstlisting}[language=yaml]
+healthcheck:
+  test: ["CMD", "wget", "--spider", "http://127.0.0.1:3000/api/health"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+\end{lstlisting}
+
+\subsection{Healthchecks autenticados}
+
+\textbf{LiteLLM} requiere Bearer token incluso para \texttt{/health}. El healthcheck del contenedor lo incluye:
+
+\begin{lstlisting}[language=yaml]
+healthcheck:
+  test:
+    - CMD
+    - curl
+    - -f
+    - -H
+    - "Authorization: Bearer ${LITELLM_MASTER_KEY}"
+    - http://127.0.0.1:4000/health
+\end{lstlisting}
+
+\subsection{401 = up (caso especial LiteLLM)}
+
+LiteLLM responde \texttt{401 Unauthorized} ante peticiones sin auth válida — pero eso confirma que el servicio responde. En health checks del frontend:
+
+\begin{lstlisting}[language=java]
+litellmUp = [200, 401].includes(litellmRes.value.status);
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 18. ENDPOINTS API
+% =====================================================================
+\section{Endpoints API por servicio}
+
+\subsection{Hermes Agent (\texttt{:8080})}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Método} & \color{white}\textbf{Path} & \color{white}\textbf{Descripción}\\
+\hline
+GET & /health & Healthcheck (público)\\
+GET & /metrics & Prometheus metrics\\
+POST & /api/voice & Procesa input de voz (text or audio)\\
+WS & /process & Streaming bidireccional voz\\
+POST & /api/skill/<name> & Invocación MCP-style de skill\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{LiteLLM Router (\texttt{:4000}, requiere Bearer)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Método} & \color{white}\textbf{Path} & \color{white}\textbf{Descripción}\\
+\hline
+POST & /v1/chat/completions & OpenAI-compatible (stream OK)\\
+POST & /v1/embeddings & Embeddings (no usado — usamos FastEmbed local)\\
+GET & /v1/models & Lista modelos disponibles\\
+GET & /health & Healthcheck (requiere Bearer)\\
+GET & /metrics/ & Prometheus metrics (trailing slash!)\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Hermes Website (\texttt{:3001})}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Método} & \color{white}\textbf{Path} & \color{white}\textbf{Descripción}\\
+\hline
+GET & / & SPA Next.js (root layout + page)\\
+POST & /api/voice & Bridge → hermes-agent /process\\
+GET & /api/health & Healthcheck (force-dynamic)\\
+GET & /api/tree & Árbol de directorios JSON\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Brain API (\texttt{:8765}, requiere Bearer)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Método} & \color{white}\textbf{Path} & \color{white}\textbf{Descripción}\\
+\hline
+POST & /capture & Ingesta de documento o nota\\
+POST & /recall & Búsqueda híbrida (vector + sparse + reranking)\\
+POST & /ingest/url & Crawl + ingest de URL\\
+GET & /health & Healthcheck\\
+HTTP-S & /mcp/ & FastMCP 3.x endpoint (trailing slash!)\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{9Router (\texttt{:20128}, JWT cookie)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Método} & \color{white}\textbf{Path} & \color{white}\textbf{Descripción}\\
+\hline
+POST & /api/auth/login & Login → JWT cookie\\
+GET & /api/settings & Lee configuración (incl. MCP servers)\\
+PATCH & /api/settings & Actualiza MCP servers remotos\\
+GET & /api/mcp/<plugin>/sse & Proxy SSE para plugins stdio locales\\
+GET & /api/health & Healthcheck\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Prometheus (\texttt{:9090}, sin auth interno)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Método} & \color{white}\textbf{Path} & \color{white}\textbf{Descripción}\\
+\hline
+GET & /api/v1/targets & Estado de scraping targets\\
+GET & /api/v1/query?query= & PromQL query\\
+GET & /api/v1/query\_range & PromQL rango\\
+GET & /-/healthy & Healthcheck\\
+GET & /metrics & Self-metrics\\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 19. PIPELINE DE VOZ END-TO-END
+% =====================================================================
+\section{Pipeline de voz end-to-end}
+
+\subsection{Diagrama de secuencia}
+
+\begin{center}
+\begin{tikzpicture}[
+  ev/.style={draw=hermesblue, fill=boxbg, rounded corners=3pt, minimum width=4cm, minimum height=0.7cm, font=\small\sffamily, align=center},
+  arr/.style={->, >=Stealth, thick, color=hermesblue},
+  lat/.style={font=\footnotesize\sffamily, color=hermesgreen, right=3pt}
+]
+\node[ev] (n1) {1. Captura de audio (browser)};
+\node[ev, below=0.4cm of n1] (n2) {2. Caddy reverse proxy};
+\node[ev, below=0.4cm of n2] (n3) {3. Hermes Website (Next.js API)};
+\node[ev, below=0.4cm of n3] (n4) {4. Hermes Agent (aiohttp WS)};
+\node[ev, below=0.4cm of n4] (n5) {5. Whisper STT};
+\node[ev, below=0.4cm of n5] (n6) {6. LiteLLM Router};
+\node[ev, below=0.4cm of n6] (n7) {7. Redis cache lookup};
+\node[ev, below=0.4cm of n7] (n8) {8. Proveedor LLM (Gemini Flash)};
+\node[ev, below=0.4cm of n8] (n9) {9. Brain (memory store async)};
+\node[ev, below=0.4cm of n9] (n10) {10. ElevenLabs TTS streaming};
+\node[ev, below=0.4cm of n10] (n11) {11. Reproducción en browser};
+
+\draw[arr] (n1) -- (n2) node[lat,midway,right=10pt] {~20 ms};
+\draw[arr] (n2) -- (n3) node[lat,midway,right=10pt] {~5 ms};
+\draw[arr] (n3) -- (n4) node[lat,midway,right=10pt] {~2 ms};
+\draw[arr] (n4) -- (n5) node[lat,midway,right=10pt] {~5 ms};
+\draw[arr] (n5) -- (n6) node[lat,midway,right=10pt] {< 200 ms (STT)};
+\draw[arr] (n6) -- (n7) node[lat,midway,right=10pt] {< 5 ms};
+\draw[arr] (n7) -- (n8) node[lat,midway,right=10pt] {< 300 ms};
+\draw[arr] (n8) -- (n9) node[lat,midway,right=10pt] {async (no bloquea)};
+\draw[arr] (n9) -- (n10) node[lat,midway,right=10pt] {~75 ms (TTS)};
+\draw[arr] (n10) -- (n11) node[lat,midway,right=10pt] {streaming};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Tabla de latencias}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Etapa} & \color{white}\textbf{Típica} & \color{white}\textbf{Peor caso}\\
+\hline
+Captura + transmisión browser & 20 ms & 50 ms\\
+Caddy + Next.js route & 7 ms & 25 ms\\
+Hermes Agent (overhead) & 5 ms & 15 ms\\
+Whisper STT (frase corta) & 180 ms & 280 ms\\
+LiteLLM + cache lookup & 5 ms & 15 ms\\
+Gemini Flash (con cache miss) & 280 ms & 500 ms\\
+Brain memory store (async) & 0 ms & 0 ms\\
+ElevenLabs Flash v2.5 TTS & 75 ms & 110 ms\\
+Reproducción (streaming) & — & —\\
+\hline
+\rowcolor{okbg}\textbf{Total E2E (medido)} & \textbf{483 ms} & \textbf{~900 ms}\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Optimizaciones clave aplicadas}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cache Redis en LiteLLM:} queries idénticas (mismo prompt) responden en \textless 10 ms.
+\item \textbf{aiohttp ClientSession compartida:} sin overhead TCP+TLS por request (50-200 ms ahorrados).
+\item \textbf{Modelo gemini-flash por defecto:} reduce latencia ~500 ms vs gpt-4o-mini (anterior default).
+\item \textbf{Brain en async (RQ queue):} no bloquea el pipeline principal.
+\item \textbf{ElevenLabs Flash v2.5 con auto\_mode:} streaming progresivo a 75 ms inicial.
+\end{itemize}
+
+\subsection{Modos de operación}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Modo voz} (\texttt{/process}): WS bidireccional, audio in → audio out streaming.
+\item \textbf{Modo texto} (\texttt{POST /api/voice}): JSON in → SSE out (Server-Sent Events).
+\item \textbf{Modo skill} (\texttt{/api/skill/<name>}): invocación directa de capacidad MCP.
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 20. FLUJO DE DATOS - CONSULTA LLM
+% =====================================================================
+\section{Flujo de datos — consulta LLM completa}
+
+\subsection{Camino exitoso (cache miss)}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Cliente envía mensaje al Hermes Agent.
+\item Agent normaliza el prompt + busca contexto en Brain (vía \texttt{/recall}).
+\item Agent compone el prompt enriquecido con contexto top-k.
+\item Agent POST a LiteLLM \texttt{/v1/chat/completions} con \texttt{stream=true}.
+\item LiteLLM consulta Redis para el hash del prompt.
+\item Cache miss → LiteLLM selecciona modelo según \texttt{routing\_strategy=latency-based}.
+\item LiteLLM hace request a OpenRouter (canal Gemini Flash).
+\item Response streaming chunk-by-chunk de OpenRouter a LiteLLM.
+\item LiteLLM re-emite cada chunk al Agent.
+\item Agent agrega chunks, sanitiza, emite vía WS al browser.
+\item Cuando termina, LiteLLM guarda el response completo en Redis.
+\item Async: Agent envía conversación a Brain (\texttt{/capture}) para persistencia.
+\end{enumerate}
+
+\subsection{Camino exitoso (cache hit)}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Pasos 1-4 idénticos.
+\item LiteLLM consulta Redis → hit.
+\item Devuelve el response cacheado inmediato (\textless 10 ms total).
+\item Agent emite la respuesta al browser.
+\item Tokens \textbf{no} se cobran al proveedor LLM.
+\end{enumerate}
+
+\subsection{Camino con error y fallback}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Pasos 1-6 idénticos.
+\item Request a Gemini falla (timeout 10 s o 5xx).
+\item LiteLLM incrementa \texttt{allowed\_fails} para Gemini.
+\item Si \texttt{allowed\_fails == 2} → cooldown 60 s.
+\item LiteLLM selecciona el siguiente modelo con menor latencia disponible.
+\item Reintenta automáticamente — el cliente NO ve el fallo.
+\item Si todos los modelos están en cooldown → degrada al tier inferior.
+\end{enumerate}
+
+\subsection{Logs estructurados de la transacción}
+
+Cada request genera un log line JSON en \texttt{hermes/logs/agent.log}:
+
+\begin{lstlisting}[language=java]
+{
+  "ts": "2026-05-28T14:32:11.234Z",
+  "session_id": "abc123",
+  "model": "gemini-flash",
+  "cache_hit": false,
+  "latency_ms": {
+    "stt": 180,
+    "brain_recall": 45,
+    "llm": 290,
+    "tts_first_chunk": 78,
+    "total_e2e": 593
+  },
+  "tokens": {"in": 1240, "out": 380}
+}
+\end{lstlisting}
+
+\subsection{Métricas derivadas en Prometheus}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Métrica} & \color{white}\textbf{Tipo}\\
+\hline
+\texttt{litellm\_request\_duration\_seconds} & histogram\\
+\texttt{litellm\_total\_tokens} & counter\\
+\texttt{litellm\_cache\_hits\_total} & counter\\
+\texttt{litellm\_model\_failures\_total} & counter\\
+\texttt{hermes\_voice\_e2e\_seconds} & histogram\\
+\texttt{hermes\_brain\_recall\_seconds} & histogram\\
+\texttt{hermes\_skill\_executions\_total} & counter\\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 21. ORDEN DE ARRANQUE
+% =====================================================================
+\section{Orden de arranque y dependencias}
+
+\subsection{Grafo de dependencias declaradas (\texttt{depends\_on})}
+
+\begin{center}
+\begin{tikzpicture}[
+  s/.style={draw=hermesblue, fill=boxbg, rounded corners=3pt, minimum width=2.6cm, minimum height=0.7cm, font=\footnotesize\sffamily, align=center},
+  arr/.style={->, >=Stealth, thick, color=hermesblue}
+]
+\node[s] (redis) {redis};
+\node[s, right=1.5cm of redis] (whisper) {whisper-stt};
+\node[s, right=1.5cm of whisper] (other) {prometheus,\\grafana, etc.};
+
+\node[s, below=1cm of redis] (litellm) {litellm};
+\node[s, right=1.5cm of litellm] (brain) {brain};
+
+\node[s, below=1cm of litellm] (hermes) {hermes-agent};
+\node[s, right=1.5cm of hermes] (worker) {brain-worker};
+
+\node[s, below=1cm of hermes] (web) {website};
+\node[s, right=1.5cm of web] (workspace) {workspace};
+
+\draw[arr] (redis) -- (litellm);
+\draw[arr] (redis) -- (brain);
+\draw[arr] (litellm) -- (hermes);
+\draw[arr] (whisper) -- (hermes);
+\draw[arr] (brain) -- (hermes);
+\draw[arr] (brain) -- (worker);
+\draw[arr] (redis) -- (worker);
+\draw[arr] (hermes) -- (web);
+\draw[arr] (hermes) -- (workspace);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Tabla de dependencias y orden}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|c|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Nivel} & \color{white}\textbf{Servicios} & \color{white}\textbf{Depende de}\\
+\hline
+\endhead
+1 & redis, whisper-stt, prometheus, node-exporter, cadvisor, 9router, filebrowser & — (sin deps)\\
+2 & litellm, brain, grafana & redis (prom: scrape después)\\
+3 & hermes-agent, brain-worker & litellm + whisper + brain (Agent) / redis + brain (Worker)\\
+4 & hermes-website, hermes-workspace & hermes-agent\\
+5 & autoheal & sócalo Docker (post-arranque)\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Política de \texttt{depends\_on}}
+
+En \texttt{docker-compose.yml} sólo se declara \texttt{depends\_on} cuando es estrictamente necesario para arranque correcto:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{brain-worker:} depende explícitamente de \texttt{redis} y \texttt{brain} (necesita cola RQ y volúmenes consistentes).
+\item \textbf{hermes-workspace:} depende de \texttt{hermes-agent} (gateway :8642).
+\end{itemize}
+
+El resto confía en \textbf{healthchecks + autoheal} — si \texttt{hermes-agent} arranca antes de que \texttt{litellm} esté listo, su healthcheck fallará durante el \texttt{start\_period} y Autoheal lo reiniciará tras 90 s con litellm ya healthy.
+
+\okbox{Por qué no se declara más \texttt{depends\_on}}{Declarar \texttt{depends\_on} en todos los servicios crea un ordenamiento estricto que multiplica el tiempo de \texttt{docker compose up}. La estrategia healthcheck + autoheal permite arranque paralelo y converge al estado deseado en ~60 s sin sacrificar correctitud.}
+
+\subsection{Comandos operativos comunes}
+
+\begin{lstlisting}[language=bashx]
+docker compose up -d           # arranca todo (en paralelo + autoheal converge)
+docker compose ps              # estado de los 15 servicios
+docker compose logs -f hermes  # logs en streaming
+docker compose restart litellm # reinicia solo un servicio
+docker compose down            # detiene todo (mantiene volúmenes)
+docker compose pull            # actualiza imagenes (litellm, redis, etc.)
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 22. CI/CD PIPELINE
+% =====================================================================
+\section{CI/CD pipeline GitHub Actions → VPS}
+
+\subsection{Trigger}
+
+Push a la rama \texttt{main} dispara el workflow \texttt{.github/workflows/deploy.yml}.
+
+\subsection{Fases del workflow}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Checkout:} clone del commit.
+\item \textbf{Lint Python:} \texttt{ruff check} sobre \texttt{hermes/}.
+\item \textbf{Lint frontend:} \texttt{npm run lint} en \texttt{website/}.
+\item \textbf{Build frontend:} \texttt{npm run build} (debe pasar sin errores TS).
+\item \textbf{SSH al VPS:} \texttt{appleboy/ssh-action} con clave del repo.
+\item \textbf{Pull del repo en VPS:} \texttt{cd /root \&\& git pull}.
+\item \textbf{Build + up:} \texttt{docker compose up -d --build}.
+\item \textbf{Healthcheck autenticado:} curl con Bearer a LiteLLM + hermes.
+\item \textbf{Rollback automático:} si healthcheck falla → \texttt{git reset --hard HEAD\textasciitilde 1 \&\& docker compose up -d --build}.
+\end{enumerate}
+
+\subsection{Health check de deploy}
+
+\begin{lstlisting}[language=bashx]
+source /root/.env
+curl -f -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+     http://127.0.0.1:4000/health
+curl -f http://127.0.0.1:8080/health
+\end{lstlisting}
+
+Si ambos retornan 200 (o 401 para LiteLLM) → deploy considerado exitoso.
+
+\subsection{Verificación local pre-push}
+
+\begin{lstlisting}[language=bashx]
+make check          # build + health + lint (gate antes de commit)
+make doctor         # diagnóstico de 6 pasos
+docker compose ps   # estado snapshot
+cd website && npm run build   # confirma frontend compila
+\end{lstlisting}
+
+\subsection{Configuración de Secrets en GitHub Actions}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Secret} & \color{white}\textbf{Uso}\\
+\hline
+\texttt{VPS\_HOST} & IP o hostname del VPS\\
+\texttt{VPS\_USER} & usuario SSH (típicamente \texttt{root})\\
+\texttt{VPS\_SSH\_KEY} & clave privada SSH para autenticación\\
+\texttt{LITELLM\_MASTER\_KEY} & para healthcheck post-deploy\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Estrategia de rollback}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Rollback automático:} fallido el healthcheck post-deploy → \texttt{git reset --hard HEAD\textasciitilde 1} + rebuild.
+\item \textbf{Rollback manual:} \texttt{git revert <sha>}; push genera deploy nuevo.
+\item \textbf{Tagging:} cada deploy exitoso se taggea con timestamp + commit (para auditoría).
+\end{itemize}
+
+\warnbox{Push HTTPS — único método que funciona en este VPS}{El remote es HTTPS, no SSH. El helper git no está configurado. Patrón:
+\texttt{GH\_TOKEN=\$(gh auth token); git remote set-url origin "https://erikjosehrnndz-crypto:\$\{GH\_TOKEN\}@github.com/erikjosehrnndz-crypto/hermes-stack.git"; git push; git remote set-url origin "https://github.com/erikjosehrnndz-crypto/hermes-stack.git"}.}
+
+\newpage
+
+% =====================================================================
+% 23. SEGURIDAD
+% =====================================================================
+\section{Seguridad — aislamiento de red y OverCR}
+
+\subsection{Defensa en profundidad}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Capa de red:} Caddy es la única superficie pública (80/443); el resto bind a localhost.
+\item \textbf{Capa de auth:} Bearer tokens, JWT, login forms en servicios sensibles.
+\item \textbf{Capa de contenedores:} non-root users donde posible, read-only mounts.
+\item \textbf{Capa de secretos:} \texttt{.env} no versionado; tokens rotados manualmente.
+\item \textbf{Capa de proceso:} OverCR gate L4-L6 bloquea operaciones destructivas sin aprobación humana.
+\end{enumerate}
+
+\subsection{Niveles OverCR}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|c|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Nivel} & \color{white}\textbf{Operaciones} & \color{white}\textbf{Gate}\\
+\hline
+L1-L3 & \texttt{git status}, \texttt{docker compose ps}, lectura & permitido por defecto\\
+L4 & \texttt{git push}, \texttt{docker compose up -d}, \texttt{kubectl apply} & require approval\\
+L5 & \texttt{curl POST} externo, webhook out, mail send & webhook + mail\\
+L6 & Modificación de \texttt{AGENTS.md}, \texttt{CLAUDE.md}, \texttt{soul.md} & require approval extendido\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Rotación de claves}
+
+\dato{Frecuencia recomendada}{trimestral}\\
+\dato{Claves a rotar}{\texttt{LITELLM\_MASTER\_KEY}, \texttt{BRAIN\_API\_TOKEN}, \texttt{ROUTER\_JWT\_SECRET}}\\
+\dato{Tokens externos}{rotación según política del proveedor (\texttt{OPENROUTER\_API\_KEY} cada 6 meses)}
+
+\subsection{Logs y auditoría}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Log} & \color{white}\textbf{Ubicación} & \color{white}\textbf{Retención}\\
+\hline
+Caddy access & \texttt{/var/log/caddy/*.log} & 30 d (logrotate)\\
+Hermes agent & \texttt{hermes/logs/agent.log} (JSONL) & 90 d\\
+Brain events & \texttt{/data/events/*.jsonl} & infinito (append-only)\\
+docker logs & journald & 7 d\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Backup de secretos}
+
+\dato{Archivo \texttt{.env}}{copia cifrada en gestor de contraseñas externo}\\
+\dato{Claves SSH}{copia cifrada en gestor de contraseñas externo}\\
+\dato{Wallet NEXUSMEMORY}{copia offline en hardware wallet}
+
+\warnbox{\texttt{.env} y secretos no van al repo}{El \texttt{.gitignore} raíz contiene \texttt{.*} (todos los dotfiles). Para que los \texttt{.gitignore} de subdirectorios funcionen, el raíz tiene la excepción \texttt{!.gitignore}. Cualquier intento de \texttt{git add .env} falla silenciosamente — confirmar con \texttt{git status} antes de commit.}
+
+\newpage
+
+% =====================================================================
+% 24. ESTRUCTURA DE DIRECTORIOS
+% =====================================================================
+\section{Estructura de directorios}
+
+\begin{lstlisting}[language=bashx]
+/root
+|-- docker-compose.yml          # Orquestación de 15 servicios
+|-- Makefile                    # Targets: doctor, check, health-check, backup, logs
+|-- CLAUDE.md                   # ~40k chars: reglas operativas del agente
+|-- AGENTS.md                   # 100 líneas: entry rápido para agentes
+|-- PENDIENTES.md               # Estado de items activos (con evidencia)
+|-- SESSION_HANDOFF.md          # Contexto persistente entre sesiones
+|-- .env                        # Secrets (NO en git)
+|-- .env.template               # Plantilla de variables
+|-- .gitignore                  # raíz con `.*` + excepciones
+|
+|-- config/
+|   |-- litellm.yaml            # Router LLM (5 modelos)
+|   |-- prometheus.yml          # Scraping targets
+|   |-- alerts.yml              # Alert rules
+|   |-- grafana-datasources.yml # Provision Grafana
+|   `-- caddy/                  # (referencia; Caddy real en /etc/caddy/)
+|
+|-- hermes/                     # Agente Python autónomo
+|   |-- main.py
+|   |-- core/agent.py
+|   |-- api/{health,voice,skills}.py
+|   |-- voice/{resilient_ws,elevenlabs_ws,whisper_client}.py
+|   |-- memory/brain_client.py
+|   |-- skills/                 # *.py hot-reload (bind mount)
+|   |-- personalities/          # *.yaml
+|   |-- Dockerfile
+|   `-- requirements.txt
+|
+|-- website/                    # Frontend Next.js 14
+|   |-- app/{layout,page}.tsx
+|   |-- app/api/{voice,health,tree}/route.ts
+|   |-- src/{App.tsx,index.css,components/}
+|   |-- public/                 # .gitkeep si vacío
+|   |-- next.config.mjs
+|   |-- tsconfig.json
+|   |-- tailwind.config.js
+|   |-- postcss.config.js
+|   `-- Dockerfile              # multi-stage
+|
+|-- brain/                      # Segundo cerebro
+|   |-- brain/
+|   |   |-- main.py
+|   |   |-- settings.py
+|   |   `-- workers/rq_worker.py
+|   |-- Dockerfile              # Shared brain + brain-worker
+|   `-- requirements.txt
+|
+|-- 9router/                    # Proxy LLM alternativo
+|   `-- Dockerfile              # Node.js + JWT auth
+|
+|-- docs/                       # Documentación canónica
+|   |-- Hermes_Stack_Blueprint.pdf
+|   |-- sistema_hermes_arquitectura_definitiva.pdf
+|   |-- Roadmap_Tecnico_Definitivo_v2.pdf
+|   |-- Hermes_AutoMejora_2026-05-25.pdf
+|   |-- ficha_tecnica_hermes.pdf       # ESTE DOCUMENTO
+|   `-- estado_del_arte_hermes.pdf     # Documento compañero
+|
+|-- backups/                    # Backups semanales (NO en git)
+|
+|-- .claude/                    # Config del agente (NO en git)
+|   |-- settings.json           # Permisos canónicos
+|   |-- settings.local.json     # Permisos acumulados
+|   |-- projects/-root/memory/  # MEMORY.md + memorias detalladas
+|   |-- plans/                  # Planes de tareas
+|   `-- templates/              # session-handoff.md
+|
+|-- .github/
+|   `-- workflows/deploy.yml    # CI/CD pipeline
+|
+`-- scripts/                    # Utilidades (sync, deploy, health-check)
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 25. MAKEFILE TARGETS
+% =====================================================================
+\section{Makefile — targets de verificación}
+
+\subsection{Filosofía}
+
+Todos los comandos de verificación operativa están unificados en \texttt{/root/Makefile}. Esto da un único entrypoint humano y permite a CI/CD invocar los mismos targets.
+
+\subsection{Targets principales}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|p{9cm}|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Target} & \color{white}\textbf{Acción}\\
+\hline
+\texttt{make doctor} & 6 pasos: repo → Docker → health → lint → harness → pendientes\\
+\texttt{make check} & build Next.js + health checks + lint Python\\
+\texttt{make build-check} & solo Next.js build\\
+\texttt{make health-check} & solo health de servicios (con curl autenticado)\\
+\texttt{make status} & \texttt{docker compose ps} formateado\\
+\texttt{make logs} & logs recientes de hermes, litellm, website\\
+\texttt{make backup} & backup completo a \texttt{backups/<fecha>/}\\
+\texttt{make backup-list} & lista los backups disponibles\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Patrón obligatorio en el Makefile}
+
+\begin{lstlisting}[language=bashx]
+SHELL := /bin/bash         # NECESARIO para source, [[ ]], arrays bash
+
+# Cada recipe que necesite vars de entorno:
+health-check:
+	@set -a; source /root/.env 2>/dev/null; set +a; \
+	curl -f -H "Authorization: Bearer $${LITELLM_MASTER_KEY}" \
+	     http://127.0.0.1:4000/health
+\end{lstlisting}
+
+\warnbox{\texttt{|| true} en condiciones de archivo}{Cualquier \texttt{[ -f ... ] \&\& echo ...} al final de un recipe debe terminar con \texttt{|| true}. Sin esto, si el archivo no existe Make reporta error y aborta el target. Patrón: \texttt{[ -f "\$\$HANDOFF" ] \&\& echo "pendiente" || true}.}
+
+\subsection{Definition of Done — 4 criterios}
+
+Una tarea está \textbf{done} cuando:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item Implementación existe en código.
+\item Verificación ejecutada (\texttt{make check}) — no "debería funcionar".
+\item Evidencia registrada (commit hash o output del comando) en PENDIENTES.md.
+\item Stack reiniciable (\texttt{docker compose ps} muestra todos Up).
+\end{enumerate}
+
+Si falta cualquier criterio, el ítem no está done aunque el código esté escrito.
+
+\subsection{Output esperado de \texttt{make doctor}}
+
+\begin{lstlisting}[language=bashx]
+[1/6] Verificando repositorio
+  ✓ git status clean
+  ✓ rama main, sincronizada con origin
+[2/6] Verificando Docker
+  ✓ 15/15 contenedores Up
+  ✓ 0 contenedores unhealthy
+[3/6] Health checks
+  ✓ hermes-agent: healthy (3 ms)
+  ✓ litellm: healthy (5 ms)
+  ✓ brain: healthy (7 ms)
+[4/6] Lint Python
+  ✓ ruff check: 0 errores
+[5/6] Harness
+  ✓ CLAUDE.md: 39247 chars (<40k)
+  ✓ MEMORY.md: 11 entradas (<200 líneas)
+[6/6] Pendientes activos
+  • hs-007: Mesh Tailscale (pendiente auth)
+\end{lstlisting}
+
+\newpage
+
+% =====================================================================
+% 26. ESTADO ACTUAL DEL STACK
+% =====================================================================
+\section{Estado actual del stack (snapshot 2026-05-28)}
+
+\subsection{Servicios — 15/15 healthy ✓}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|c|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Servicio} & \color{white}\textbf{Estado} & \color{white}\textbf{Uptime} & \color{white}\textbf{Imagen}\\
+\hline
+\endhead
+hermes-agent & healthy & 1 h & root-hermes\\
+litellm-router & healthy & 2 d & ghcr.io/berriai/litellm:main-latest\\
+hermes-website & healthy & 28 h & root-website\\
+hermes-workspace & healthy & 28 h & ghcr.io/outsourc-e/hermes-workspace\\
+brain & healthy & 3 h & root-brain\\
+brain-worker & healthy & 3 h & root-brain\\
+redis-cache & healthy & 45 h & redis:7-alpine\\
+whisper-stt & healthy & 4 d & onerahmet/openai-whisper-asr-webservice\\
+prometheus & healthy & 2 d & prom/prometheus:v2.52.0\\
+grafana & healthy & 4 d & grafana/grafana:11.0.0\\
+cadvisor & healthy & 4 d & gcr.io/cadvisor/cadvisor:v0.49.1\\
+node-exporter & healthy & 4 d & prom/node-exporter:v1.8.1\\
+9router & healthy & 28 h & root-9router\\
+filebrowser & healthy & 4 d & filebrowser/filebrowser:latest\\
+autoheal & healthy & 4 d & willfarrell/autoheal:1.2.0\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Pendientes activos — 1/8}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{ID} & \color{white}\textbf{Estado} & \color{white}\textbf{Descripción}\\
+\hline
+hs-001 & ✓ resuelto & Migración a LiteLLM (commit \texttt{0e8a2c1})\\
+hs-002 & ✓ resuelto & Brain Phase 5 ingesta + cron (commit \texttt{cef0166})\\
+hs-003 & ✓ resuelto & Brain Phase 6 memoria conversacional (commit \texttt{9387800})\\
+hs-004 & ✓ resuelto & Backup script (commit \texttt{b20c51a})\\
+hs-005 & ✓ resuelto & TypeError deque slicing (commit \texttt{7a38d9e})\\
+hs-006 & ✓ resuelto & Docker rule + hs-008 evidence + CLAUDE \textless 40k (commit \texttt{69662c1})\\
+hs-007 & 🔵 pendiente & Mesh Tailscale (DO droplet + Android — pendiente auth)\\
+hs-008 & ✓ resuelto & Evidence trail (resuelto en hs-006)\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Métricas de operación (últimas 24 h)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Métrica} & \color{white}\textbf{Valor}\\
+\hline
+Requests LLM totales & 1,247\\
+Cache hits & 412 (33\%)\\
+Latencia E2E p50 & 483 ms\\
+Latencia E2E p95 & 712 ms\\
+Latencia E2E p99 & 1,030 ms\\
+Errores 5xx & 3 (0.24\%)\\
+Tokens consumidos (in) & 1.2 M\\
+Tokens consumidos (out) & 320 k\\
+Costo estimado (24 h) & \$0.42\\
+Contenedores reiniciados por autoheal & 0\\
+\hline
+\end{tabular}
+\end{center}
+
+\okbox{Estado de producción saludable}{15/15 servicios healthy, 0 reinicios automáticos en 24 h, costo \textless\$0.50/día, latencia p50 dentro del SLO de 500 ms.}
+
+\newpage
+
+% =====================================================================
+% 27. HISTORIAL DE VERSIONES
+% =====================================================================
+\section{Historial de versiones (v1 → v2 → v3)}
+
+\subsection{Línea de tiempo}
+
+\begin{center}
+\begin{tikzpicture}[
+  v/.style={draw=hermesblue, fill=boxbg, rounded corners=4pt, minimum width=4cm, minimum height=1cm, font=\small\sffamily, align=center},
+  arr/.style={->, >=Stealth, thick, color=hermesblue}
+]
+\node[v] (v1) {\textbf{v1.0} (2025-Q2)\\Blueprint inicial};
+\node[v, below=of v1] (v2) {\textbf{v2.0} (2026-05-23)\\LiteLLM + Brain};
+\node[v, below=of v2] (v3) {\textbf{v3.0} (2026-05-28)\\Auto-mejora + Workspace};
+
+\draw[arr] (v1) -- (v2);
+\draw[arr] (v2) -- (v3);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Comparativa de versiones}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Aspecto} & \color{white}\textbf{v1.0} & \color{white}\textbf{v2.0} & \color{white}\textbf{v3.0}\\
+\hline
+\endhead
+Router LLM & 9router custom & LiteLLM proxy & LiteLLM + Redis cache\\
+Modelo default & gpt-4o-mini & gpt-4o-mini & gemini-flash\\
+TTS & ElevenLabs Turbo v2.5 & Flash v2.5 & Flash v2.5 + auto\_mode\\
+Memoria & — & Brain Phase 5 & Brain Phase 6 (conversacional)\\
+Frontend & React SPA & Next.js 14 SSR & Next.js 14 + Workspace UI\\
+Hardening Docker & básico & non-root, read-only & + OverCR L4-L6\\
+Monitoreo & Prometheus + Grafana & + cAdvisor & + node-exporter\\
+CI/CD & manual & GH Actions deploy & + rollback automático\\
+Contenedores totales & 8 & 11 & 15\\
+Latencia E2E & ~800 ms & ~600 ms & 483 ms (medida)\\
+Backup & manual & — & script automatizado\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Mejoras de la v3.0 (Auto-mejora 2026-05-25)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|c|l|l|l|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{\#} & \color{white}\textbf{Mejora} & \color{white}\textbf{Archivo} & \color{white}\textbf{Impacto}\\
+\hline
+1 & URLs GitHub corregidas & App.tsx & Medio\\
+2 & Modelo default = gemini-flash & agent.py & Alto (-500 ms)\\
+3 & Session HTTP compartida & health.py & Alto (-150 ms)\\
+4 & Variable HERMES\_MODEL & docker-compose.yml & Medio\\
+5 & Permisos Write extendidos & settings.json & Bajo\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Roadmap v4.0 (Q3 2026)}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item App Android nativa con WebSocket + audio streaming.
+\item Multimodal (imagen + texto + audio).
+\item Memoria episódica (recall por similitud temporal, no solo semántica).
+\item Local LLM opcional (Llama 3.3, Phi-4) para queries sensibles.
+\item Mesh Tailscale completo (DO droplet + Android client).
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 28. GLOSARIO
+% =====================================================================
+\section{Glosario de términos}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|p{9.5cm}|}
+\hline
+\rowcolor{hermesblue}\color{white}\textbf{Término} & \color{white}\textbf{Definición}\\
+\hline
+\endhead
+ACME & Automated Certificate Management Environment — protocolo Let's Encrypt para emisión TLS automática\\
+Autoheal & Container watchdog que reinicia servicios unhealthy automáticamente\\
+Bearer Token & Esquema de autenticación HTTP donde el cliente envía un token en \texttt{Authorization: Bearer <token>}\\
+Brain & Subsistema de memoria persistente con vault, eventos, embeddings y graph\\
+Caddy & Reverse proxy con TLS automático vía ACME\\
+cAdvisor & Container Advisor — métricas por contenedor (CPU, mem, I/O)\\
+Capture & Acción de Brain de ingestar un nuevo documento o nota\\
+Definition of Done & 4 criterios: implementado, verificado, evidencia, stack Up\\
+Embedding & Vector denso (1024 dims) que representa el significado semántico de un texto\\
+FastEmbed & Biblioteca Python para generar embeddings con modelos ONNX\\
+FastMCP & Implementación HTTP del Model Context Protocol\\
+Graph RAG & RAG que usa graph DB para expandir contexto multi-hop\\
+Healthcheck & Test periódico que Docker ejecuta para determinar si un servicio está sano\\
+Hybrid retrieval & Combinación de dense (vector) + sparse (BM25) search\\
+Kuzu & Graph DB embedded (single-process)\\
+LanceDB & Vector DB embedded basado en Apache Arrow + lance format\\
+LiteLLM & Gateway LLM open-source con routing, caching, fallback, multi-proveedor\\
+MCP & Model Context Protocol — protocolo abierto de Anthropic para comunicación agent ↔ tool\\
+OpenRouter & Agregador de APIs LLM multi-proveedor\\
+OverCR & Sistema de control de cambios con gates L1-L6 que requieren aprobación\\
+Pipeline de voz & Cadena STT → LLM → TTS\\
+Plan mode & Modo donde el agente sólo edita el plan file antes de ejecutar\\
+RAG & Retrieval-Augmented Generation — LLM enriquecido con búsqueda en base de conocimiento\\
+Recall & Acción de Brain de buscar contenido relevante a una query\\
+Reranking & Re-ordenamiento de top-k candidatos tras retrieval inicial\\
+RPM & Requests Per Minute — límite por modelo en LiteLLM\\
+RQ & Redis Queue — biblioteca Python para job queue async\\
+RRF & Reciprocal Rank Fusion — algoritmo para fusionar rankings\\
+SLO & Service Level Objective — objetivo medible de calidad\\
+Skill & Capacidad invocable del agente (MCP-style)\\
+STT & Speech-to-Text\\
+SOTA & State Of The Art\\
+TLS & Transport Layer Security\\
+Tier 1-4 & Clasificación de servicios por rol (núcleo, datos, observabilidad, utilidades)\\
+TTL & Time To Live — duración antes de expirar (cache, sesión)\\
+TTS & Text-to-Speech\\
+Vault & Subsistema de Brain con documentos Markdown\\
+Whisper & Modelo open-source de STT de OpenAI\\
+\hline
+\end{longtable}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% 29. REFERENCIAS
+% =====================================================================
+\section{Referencias y documentación}
+
+\subsection{Documentos canónicos del proyecto}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \texttt{/root/docs/Hermes\_Stack\_Blueprint.pdf} — Blueprint técnico completo (52 pp)
+\item \texttt{/root/docs/sistema\_hermes\_arquitectura\_definitiva.pdf} — Síntesis v3.0 (112 KB)
+\item \texttt{/root/docs/Roadmap\_Tecnico\_Definitivo\_v2.pdf} — Roadmap v2.0 (689 KB)
+\item \texttt{/root/docs/Hermes\_AutoMejora\_2026-05-25.pdf} — Informe de mejoras (51 KB)
+\item \texttt{/root/docs/informe-practicas-ia.pdf} — Análisis crítico de sesiones (58 KB)
+\item \texttt{/root/docs/arquitectura\_sistema\_completa.md} — Diagramas Mermaid (15 KB)
+\item \texttt{/root/docs/estado\_del\_arte\_hermes.pdf} — Comparativa contra SOTA (compañero a este documento)
+\end{itemize}
+
+\subsection{Repositorios externos clave}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item LiteLLM — \texttt{github.com/BerriAI/litellm}
+\item Whisper — \texttt{github.com/openai/whisper}
+\item FastEmbed — \texttt{github.com/qdrant/fastembed}
+\item LanceDB — \texttt{github.com/lancedb/lancedb}
+\item Kuzu — \texttt{github.com/kuzudb/kuzu}
+\item Next.js — \texttt{github.com/vercel/next.js}
+\item FastMCP — \texttt{github.com/jlowin/fastmcp}
+\item Caddy — \texttt{github.com/caddyserver/caddy}
+\item Autoheal — \texttt{github.com/willfarrell/docker-autoheal}
+\end{itemize}
+
+\subsection{Documentación de proveedores}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item OpenRouter — \texttt{openrouter.ai/docs}
+\item ElevenLabs — \texttt{elevenlabs.io/docs}
+\item Google Gemini — \texttt{ai.google.dev/docs}
+\item Anthropic Claude — \texttt{docs.anthropic.com}
+\end{itemize}
+
+\subsection{Recursos pedagógicos}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \texttt{Hermes\_Stack\_NotebookLM\_Guion.md} — guion narrativo (15-20 min)
+\item \texttt{manual-erik.md} — manual operativo para el propietario
+\end{itemize}
+
+\subsection{Repositorio del proyecto}
+
+\dato{URL}{\texttt{github.com/erikjosehrnndz-crypto/hermes-stack}}\\
+\dato{Rama principal}{\texttt{main}}\\
+\dato{Convención de ramas}{\texttt{feat/...}, \texttt{fix/...}, \texttt{docs/...}, \texttt{chore/...}}\\
+\dato{Workflow}{push a \texttt{main} → CI/CD automático → deploy a VPS}
+
+\vspace{2cm}
+
+\begin{center}
+\fcolorbox{hermesblue}{boxbg}{\parbox{0.9\textwidth}{
+\centering
+\sffamily\bfseries\color{hermesblue}\Large Fin del documento\\[8pt]
+\small\color{hermesgray}
+Documento técnico canónico — Hermes Stack v3.0\\
+Compilado el \today\ · XeLaTeX · DejaVu Fonts\\[4pt]
+Para la comparativa contra el estado del arte: ver\\
+\texttt{/root/docs/estado\_del\_arte\_hermes.pdf}
+}}
+\end{center}
+
+\end{document}

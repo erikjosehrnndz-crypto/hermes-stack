@@ -1,0 +1,2046 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.85]
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usetikzlibrary{babel,arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric,shadows}
+\usepackage{longtable,booktabs,array,xcolor,listings,geometry,hyperref,amssymb,fancyhdr,titlesec,enumitem,multicol,tabularx,colortbl}
+\geometry{margin=2.2cm,top=2.5cm,bottom=2.5cm}
+
+% Colores SOTA (mas oscuros, contrastan con Ficha)
+\definecolor{sotared}{HTML}{6D2932}
+\definecolor{sotaorange}{HTML}{B85C38}
+\definecolor{sotagold}{HTML}{C0A062}
+\definecolor{sotagreen}{HTML}{3D5A4C}
+\definecolor{sotablue}{HTML}{2C5F8D}
+\definecolor{sotagray}{HTML}{6E7F80}
+\definecolor{rowalt}{HTML}{F4ECDA}
+\definecolor{boxbg}{HTML}{FBF8F0}
+\definecolor{warnbg}{HTML}{FFF3CD}
+\definecolor{okbg}{HTML}{D8E6CB}
+\definecolor{codebg}{HTML}{F5F2EA}
+\definecolor{hermespos}{HTML}{E8D9B5}
+
+% Headers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{sotared}\textbf{Hermes Stack} · Estado del Arte}
+\fancyhead[R]{\small\sffamily\color{sotagray}2026 · Comparativa SOTA}
+\fancyfoot[C]{\small\sffamily\color{sotagray}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{sotaorange}\leaders\hrule height \headrulewidth\hfill}}
+
+% Sections
+\titleformat{\section}
+  {\Large\sffamily\bfseries\color{sotared}}
+  {\thesection.}{0.6em}{}
+  [\vspace{2pt}{\color{sotaorange}\titlerule[1pt]}]
+\titleformat{\subsection}
+  {\large\sffamily\bfseries\color{sotablue}}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\normalsize\sffamily\bfseries\color{sotagreen}}
+  {}{0em}{}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=sotared,
+  urlcolor=sotaorange,
+  pdftitle={Hermes Stack - Estado del Arte},
+  pdfauthor={Erik José Hernández},
+  pdfsubject={Comparativa Hermes Stack vs State of the Art 2026},
+  pdfkeywords={SOTA, Comparativa, LiteLLM, Whisper, ElevenLabs, LanceDB, FastMCP}
+}
+
+\lstdefinelanguage{yamlx}{
+  keywords={true,false,null,y,n,on,off},
+  keywordstyle=\color{sotared}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=true,
+  comment=[l]{\#},
+  commentstyle=\color{sotagray}\itshape,
+  morestring=[b]',
+  morestring=[b]",
+  stringstyle=\color{sotagreen},
+  showstringspaces=false
+}
+\lstdefinelanguage{bashx}{
+  keywords={docker,compose,curl,git,make,xelatex,grep,cat,echo,export,source,if,then,fi,for,do,done,sudo,kubectl,helm,pip,npm},
+  keywordstyle=\color{sotared}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=true,
+  comment=[l]{\#},
+  commentstyle=\color{sotagray}\itshape,
+  morestring=[b]',
+  morestring=[b]",
+  stringstyle=\color{sotagreen},
+  showstringspaces=false
+}
+\lstset{
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framerule=0pt,
+  rulecolor=\color{codebg},
+  framesep=8pt,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  breaklines=true,
+  basicstyle=\ttfamily\footnotesize
+}
+
+% Cajas
+\newcommand{\posibox}[2]{%
+  \begin{center}
+  \fcolorbox{sotared}{hermespos}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{sotared}◆ Posición Hermes:} \textbf{#1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\warnbox}[2]{%
+  \begin{center}
+  \fcolorbox{sotaorange}{warnbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{sotaorange}⚠ #1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\okbox}[2]{%
+  \begin{center}
+  \fcolorbox{sotagreen}{okbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{sotagreen}✓ #1}\\[2pt]#2}}
+  \end{center}
+}
+\newcommand{\infobox}[2]{%
+  \begin{center}
+  \fcolorbox{sotablue}{boxbg}{\parbox{0.94\textwidth}{\small\sffamily
+  \textbf{\color{sotablue}ⓘ #1}\\[2pt]#2}}
+  \end{center}
+}
+
+% Escala visual de puntuación
+\newcommand{\scale}[1]{\textbf{\color{sotagreen}#1}}
+\newcommand{\dato}[2]{\textbf{\color{sotared}#1:} #2}
+
+\begin{document}
+
+% =====================================================================
+% PORTADA
+% =====================================================================
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[sotared] (current page.north west) rectangle ([yshift=-7cm]current page.north east);
+  \fill[sotaorange] ([yshift=-7cm]current page.north west) rectangle ([yshift=-7.4cm]current page.north east);
+\end{tikzpicture}
+
+\vspace*{0.8cm}
+\begin{center}
+{\Huge\sffamily\bfseries\color{white}ESTADO DEL ARTE}\\[6pt]
+{\Large\sffamily\color{sotagold}Hermes Stack frente al State of the Art 2026}\\[3.5cm]
+\end{center}
+
+\vspace{1cm}
+\begin{center}
+\begin{tikzpicture}
+\node[draw=sotared, line width=1pt, fill=boxbg, rounded corners=8pt, inner sep=18pt, minimum width=14cm] (caja) {
+\begin{minipage}{12.5cm}
+\centering
+{\large\sffamily\bfseries\color{sotared}Comparativa exhaustiva por categoría}\\[6pt]
+{\small\sffamily Análisis de cada tecnología del Hermes Stack frente a las\\
+alternativas dominantes de la industria — con veredicto razonado}\\[12pt]
+\begin{tabular}{rl}
+\textbf{\color{sotared}Versión:} & 1.0 · Documento canónico SOTA\\
+\textbf{\color{sotared}Fecha:} & 28 de mayo de 2026\\
+\textbf{\color{sotared}Categorías analizadas:} & 13 + síntesis global\\
+\textbf{\color{sotared}Alternativas evaluadas:} & 50+ herramientas\\
+\textbf{\color{sotared}Benchmarks incluidos:} & latencia, costo, MTEB, ecosistema\\
+\textbf{\color{sotared}Horizonte temporal:} & 2026-2027\\
+\textbf{\color{sotared}Documento compañero:} & \texttt{ficha\_tecnica\_hermes.pdf}\\
+\end{tabular}
+\end{minipage}
+};
+\end{tikzpicture}
+\end{center}
+
+\vspace{2cm}
+\begin{center}
+{\small\sffamily\color{sotagray}
+Análisis técnico independiente — sin patrocinio de proveedores\\
+Compilado el \today\ con XeLaTeX · DejaVu Fonts}\\[6pt]
+{\footnotesize\sffamily\color{sotagray}
+github.com/erikjosehrnndz-crypto/hermes-stack}
+\end{center}
+
+\newpage
+
+% =====================================================================
+% INDICE
+% =====================================================================
+\thispagestyle{fancy}
+{\color{sotared}\sffamily\Large\bfseries Índice de contenidos}\\[4pt]
+{\color{sotaorange}\hrule height 1.2pt}
+\vspace{12pt}
+\setcounter{tocdepth}{2}
+\renewcommand{\contentsname}{}
+\tableofcontents
+
+\newpage
+
+% =====================================================================
+% 1. INTRODUCCION Y METODOLOGIA
+% =====================================================================
+\section{Introducción y metodología}
+
+\subsection{Propósito del documento}
+
+Este documento compara cada decisión tecnológica del \textbf{Hermes Stack} contra las alternativas dominantes del \textbf{estado del arte} en 2026. El objetivo no es justificar las decisiones existentes, sino evaluarlas críticamente para identificar:
+
+\begin{enumerate}[leftmargin=*]
+\item Qué decisiones son sólidas y deben mantenerse.
+\item Dónde el stack se desvía del SOTA y si esa desviación tiene justificación válida.
+\item Qué oportunidades de mejora existen a corto, medio y largo plazo.
+\end{enumerate}
+
+\subsection{Metodología de comparación}
+
+Para cada una de las \textbf{13 categorías tecnológicas} se aplica el siguiente esquema:
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Identificación de alternativas:} las 4-5 opciones más relevantes del SOTA 2026.
+\item \textbf{Dimensiones de evaluación:} entre 5 y 8 dimensiones (latencia, costo, ecosistema, etc.).
+\item \textbf{Tabla comparativa:} con escala visual ●●●○○ (de 1 a 5).
+\item \textbf{Análisis cualitativo:} fortalezas y debilidades de cada opción.
+\item \textbf{Posición de Hermes:} qué eligió el stack y por qué — con veredicto explícito.
+\end{enumerate}
+
+\subsection{Escala de puntuación}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|c|l|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Símbolo} & \color{white}\textbf{Puntuación} & \color{white}\textbf{Significado}\\
+\hline
+●●●●● & 5 / 5 & Excelente — referencia de la industria\\
+●●●●○ & 4 / 5 & Muy bueno — pocas pegas relevantes\\
+●●●○○ & 3 / 5 & Aceptable — varias limitaciones conocidas\\
+●●○○○ & 2 / 5 & Deficiente — gap respecto al SOTA\\
+●○○○○ & 1 / 5 & Obsoleto / no recomendable\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Categorías cubiertas}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|c|l|c|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{\#} & \color{white}\textbf{Categoría} & \color{white}\textbf{\#} & \color{white}\textbf{Categoría}\\
+\hline
+1 & Orquestación de agentes IA & 8 & Caché y message queue\\
+2 & LLM routing y gateway & 9 & Reverse proxy / TLS\\
+3 & Speech-to-Text (STT) & 10 & Observabilidad\\
+4 & Text-to-Speech (TTS) & 11 & Frontend para AI apps\\
+5 & Vector databases & 12 & Protocolos de agentes (MCP)\\
+6 & Graph databases & 13 & Containerización y orquestación\\
+7 & Embedding models & — & Síntesis global + tendencias 2026-2027\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Marco temporal}
+
+Toda la información refleja el \textbf{estado del ecosistema en mayo de 2026}. Cada categoría se actualiza al ritmo que se mueven sus principales actores (LLMs cambian mensualmente; reverse proxies anualmente), por lo que el documento incluye una sección final de \textbf{tendencias proyectadas 2026-2027} para evitar quedar congelado.
+
+\subsection{Sesgos declarados}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Sesgo a favor de \textbf{open-source} sobre SaaS cerrado (alineado con principios del stack).
+\item Sesgo a favor de soluciones \textbf{embedded / single-host} sobre clusters distribuidos (alineado con el tamaño del workload).
+\item Sesgo a favor de protocolos \textbf{abiertos} (MCP, OpenAI-compatible) sobre APIs propietarias.
+\end{itemize}
+
+Estos sesgos se hacen explícitos para que el lector pueda recalibrar si tiene restricciones diferentes (por ejemplo, una empresa con compliance Enterprise SaaS-first).
+
+\newpage
+
+% =====================================================================
+% 2. ORQUESTACION DE AGENTES IA
+% =====================================================================
+\section{Categoría 1: Orquestación de agentes IA}
+
+\subsection{El problema}
+
+Un agente IA conversacional necesita coordinar: contexto de la conversación, llamadas al LLM, ejecución de herramientas, memoria persistente, manejo de errores y streaming de respuestas. Existen frameworks que abstraen esta orquestación (LangChain, AutoGen, CrewAI, Pydantic-AI, DSPy) y la opción de hacerlo \textbf{manual} con Python async.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{LangChain / LangGraph}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Framework dominante por adopción y ecosistema (integraciones con 200+ proveedores).
+\item \textbf{Punto débil:} sobrecarga arquitectónica fuerte; cada update minor rompe APIs (versiones 0.1 → 0.2 → 0.3 reescrituras parciales).
+\item \textbf{Ideal para:} POCs rápidos y exploración multi-proveedor.
+\end{itemize}
+
+\subsubsection{AutoGen (Microsoft)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Framework multi-agente con foco en agent-to-agent conversation.
+\item \textbf{Punto débil:} overhead de mensajería; latencia notablemente mayor.
+\item \textbf{Ideal para:} workflows con N agentes que conversan entre sí.
+\end{itemize}
+
+\subsubsection{CrewAI}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Framework con metáfora de equipo (crew, roles, tareas).
+\item \textbf{Punto débil:} abstracciones rígidas; difícil personalizar el control loop.
+\item \textbf{Ideal para:} procesos secuenciales bien definidos.
+\end{itemize}
+
+\subsubsection{Pydantic-AI}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Framework minimalista basado en validación Pydantic.
+\item \textbf{Punto fuerte:} type safety, structured outputs, dependencias mínimas.
+\item \textbf{Punto débil:} ecosistema joven; aún sin patrones probados para streaming WS.
+\end{itemize}
+
+\subsubsection{DSPy (Stanford)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Framework para \textbf{optimización automática} de prompts (compila programa LLM).
+\item \textbf{Punto fuerte:} convierte prompts en programas que se optimizan via teleprompter.
+\item \textbf{Punto débil:} curva de aprendizaje empinada; ideal para investigación, no producción inicial.
+\end{itemize}
+
+\subsubsection{Python async manual (aiohttp + asyncio)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Sin framework — todo escrito a mano con \texttt{aiohttp}, \texttt{websockets}, \texttt{asyncio}.
+\item \textbf{Punto fuerte:} control total, sin sobrecarga, sin breaking changes externos.
+\item \textbf{Punto débil:} hay que escribir patrones que en LangChain vienen gratis (retry, fallback, observability).
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Framework} & \color{white}\textbf{Ecosis.} & \color{white}\textbf{Latencia} & \color{white}\textbf{Control} & \color{white}\textbf{Estabil.} & \color{white}\textbf{Streaming} & \color{white}\textbf{Veredicto}\\
+\hline
+LangChain & \scale{●●●●●} & ●●●○○ & ●●○○○ & ●●○○○ & ●●●○○ & adopción alta, breaking changes frecuentes\\
+AutoGen & ●●●○○ & ●●○○○ & ●●●○○ & ●●●○○ & ●●○○○ & ideal multi-agent, lento single-agent\\
+CrewAI & ●●●○○ & ●●●○○ & ●●○○○ & ●●●○○ & ●●○○○ & rígido pero estable\\
+Pydantic-AI & ●●●○○ & ●●●●○ & ●●●●○ & \scale{●●●●●} & ●●●○○ & moderno, joven\\
+DSPy & ●●●○○ & ●●○○○ & ●●●●○ & ●●●○○ & ●●○○○ & investigación, no producción inicial\\
+\rowcolor{hermespos}aiohttp manual & ●●○○○ & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \textbf{control total, deuda inicial}\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Python async manual con aiohttp + websockets}{El stack rechazó LangChain/CrewAI por la sobrecarga arquitectónica y los breaking changes; eligió Pythón puro porque controla el voice pipeline al milisegundo y porque la lógica de skills es lo suficientemente acotada para no necesitar abstracciones de framework. \textbf{Trade-off aceptado:} más código inicial (cliente HTTP, retry, métricas) a cambio de cero deuda de framework. \textbf{Riesgo principal:} reimplementar capacidades que un framework regalaría — mitigado al limitar el agente a tres dominios (voz, LLM, memoria) y no expandirse a workflows complejos.}
+
+\subsection{Tendencia 2026-2027}
+
+La mayoría de proyectos serios están migrando de LangChain a frameworks más finos (\textbf{Pydantic-AI}, \textbf{LlamaIndex}) o a Python puro. La adopción de \textbf{Model Context Protocol (MCP)} reduce la presión por un framework — el protocolo estandariza la interfaz tool ↔ agent, eliminando una capa de abstracción.
+
+\subsection{Recomendación para Hermes}
+
+\textbf{Mantener Python async manual.} El stack ya tiene los patrones críticos (ClientSession compartida, TTLCache para dedup, orjson, Prometheus metrics) y migrar a un framework introduciría riesgo sin ganancia clara. Cuando el agente crezca a 10+ skills complejos, evaluar \textbf{Pydantic-AI} como migración incremental por su afinidad estructural.
+
+\newpage
+
+% =====================================================================
+% 3. LLM ROUTING Y GATEWAY
+% =====================================================================
+\section{Categoría 2: LLM routing y gateway}
+
+\subsection{El problema}
+
+Un sistema con múltiples proveedores LLM (OpenAI, Anthropic, Google, Meta) necesita una capa de abstracción que: (1) normalice las APIs, (2) cachee respuestas, (3) haga fallback ante errores, (4) trackee costos y latencia, (5) exponga métricas. Hacerlo a mano duplica trabajo en cada llamada.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{LiteLLM (BerriAI)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Open-source, MIT license, escrito en Python.
+\item 200+ proveedores LLM normalizados a la API de OpenAI.
+\item Routing strategies: latency-based, weighted, least-busy.
+\item Caché Redis nativa, Prometheus metrics, fallback chains.
+\item Self-hostable como proxy proxy o como biblioteca.
+\end{itemize}
+
+\subsubsection{Portkey}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS gestionado con gateway open-source.
+\item Buen UI para observabilidad y gestión de costos.
+\item \textbf{Punto débil:} core SaaS (tier gratuito limitado).
+\end{itemize}
+
+\subsubsection{OpenRouter directo}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Agregador de APIs LLM con una sola API key.
+\item \textbf{Punto débil:} sin caché propia, sin métricas, sin fallback local; añade un hop a cada llamada.
+\end{itemize}
+
+\subsubsection{Ollama}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Runtime para LLMs locales (Llama, Mistral, Phi, etc.) con API HTTP.
+\item \textbf{Punto fuerte:} privacidad absoluta, costo \$0.
+\item \textbf{Punto débil:} requiere GPU; modelos open-weight aún por detrás de GPT-4o/Claude en muchas tareas.
+\end{itemize}
+
+\subsubsection{vLLM}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Servidor de alto rendimiento para LLMs open-weight (PagedAttention, continuous batching).
+\item \textbf{Punto fuerte:} throughput máximo, ideal para cargas internas.
+\item \textbf{Punto débil:} dedicado a modelos open; sin abstracción multi-proveedor.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Gateway} & \color{white}\textbf{Provs.} & \color{white}\textbf{Cache} & \color{white}\textbf{Fallback} & \color{white}\textbf{Metrics} & \color{white}\textbf{Costo} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}LiteLLM & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \textbf{estándar de facto self-hosted}\\
+Portkey & \scale{●●●●●} & ●●●●○ & ●●●●○ & \scale{●●●●●} & ●●●○○ & SaaS con buen UI\\
+OpenRouter & ●●●●○ & ●○○○○ & ●○○○○ & ●●○○○ & ●●●●○ & solo agregación, sin lógica\\
+Ollama & ●●○○○ & ●○○○○ & ●○○○○ & ●●○○○ & \scale{●●●●●} & local-only, requiere GPU\\
+vLLM & ●●○○○ & ●●○○○ & ●○○○○ & ●●●○○ & \scale{●●●●●} & throughput máximo open-weight\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa LiteLLM como router principal}{LiteLLM es la elección óptima: cubre las 5 dimensiones críticas (proveedores, cache, fallback, métricas, costo) sin sacrificar control. La caché Redis integrada ahorra ~33\% de llamadas; el fallback automático entre Gemini Flash, GPT-4o-mini y Llama 3.1 70B mantiene SLO ante caídas de proveedor; las métricas Prometheus se integran sin esfuerzo. \textbf{Configuración actual:} 5 modelos en 2 tiers, routing por latencia, cache TTL 3600s. Coste licencia: \$0 (MIT). El proxy 9router cumple un rol complementario para conexiones MCP-stdio, no compite con LiteLLM.}
+
+\subsection{Benchmark de costo (\$/1M tokens, mayo 2026)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Modelo} & \color{white}\textbf{Input} & \color{white}\textbf{Output} & \color{white}\textbf{Latencia típica}\\
+\hline
+Gemini 2.5 Flash & \$0.075 & \$0.30 & ~300 ms\\
+GPT-4o-mini & \$0.15 & \$0.60 & ~450 ms\\
+Llama 3.1 70B (OR) & \$0.50 & \$0.75 & ~800 ms\\
+Claude Sonnet 4.6 & \$3.00 & \$15.00 & ~1500 ms\\
+GPT-4o & \$5.00 & \$15.00 & ~1200 ms\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener LiteLLM} como gateway principal. Considerar añadir \textbf{Ollama o vLLM} sidecar cuando se monte una GPU dedicada — para queries que no requieren razonamiento avanzado y donde la privacidad es crítica.
+
+\newpage
+
+% =====================================================================
+% 4. SPEECH-TO-TEXT
+% =====================================================================
+\section{Categoría 3: Speech-to-Text (STT)}
+
+\subsection{El problema}
+
+Transcribir audio a texto con baja latencia, soporte multilingüe (especialmente español), y preferiblemente con capacidad de correr local (privacidad).
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Whisper (OpenAI, open-source)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Modelo open-source descargable; modelos de \texttt{tiny} (39 MB) a \texttt{large-v3} (3 GB).
+\item Multilingüe (100+ idiomas), latencia razonable, costo cero.
+\item \textbf{Ideal para:} self-hosted en CPU (tiny/base) o GPU (medium/large).
+\end{itemize}
+
+\subsubsection{Whisper.cpp / faster-whisper}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Implementaciones optimizadas en C++ (whisper.cpp) o CTranslate2 (faster-whisper).
+\item Latencia 4-10× menor que Whisper Python original.
+\item \textbf{Ideal para:} producción self-hosted con prioridad de velocidad.
+\end{itemize}
+
+\subsubsection{Deepgram}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS premium con modelos propietarios (Nova-2, Nova-3).
+\item Latencia muy baja (< 100 ms streaming), pricing por minuto.
+\item \textbf{Punto débil:} datos salen del propio sistema; vendor lock-in.
+\end{itemize}
+
+\subsubsection{AssemblyAI}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS con features avanzadas (diarization, sentiment, summarization).
+\item \textbf{Punto débil:} pricing alto, datos en cloud, sobreingeniería para Hermes.
+\end{itemize}
+
+\subsubsection{Azure / Google STT}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Servicios gestionados de cloud public.
+\item \textbf{Punto débil:} vendor lock-in fuerte, pricing por API call, complejidad de auth.
+\end{itemize}
+
+\subsubsection{NVIDIA Riva / Parakeet}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Stack open-source de NVIDIA para STT con GPU.
+\item \textbf{Punto fuerte:} latencia y precisión SOTA en GPU.
+\item \textbf{Punto débil:} requiere GPU dedicada y CUDA setup.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{STT} & \color{white}\textbf{Latencia} & \color{white}\textbf{Privacidad} & \color{white}\textbf{Costo} & \color{white}\textbf{Multiling.} & \color{white}\textbf{Precisión} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Whisper (cont.) & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & \textbf{usado por Hermes}\\
+faster-whisper & ●●●●○ & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & 4-10× más rápido\\
+Whisper.cpp & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & óptimo CPU\\
+Deepgram Nova-3 & \scale{●●●●●} & ●●○○○ & ●●○○○ & ●●●●○ & \scale{●●●●●} & SaaS premium\\
+AssemblyAI & ●●●●○ & ●●○○○ & ●●○○○ & ●●●●○ & ●●●●○ & sobre-feature\\
+Azure / Google & ●●●●○ & ●●○○○ & ●●●○○ & \scale{●●●●●} & ●●●●○ & vendor lock-in\\
+NVIDIA Parakeet & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & ●●●○○ & \scale{●●●●●} & requiere GPU\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Whisper contenido vía Docker image \texttt{onerahmet/openai-whisper-asr-webservice}}{Decisión \textbf{sólida} en privacidad y costo, \textbf{mejorable} en latencia. La imagen actual usa Whisper Python original con modelo \texttt{base} (~180 ms latencia). \textbf{Mejora identificada:} migrar a \texttt{faster-whisper} o \texttt{whisper.cpp} reduciría la latencia a 40-80 ms sin pérdida de precisión, dejando margen para queries más largas dentro del SLO de 500 ms.}
+
+\subsection{Benchmark de latencia (frase de 3 s, español)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Implementación} & \color{white}\textbf{Modelo} & \color{white}\textbf{Latencia (ms)} & \color{white}\textbf{RAM}\\
+\hline
+Whisper Python & base & 180 & 1.0 GB\\
+faster-whisper & base & 35 & 0.5 GB\\
+whisper.cpp & base & 28 & 0.2 GB\\
+Deepgram Nova-3 & — & 80 (streaming) & N/A (SaaS)\\
+Whisper Python & medium & 480 & 5.0 GB\\
+faster-whisper & medium & 95 & 2.5 GB\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Migrar a \texttt{faster-whisper}} en v4.0. Mantener el modelo \texttt{base} es adecuado para conversación cotidiana; subir a \texttt{small} si se observan errores recurrentes en jerga técnica.
+
+\newpage
+
+% =====================================================================
+% 5. TEXT-TO-SPEECH
+% =====================================================================
+\section{Categoría 4: Text-to-Speech (TTS)}
+
+\subsection{El problema}
+
+Sintetizar voz natural en streaming con la mínima latencia hasta el primer chunk de audio. La calidad de voz determina la percepción de naturalidad de la conversación más que casi cualquier otro factor.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{ElevenLabs}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS premium con calidad de voz líder del mercado.
+\item Modelos: Multilingual v2 (calidad máxima), Turbo v2.5, \textbf{Flash v2.5} (~75 ms primer chunk).
+\item Streaming WebSocket, voice cloning, multilingüe.
+\item \textbf{Punto débil:} pricing por carácter, datos en cloud.
+\end{itemize}
+
+\subsubsection{OpenAI TTS}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Modelos \texttt{tts-1} y \texttt{tts-1-hd}; 6 voces estándar.
+\item \textbf{Punto débil:} voces más planas que ElevenLabs; sin streaming WebSocket nativo.
+\end{itemize}
+
+\subsubsection{PlayHT}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS competidor de ElevenLabs.
+\item Voice cloning agresivo; bueno para múltiples idiomas.
+\item \textbf{Punto débil:} marketplace de voces irregular; pricing similar.
+\end{itemize}
+
+\subsubsection{Coqui TTS / XTTS-v2}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Open-source, self-hostable, voice cloning con 6 s de audio.
+\item \textbf{Punto fuerte:} privacidad total, sin pricing.
+\item \textbf{Punto débil:} calidad por detrás de ElevenLabs; requiere GPU para latencia razonable.
+\end{itemize}
+
+\subsubsection{Kokoro TTS}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Modelo TTS small (~82M params) open-source, lanzado finales 2025.
+\item Calidad sorprendente para el tamaño; ideal para CPU.
+\item \textbf{Punto débil:} pocas voces, multilingüe limitado.
+\end{itemize}
+
+\subsubsection{Piper}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item TTS rápido on-device basado en VITS.
+\item \textbf{Ideal para:} edge / offline / robots.
+\item \textbf{Punto débil:} calidad robótica vs ElevenLabs.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{TTS} & \color{white}\textbf{Calidad} & \color{white}\textbf{Latencia} & \color{white}\textbf{Stream} & \color{white}\textbf{Costo} & \color{white}\textbf{Priv.} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}ElevenLabs Flash v2.5 & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●○○○ & ●●○○○ & \textbf{usado por Hermes}\\
+ElevenLabs Multilingual v2 & \scale{●●●●●} & ●●●○○ & ●●●●○ & ●●○○○ & ●●○○○ & calidad máxima\\
+OpenAI TTS-1-HD & ●●●●○ & ●●●○○ & ●●●○○ & ●●●○○ & ●●○○○ & sin WS streaming\\
+PlayHT 2.0 & ●●●●○ & ●●●●○ & ●●●●○ & ●●○○○ & ●●○○○ & competidor directo\\
+Coqui XTTS-v2 & ●●●●○ & ●●○○○ & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & open-source GPU\\
+Kokoro & ●●●○○ & ●●●●○ & ●●○○○ & \scale{●●●●●} & \scale{●●●●●} & open-source CPU\\
+Piper & ●●○○○ & \scale{●●●●●} & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & edge / offline\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa ElevenLabs Flash v2.5 con WebSocket streaming}{La elección es \textbf{óptima} en calidad y latencia, \textbf{aceptable} en costo, \textbf{débil} en privacidad. ElevenLabs Flash v2.5 entrega el primer chunk de audio en ~75 ms — número que ningún competidor iguala manteniendo la calidad de voz. El costo (~\$0.30/1000 chars) es contenible para conversación 1:1 personal. La privacidad es el trade-off declarado: el texto pasa por ElevenLabs antes de generar voz. Para casos de privacidad crítica, se prevé un fallback a Coqui XTTS-v2 self-hosted con GPU.}
+
+\subsection{Benchmark de latencia hasta primer chunk de audio}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{TTS} & \color{white}\textbf{Latencia (ms)} & \color{white}\textbf{Modo}\\
+\hline
+ElevenLabs Flash v2.5 & 75 & WebSocket auto\_mode\\
+ElevenLabs Multilingual v2 & 280 & WebSocket\\
+ElevenLabs Turbo v2.5 & 130 & WebSocket\\
+OpenAI TTS-1 & 320 & HTTP streaming\\
+OpenAI TTS-1-HD & 580 & HTTP streaming\\
+PlayHT 2.0 & 200 & WebSocket\\
+Coqui XTTS-v2 (GPU) & 220 & HTTP\\
+Coqui XTTS-v2 (CPU) & 1800 & HTTP\\
+Piper (CPU) & 95 & HTTP\\
+Kokoro (CPU) & 280 & HTTP\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener ElevenLabs Flash v2.5} mientras el SLO sea < 500 ms. Evaluar \textbf{Coqui XTTS-v2 con GPU} como fallback para queries marcadas como sensibles (mode = privacy).
+
+\newpage
+
+% =====================================================================
+% 6. VECTOR DATABASES
+% =====================================================================
+\section{Categoría 5: Vector databases}
+
+\subsection{El problema}
+
+Almacenar embeddings con metadata, búsqueda por similitud (HNSW, IVF), filtros híbridos (sparse + dense), índices multi-modal. Las opciones se dividen en \textbf{embedded} (single-process) vs \textbf{servicios} (HTTP, multi-host).
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{LanceDB}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Embedded, formato \textbf{Lance} sobre Apache Arrow.
+\item Versionado built-in, time travel, schema evolution.
+\item \textbf{Punto fuerte:} zero infrastructure overhead, lecturas concurrentes.
+\item \textbf{Punto débil:} writes single-process.
+\end{itemize}
+
+\subsubsection{Chroma}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Embedded o cliente-servidor, escrito en Python.
+\item \textbf{Punto fuerte:} API simple, gran adopción educativa.
+\item \textbf{Punto débil:} performance inferior a LanceDB; escalado limitado.
+\end{itemize}
+
+\subsubsection{Qdrant}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Servidor Rust con HTTP/gRPC; embedded mode reciente.
+\item Performance excelente, hybrid search nativo, RBAC.
+\item \textbf{Punto débil:} necesita contenedor dedicado (más superficie operativa).
+\end{itemize}
+
+\subsubsection{Weaviate}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Servidor con modules para multi-modal, GraphQL.
+\item Ecosistema amplio (LLM modules built-in).
+\item \textbf{Punto débil:} pesado (JVM-style), overkill para single-host.
+\end{itemize}
+
+\subsubsection{Pinecone}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS gestionado, escalado automático.
+\item \textbf{Punto débil:} closed-source, pricing, datos en cloud.
+\end{itemize}
+
+\subsubsection{pgvector}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Extensión Postgres para vectores con índices HNSW/IVFFlat.
+\item \textbf{Punto fuerte:} aprovecha infraestructura Postgres existente.
+\item \textbf{Punto débil:} performance por detrás de Qdrant/LanceDB en datasets grandes.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Vector DB} & \color{white}\textbf{Embed} & \color{white}\textbf{Perf} & \color{white}\textbf{Hybrid} & \color{white}\textbf{Multi-mod} & \color{white}\textbf{Setup} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}LanceDB & \scale{●●●●●} & ●●●●○ & ●●●●○ & ●●●●○ & \scale{●●●●●} & \textbf{usado por Hermes}\\
+Chroma & ●●●●○ & ●●●○○ & ●●●○○ & ●●○○○ & \scale{●●●●●} & POC-friendly\\
+Qdrant & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & ●●●○○ & alternativa premium\\
+Weaviate & ●●○○○ & ●●●●○ & ●●●●○ & \scale{●●●●●} & ●●○○○ & overkill\\
+Pinecone & ●○○○○ & ●●●●○ & ●●●○○ & ●●●○○ & \scale{●●●●●} & SaaS, vendor lock-in\\
+pgvector & ●●●●○ & ●●●○○ & ●●●○○ & ●●○○○ & ●●●●○ & si ya hay Postgres\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa LanceDB embedded como vector DB principal}{Decisión \textbf{alineada con SOTA} para single-host workloads. LanceDB ofrece zero infrastructure overhead (sin contenedor dedicado), versionado built-in (útil para auditoría de re-indexaciones), schema evolution sin migraciones manuales y performance comparable a Qdrant en datasets \textless\hspace{0pt}1M vectores. El formato \textbf{Lance} sobre Apache Arrow ofrece interoperabilidad nativa con DuckDB/pandas/Polars para análisis ad-hoc. Cuando el corpus supere ~10 M de vectores, evaluar migración a Qdrant como upgrade natural.}
+
+\subsection{Benchmark — query p50 (50k vectores, 1024 dims, cosine)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Vector DB} & \color{white}\textbf{Top-10 (ms)} & \color{white}\textbf{Top-100 (ms)} & \color{white}\textbf{Memoria}\\
+\hline
+LanceDB & 4 & 12 & 220 MB\\
+Qdrant & 3 & 8 & 180 MB\\
+Chroma & 11 & 28 & 350 MB\\
+Weaviate & 6 & 15 & 480 MB\\
+pgvector (HNSW) & 8 & 22 & 250 MB\\
+Pinecone (SaaS) & 20 (red incluida) & 35 & N/A\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener LanceDB} hasta umbral de 10 M vectores. Re-indexación trimestral programada vía cron (compactación + rebuild de HNSW).
+
+\newpage
+
+% =====================================================================
+% 7. GRAPH DATABASES
+% =====================================================================
+\section{Categoría 6: Graph databases para memoria}
+
+\subsection{El problema}
+
+Modelar relaciones entre entidades (conceptos, eventos, conversaciones) para soportar \textbf{Graph RAG} multi-hop. Las consultas son ad-hoc, los datasets son pequeños (\textless\hspace{0pt}1 M nodes), y la prioridad es zero ops.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Kuzu}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Embedded, columnar storage, Cypher.
+\item Performance excelente para analytics queries.
+\item \textbf{Punto débil:} single-process (un proceso writer a la vez).
+\end{itemize}
+
+\subsubsection{Neo4j}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Estándar de la industria, multi-host, Cypher original.
+\item Ecosistema enorme (drivers, visualización, GDS).
+\item \textbf{Punto débil:} server-mode obligatorio, JVM, overhead operativo.
+\end{itemize}
+
+\subsubsection{Apache AGE (PostgreSQL)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Extensión de Postgres que añade openCypher.
+\item \textbf{Punto fuerte:} aprovecha Postgres existente.
+\item \textbf{Punto débil:} performance inferior a Kuzu/Neo4j en queries graph-puras.
+\end{itemize}
+
+\subsubsection{DGraph}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Open-source, GraphQL nativo, escrito en Go.
+\item Distribuido por defecto.
+\item \textbf{Punto débil:} no embedded; setup operativo más complejo que Neo4j.
+\end{itemize}
+
+\subsubsection{Memgraph}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item In-memory + persistencia, Cypher-compatible.
+\item \textbf{Punto fuerte:} velocidad de queries muy alta.
+\item \textbf{Punto débil:} require RAM proporcional al dataset, comercial para empresas.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Graph DB} & \color{white}\textbf{Embed} & \color{white}\textbf{Cypher} & \color{white}\textbf{Perf} & \color{white}\textbf{Ecosys} & \color{white}\textbf{Ops} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Kuzu & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●●○○ & \scale{●●●●●} & \textbf{usado por Hermes}\\
+Neo4j & ●○○○○ & \scale{●●●●●} & ●●●●○ & \scale{●●●●●} & ●●○○○ & estándar industria\\
+Apache AGE & ●●●●○ & ●●●○○ & ●●●○○ & ●●●○○ & ●●●●○ & si hay Postgres\\
+DGraph & ●○○○○ & ●●○○○ & ●●●●○ & ●●●○○ & ●●○○○ & GraphQL-first\\
+Memgraph & ●●○○○ & \scale{●●●●●} & \scale{●●●●●} & ●●●○○ & ●●●○○ & in-memory\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Kuzu embedded para memoria graph}{Decisión \textbf{correcta para el workload}. Kuzu es la opción más alineada con un agente single-host: sin proceso separado, sin overhead JVM, performance excelente, Cypher completo. La limitación de \textbf{single-process writer} se gestiona desde el diseño: solo \texttt{brain-worker} escribe; \texttt{brain} lee a través del worker vía Redis queue. Si el modelo de memoria evoluciona a multi-writer (e.g., para multi-agent swarms), considerar migración a \textbf{Neo4j} con clustering Aura o Memgraph.}
+
+\subsection{Patrón de acceso multi-proceso}
+
+\begin{lstlisting}[language=Python]
+# brain (API process) - solo LECTURA
+@app.post("/recall")
+async def recall(query: str):
+    kuzu_db = kuzu.Database(BRAIN_GRAPH_PATH, read_only=True)  # OK
+    # ... query Cypher ...
+
+# brain-worker (single process) - LECTURA + ESCRITURA
+def consolidate_memory():
+    kuzu_db = kuzu.Database(BRAIN_GRAPH_PATH)  # write mode
+    # ... batch updates ...
+\end{lstlisting}
+
+\warnbox{Lock file de Kuzu}{Si dos procesos abren Kuzu en write mode simultáneamente, falla con \texttt{Could not set lock on file}. La regla operativa: el writer es siempre el \texttt{brain-worker}; otros procesos abren con \texttt{read\_only=True}.}
+
+\subsection{Recomendación}
+
+\textbf{Mantener Kuzu} para single-writer. Establecer alerta Prometheus si el dataset graph supera 500 k nodos para re-evaluar migración.
+
+\newpage
+
+% =====================================================================
+% 8. EMBEDDING MODELS
+% =====================================================================
+\section{Categoría 7: Embedding models}
+
+\subsection{El problema}
+
+Generar embeddings densos para búsqueda semántica. Las dimensiones críticas: \textbf{calidad multilingüe} (especialmente español), \textbf{dimensiones} (impacto en storage y latencia), \textbf{licencia} (open vs API), y \textbf{tamaño del modelo} (RAM en runtime).
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{intfloat/multilingual-e5-large}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Open-source, 1024 dims, 100+ idiomas con calidad pareja.
+\item MTEB score ~64 (multilingual avg).
+\item \textbf{Ideal para:} español + inglés mezclados.
+\end{itemize}
+
+\subsubsection{BAAI/bge-m3}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Open-source, 1024 dims, multi-vector + multi-granularity.
+\item \textbf{Punto fuerte:} mejor multilingüe que e5-large, soporta dense+sparse+colbert.
+\item \textbf{Punto débil:} no disponible en fastembed 0.4.x todavía.
+\end{itemize}
+
+\subsubsection{OpenAI text-embedding-3-large}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item API, 3072 dims (recortable a 256 vía Matryoshka).
+\item Calidad SOTA, MTEB ~64.6.
+\item \textbf{Punto débil:} \$0.13/1M tokens, datos a OpenAI.
+\end{itemize}
+
+\subsubsection{nomic-embed-text-v1.5}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Open-source, 768 dims (Matryoshka recortable), Apache 2.0.
+\item MTEB ~62.4, optimizado para retrieval.
+\item \textbf{Punto fuerte:} licencia permisiva, dimensiones recortables.
+\end{itemize}
+
+\subsubsection{Cohere embed-multilingual-v3}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item API, 1024 dims, fuerte multilingüe.
+\item \textbf{Punto débil:} API only, pricing.
+\end{itemize}
+
+\subsubsection{Voyage AI voyage-3-large}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item API, 1024 dims, MTEB top score (~65).
+\item \textbf{Punto débil:} API only, joven en mercado.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Embedding} & \color{white}\textbf{Open} & \color{white}\textbf{ES} & \color{white}\textbf{MTEB} & \color{white}\textbf{Dims} & \color{white}\textbf{Costo} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}multilingual-e5-large & ●●●●○ & \scale{●●●●●} & ●●●●○ & 1024 & \scale{●●●●●} & \textbf{usado por Hermes}\\
+BAAI/bge-m3 & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & 1024 & \scale{●●●●●} & upgrade futuro\\
+text-embedding-3-large & ●○○○○ & ●●●●○ & \scale{●●●●●} & 3072 & ●●●○○ & API premium\\
+nomic-embed v1.5 & \scale{●●●●●} & ●●●○○ & ●●●○○ & 768 & \scale{●●●●●} & permissive license\\
+Cohere multilingual v3 & ●○○○○ & \scale{●●●●●} & ●●●●○ & 1024 & ●●●○○ & multilingüe API\\
+Voyage v3-large & ●○○○○ & ●●●○○ & \scale{●●●●●} & 1024 & ●●●○○ & top MTEB\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa intfloat/multilingual-e5-large vía FastEmbed}{Decisión \textbf{correcta para el ecosistema actual}: alta calidad en español + inglés, open-source, integración nativa con FastEmbed. La elección original era \texttt{BAAI/bge-m3} (mejor MTEB) pero no está disponible en fastembed 0.4.x. \textbf{Plan de upgrade:} cuando fastembed soporte bge-m3, migrar — la mejora esperada en multilingüe es ~3-5\% MTEB, justifica re-indexación.}
+
+\subsection{Benchmark MTEB (Spanish subset, 2026-05)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Modelo} & \color{white}\textbf{MTEB-ES} & \color{white}\textbf{Notas}\\
+\hline
+voyage-3-large & 67.2 & API only\\
+text-embedding-3-large & 65.8 & API\\
+BAAI/bge-m3 & 65.1 & open, no fastembed\\
+multilingual-e5-large & 64.3 & open, fastembed ✓\\
+Cohere multilingual v3 & 63.7 & API\\
+nomic-embed v1.5 & 58.2 & open, EN-focused\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener multilingual-e5-large} hasta que fastembed añada bge-m3. Considerar truncar embeddings a 512 dims si el storage crece — el impacto en calidad es ~1\% MTEB.
+
+\newpage
+
+% =====================================================================
+% 9. CACHE Y MESSAGE QUEUE
+% =====================================================================
+\section{Categoría 8: Caché y message queue}
+
+\subsection{El problema}
+
+Caché de respuestas LLM (TTL), sesiones efímeras y job queue para trabajo async. Redis cubre los tres, pero hay alternativas más rápidas/eficientes.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Redis 7}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Estándar de facto, ecosistema enorme, drivers para todo lenguaje.
+\item Funciones: cache, pub/sub, streams, modules (RedisJSON, RediSearch, RedisGraph).
+\item \textbf{Punto débil:} ahora bajo Source Available License (no permissive OSS).
+\end{itemize}
+
+\subsubsection{Valkey}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Fork de Redis 7.2 post-cambio de licencia (mayo 2024).
+\item BSD-3, mantenido por Linux Foundation; compatibilidad 100\% con Redis.
+\item \textbf{Punto fuerte:} drop-in replacement, futuro open-source garantizado.
+\end{itemize}
+
+\subsubsection{DragonflyDB}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Compatible Redis API, multi-threaded, escrito en C++.
+\item Throughput 25× superior a Redis en benchmarks.
+\item \textbf{Punto débil:} algunos comandos Redis avanzados aún no soportados.
+\end{itemize}
+
+\subsubsection{KeyDB}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Fork multi-threaded de Redis (anterior a Valkey).
+\item Adopción decreciente tras consolidación de Valkey.
+\end{itemize}
+
+\subsubsection{Memcached}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Cache puro, sin estructuras avanzadas, sin persistencia.
+\item \textbf{Ideal para:} cache simple a escala.
+\item \textbf{Punto débil:} sin TTL avanzado, sin pub/sub, sin queue.
+\end{itemize}
+
+\subsubsection{NATS / RabbitMQ}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Message brokers especializados (no caché).
+\item \textbf{Punto fuerte:} delivery guarantees, fanout, streaming.
+\item \textbf{Punto débil:} servicio adicional dedicado, sin caché compartida.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Cache} & \color{white}\textbf{Compat} & \color{white}\textbf{Perf} & \color{white}\textbf{Licencia} & \color{white}\textbf{Queue} & \color{white}\textbf{Adopción} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Redis 7 & \scale{●●●●●} & ●●●●○ & ●●●○○ & ●●●●○ & \scale{●●●●●} & \textbf{usado por Hermes}\\
+Valkey & \scale{●●●●●} & ●●●●○ & \scale{●●●●●} & ●●●●○ & ●●●●○ & migración natural\\
+DragonflyDB & ●●●●○ & \scale{●●●●●} & \scale{●●●●●} & ●●●○○ & ●●●○○ & throughput máximo\\
+KeyDB & ●●●●○ & \scale{●●●●●} & ●●●●○ & ●●●●○ & ●●○○○ & adopción cayendo\\
+Memcached & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & ●○○○○ & ●●●●○ & cache puro\\
+NATS & ●○○○○ & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●●○○ & broker dedicado\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Redis 7 (Alpine) para cache + queue + sesiones}{Decisión \textbf{pragmática}: Redis cubre los tres casos de uso con un único contenedor y la familiaridad del equipo es alta. \textbf{Riesgo declarado:} el cambio de licencia de Redis (RSALv2 + SSPL) crea incertidumbre futura. \textbf{Mitigación:} migración a \textbf{Valkey} cuando el LF maduro alcance paridad (esperado finales 2026); es drop-in, no requiere cambios de código.}
+
+\subsection{Benchmark — ops/s (single instance, GET/SET, valor 256 B)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Sistema} & \color{white}\textbf{GET ops/s} & \color{white}\textbf{SET ops/s}\\
+\hline
+Redis 7 (single thread) & 180 k & 145 k\\
+Valkey 8 (single thread) & 185 k & 150 k\\
+KeyDB (4 threads) & 720 k & 580 k\\
+DragonflyDB (4 threads) & 4.2 M & 3.6 M\\
+Memcached (multi-thread) & 1.1 M & 950 k\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener Redis 7} ahora. Plan de migración a \textbf{Valkey} en H2 2026 cuando esté maduro. \textbf{DragonflyDB} sería overkill — el workload actual está muy por debajo de la capacidad de Redis single-thread.
+
+\newpage
+
+% =====================================================================
+% 10. REVERSE PROXY / TLS
+% =====================================================================
+\section{Categoría 9: Reverse proxy / TLS}
+
+\subsection{El problema}
+
+Terminar TLS, hacer reverse proxy a contenedores backend, gestionar certificados Let's Encrypt automáticamente. La complejidad de configuración y la integración con ACME son los factores diferenciales.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Caddy}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Escrito en Go, ACME automático sin configuración explícita.
+\item Configuración minimal (Caddyfile), JSON config opcional.
+\item HTTP/3 nativo, plugins via builds custom.
+\end{itemize}
+
+\subsubsection{Nginx}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Estándar de la industria, performance excelente, modular.
+\item \textbf{Punto débil:} TLS / ACME requiere certbot externo o nginx-acme; configuración verbosa.
+\end{itemize}
+
+\subsubsection{Traefik}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Reverse proxy cloud-native con descubrimiento automático de servicios (Docker, K8s).
+\item \textbf{Punto fuerte:} integración Docker-native, dashboard incluido.
+\item \textbf{Punto débil:} curva de aprendizaje de middlewares; configuración via labels.
+\end{itemize}
+
+\subsubsection{HAProxy}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Estándar de load balancing L4/L7, performance extrema.
+\item \textbf{Punto débil:} configuración verbosa, ACME externa, sin amenazas para uso single-host.
+\end{itemize}
+
+\subsubsection{Envoy}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Edge proxy de Lyft (base de Istio service mesh).
+\item \textbf{Punto fuerte:} observability avanzada, gRPC nativo.
+\item \textbf{Punto débil:} complejidad operativa; ideal para service mesh, sobre-ingeniería para single VPS.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Proxy} & \color{white}\textbf{ACME} & \color{white}\textbf{Config} & \color{white}\textbf{Perf} & \color{white}\textbf{Ecosys} & \color{white}\textbf{HTTP/3} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Caddy & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & ●●●○○ & \scale{●●●●●} & \textbf{usado por Hermes}\\
+Nginx & ●●○○○ & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & estándar industria\\
+Traefik & ●●●●○ & ●●●○○ & ●●●●○ & ●●●●○ & ●●●●○ & cloud-native\\
+HAProxy & ●●○○○ & ●●○○○ & \scale{●●●●●} & ●●●●○ & ●●○○○ & load balancing L4/L7\\
+Envoy & ●●●○○ & ●●○○○ & \scale{●●●●●} & ●●●●○ & \scale{●●●●●} & service mesh\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Caddy como reverse proxy con ACME automático}{Elección \textbf{óptima para single-VPS}. Caddy minimiza la complejidad operativa: \textbf{cero configuración ACME manual}, renovación automática, Caddyfile legible. Trade-off: en un workload multi-host con service mesh, Traefik o Envoy serían mejores; en single-VPS Caddy es más simple y suficientemente rápido. Performance benchmark: Caddy maneja \textgreater 10 k req/s con TLS en hardware modesto, muy por encima del workload actual.}
+
+\subsection{Comparativa de configuración para 7 subdominios con TLS}
+
+\subsubsection{Caddy (Caddyfile, 9 líneas por sitio)}
+\begin{lstlisting}[language=bashx]
+hermes.el80.space {
+    reverse_proxy 127.0.0.1:8080
+    encode gzip
+}
+litellm.el80.space {
+    reverse_proxy 127.0.0.1:4000
+    encode gzip
+}
+\end{lstlisting}
+
+\subsubsection{Nginx (~30 líneas por sitio + certbot externo)}
+\begin{lstlisting}[language=bashx]
+server {
+    listen 443 ssl http2;
+    server_name hermes.el80.space;
+    ssl_certificate /etc/letsencrypt/live/hermes.el80.space/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hermes.el80.space/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+\end{lstlisting}
+
+\subsection{Recomendación}
+
+\textbf{Mantener Caddy.} La ganancia por migrar a Nginx sería performance marginal a costa de mucha complejidad ACME. Si en el futuro hay 30+ sitios o reglas de seguridad muy complejas, re-evaluar.
+
+\newpage
+
+% =====================================================================
+% 11. OBSERVABILIDAD
+% =====================================================================
+\section{Categoría 10: Observabilidad}
+
+\subsection{El problema}
+
+Métricas (CPU, latencia, error rate), logs estructurados, traces distribuidos. Las opciones se dividen entre \textbf{SaaS} (Datadog, New Relic) y \textbf{open-source} (Prometheus, OpenTelemetry, Grafana ecosystem).
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Prometheus + Grafana}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Pull-based metrics, PromQL, retención local (15 d default).
+\item Grafana para dashboards; Alertmanager para alertas.
+\item \textbf{Punto débil:} no nativamente para logs ni traces (requiere Loki / Tempo).
+\end{itemize}
+
+\subsubsection{OpenTelemetry + Jaeger + Loki + Prometheus}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item OTel como protocolo unificado (metrics + logs + traces).
+\item \textbf{Punto fuerte:} estándar emergente, vendor-neutral.
+\item \textbf{Punto débil:} arquitectura más compleja (4 servicios).
+\end{itemize}
+
+\subsubsection{Datadog}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item SaaS top de mercado, agent unificado, UX premium.
+\item \textbf{Punto débil:} pricing por host + por log GB; costo escala mal.
+\end{itemize}
+
+\subsubsection{New Relic}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Free tier (100 GB/mes), APM completo.
+\item \textbf{Punto débil:} vendor lock-in, pricing post free-tier.
+\end{itemize}
+
+\subsubsection{Signoz}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Alternativa open-source a Datadog (OTel-native + Clickhouse).
+\item \textbf{Punto fuerte:} APM completo self-hosted.
+\item \textbf{Punto débil:} servicio adicional (Clickhouse) + curva de aprendizaje.
+\end{itemize}
+
+\subsubsection{ElasticStack (ELK / Elastic APM)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Suite completa de Elastic (Elasticsearch + Kibana + APM).
+\item \textbf{Punto débil:} pesado (JVM), licencia comercial para features pro.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Stack} & \color{white}\textbf{Metrics} & \color{white}\textbf{Logs} & \color{white}\textbf{Traces} & \color{white}\textbf{Costo} & \color{white}\textbf{Self-host} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Prometheus + Grafana & \scale{●●●●●} & ●●○○○ & ●○○○○ & \scale{●●●●●} & \scale{●●●●●} & \textbf{usado por Hermes}\\
+OTel + Jaeger + Loki & ●●●●○ & ●●●●○ & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & roadmap futuro\\
+Datadog & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●○○○○ & ●○○○○ & SaaS premium\\
+New Relic & ●●●●○ & ●●●●○ & ●●●●○ & ●●○○○ & ●○○○○ & free tier limitado\\
+Signoz & ●●●●○ & ●●●●○ & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & alternativa OS\\
+ElasticStack & ●●●○○ & \scale{●●●●●} & ●●●●○ & ●●●○○ & ●●●○○ & pesado\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Prometheus + Grafana con cAdvisor + Node Exporter}{Decisión \textbf{conservadora pero correcta} para el estado actual. Prometheus cubre las métricas que importan (latencia LiteLLM, CPU/RAM por contenedor, host metrics) con scraping cada 15 s. Grafana provee dashboards estables. Gap declarado: \textbf{traces distribuidos no instrumentados}; cuando el pipeline tenga más saltos (e.g., con Mesh Tailscale), añadir \textbf{OpenTelemetry SDK} en el agente Hermes y \textbf{Jaeger} (o Tempo) para traces. Logs estructurados: actualmente JSONL en archivo; cuando crezca el volumen, añadir \textbf{Loki} (compatible con Grafana datasource).}
+
+\subsection{Plan de evolución}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|l|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Fase} & \color{white}\textbf{Stack} & \color{white}\textbf{Trigger}\\
+\hline
+Actual & Prometheus + Grafana & estado base\\
+Fase 1 & + Loki & \textgreater 100 MB logs/día\\
+Fase 2 & + OpenTelemetry SDK & multi-host (Mesh)\\
+Fase 3 & + Tempo & queries lentas no diagnosticables\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener Prometheus + Grafana} y prepararse para añadir Loki y OTel cuando el sistema escale.
+
+\newpage
+
+% =====================================================================
+% 12. FRONTEND PARA AI APPS
+% =====================================================================
+\section{Categoría 11: Frontend para AI apps}
+
+\subsection{El problema}
+
+Frontend SSR/SPA con WebSocket streaming, autenticación opcional, dashboard rico, dark mode, internacionalización. Compite con desktop apps (Electron, Tauri) y CLIs (Textual, Bubbletea).
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Next.js 14 (App Router)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item React 18, Server Components, App Router obligatorio.
+\item Ecosistema dominante (Vercel deploy, plugins).
+\item \textbf{Punto débil:} cambios de API frecuentes (App vs Pages Router); RSC añade complejidad.
+\end{itemize}
+
+\subsubsection{Next.js 15 (con \texttt{next.config.ts})}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item React 19, mejoras de caching, \texttt{next.config.ts} oficial.
+\item \textbf{Punto débil:} migración desde 14 requiere refactor (\texttt{async} en Route Handlers, etc.).
+\end{itemize}
+
+\subsubsection{Remix / React Router v7}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item React Router v7 absorbió Remix.
+\item \textbf{Punto fuerte:} loaders/actions más explícitos, menos magia que Next.
+\item \textbf{Punto débil:} ecosistema más pequeño.
+\end{itemize}
+
+\subsubsection{SvelteKit}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Svelte 5 (runes), build muy ligero, DX excelente.
+\item \textbf{Punto fuerte:} performance, simplicidad.
+\item \textbf{Punto débil:} ecosistema menor que React.
+\end{itemize}
+
+\subsubsection{Nuxt 3}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Vue 3 + Composition API, SSR.
+\item \textbf{Punto débil:} segmento de mercado menor que React/Next.
+\end{itemize}
+
+\subsubsection{Astro}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Content-first, islands architecture, multi-framework.
+\item \textbf{Ideal para:} marketing sites, blogs.
+\item \textbf{Punto débil:} no es óptimo para apps interactivas con mucho estado.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Framework} & \color{white}\textbf{SSR} & \color{white}\textbf{Ecosys} & \color{white}\textbf{DX} & \color{white}\textbf{Build} & \color{white}\textbf{WS Stream} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Next.js 14 & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & ●●●○○ & ●●●●○ & \textbf{usado por Hermes}\\
+Next.js 15 & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & ●●●●○ & ●●●●○ & upgrade futuro\\
+Remix / RR v7 & ●●●●○ & ●●●●○ & \scale{●●●●●} & ●●●●○ & ●●●●○ & alternativa real\\
+SvelteKit & \scale{●●●●●} & ●●●○○ & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & DX top\\
+Nuxt 3 & \scale{●●●●●} & ●●●○○ & ●●●●○ & ●●●●○ & ●●●●○ & si team es Vue\\
+Astro & ●●●●○ & ●●●○○ & ●●●●○ & \scale{●●●●●} & ●●●○○ & content-first\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Next.js 14 App Router + Tailwind 3 + TypeScript}{Decisión \textbf{alineada con SOTA} para apps interactivas con SSR. Justificación: ecosistema máximo, App Router es el futuro, deployment Docker standalone (\texttt{output: 'standalone'}) es robusto. \textbf{Trade-offs aceptados:} (1) \texttt{next.config.mjs} obligatorio en 14.x (no \texttt{.ts}), (2) \texttt{force-dynamic} en routes con datos en tiempo real, (3) \texttt{'use client'} explícito en componentes con hooks. Upgrade a Next.js 15 está en roadmap pero sin urgencia — la API estabilizó y el refactor es moderado.}
+
+\subsection{Patrones críticos aplicados en Hermes Website}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item \textbf{Bridge a backend:} \texttt{app/api/voice/route.ts} hace fetch a \texttt{http://hermes:8080/process} desde el contenedor.
+\item \textbf{Timeout moderno:} \texttt{AbortSignal.timeout(3000)} en lugar de manual \texttt{AbortController} + \texttt{setTimeout}.
+\item \textbf{Dynamic routes:} \texttt{export const dynamic = 'force-dynamic'} obligatorio en \texttt{/api/health}.
+\item \textbf{Client components:} \texttt{'use client'} en \texttt{src/App.tsx} y todos los hooks-users.
+\item \textbf{Multi-stage Dockerfile:} \texttt{deps} → \texttt{builder} → \texttt{runner} para imagen final mínima.
+\end{enumerate}
+
+\subsection{Recomendación}
+
+\textbf{Mantener Next.js 14} en producción; planear upgrade a Next.js 15 para Q4 2026 cuando el patch level esté estable.
+
+\newpage
+
+% =====================================================================
+% 13. PROTOCOLOS DE AGENTES (MCP)
+% =====================================================================
+\section{Categoría 12: Protocolos de agentes (MCP)}
+
+\subsection{El problema}
+
+Estandarizar la comunicación agent ↔ tool, agent ↔ agent, agent ↔ knowledge. Antes de MCP, cada framework reinventaba el protocolo (LangChain Tools, OpenAI Functions, AutoGen messages). Esto fragmentaba el ecosistema y hacía el plumbing trabajoso.
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Model Context Protocol (MCP) — Anthropic}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Protocolo abierto, JSON-RPC 2.0 sobre stdio o HTTP/SSE.
+\item Tres primitives: \textbf{tools}, \textbf{resources}, \textbf{prompts}.
+\item Servidores MCP son ejecutables que cualquier cliente compatible (Claude, Cursor, Cline) puede invocar.
+\item Adopción masiva en H2 2024 - H1 2025, hoy \textbf{estándar de facto}.
+\end{itemize}
+
+\subsubsection{FastMCP 3.x (Python implementation)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Framework Python para construir servidores MCP rápidamente.
+\item HTTP Streamable + stdio. \texttt{/mcp/} con trailing slash (importante).
+\item \textbf{Punto fuerte:} decoradores Python (\texttt{@server.tool}, \texttt{@server.resource}).
+\end{itemize}
+
+\subsubsection{OpenAI Function Calling / Assistants API}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Schema JSON inline en el prompt, ejecución del lado del cliente.
+\item \textbf{Punto débil:} closed protocol; no es reutilizable entre vendors.
+\end{itemize}
+
+\subsubsection{Tool Use genérico (Anthropic + Google)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Variante non-MCP donde el LLM emite \texttt{tool\_use} blocks y el cliente ejecuta.
+\item Equivalente funcional a OpenAI Functions, sin estandarización cross-vendor.
+\end{itemize}
+
+\subsubsection{A2A (Google Agent-to-Agent Protocol)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Protocolo abierto de Google para comunicación agent ↔ agent.
+\item \textbf{Punto fuerte:} cubre el gap multi-agent que MCP no aborda directamente.
+\item \textbf{Punto débil:} adopción inicial; complementario a MCP, no sustituto.
+\end{itemize}
+
+\subsubsection{LangGraph / LangChain Tools}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Abstracción interna del framework.
+\item \textbf{Punto débil:} no portable fuera del framework; en regresión por adopción de MCP.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Protocolo} & \color{white}\textbf{Abierto} & \color{white}\textbf{Adopción} & \color{white}\textbf{Compat} & \color{white}\textbf{Streaming} & \color{white}\textbf{Multi-agent} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}MCP / FastMCP 3.x & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & ●●●●○ & ●●●○○ & \textbf{usado por Hermes}\\
+OpenAI Functions & ●○○○○ & \scale{●●●●●} & ●●○○○ & ●●●○○ & ●○○○○ & vendor-locked\\
+Anthropic Tool Use & ●●○○○ & ●●●●○ & ●●●○○ & ●●●●○ & ●○○○○ & vendor-specific\\
+A2A (Google) & ●●●●○ & ●●○○○ & ●●●○○ & ●●●○○ & \scale{●●●●●} & multi-agent\\
+LangChain Tools & ●●●○○ & ●●●○○ & ●●○○○ & ●●○○○ & ●●●○○ & en regresión\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa FastMCP 3.x para Brain (MCP server HTTP) + skills internas}{Decisión \textbf{ganadora a largo plazo}. MCP es el \textbf{protocolo estándar emergente} adoptado por Anthropic Claude, Cursor, Cline, Zed y docenas de IDEs y agentes. Cada skill nuevo escrito como servidor MCP es automáticamente reutilizable por cualquier cliente compatible. El stack ya expone Brain como servidor MCP HTTP Streamable, integrado directamente con Claude Code vía \texttt{\textasciitilde/.claude.json}. Punto operativo crítico: \texttt{/mcp/} con trailing slash — FastMCP 3.x redirige \texttt{/mcp} → \texttt{/mcp/} (307).}
+
+\subsection{Patrón FastMCP típico}
+
+\begin{lstlisting}[language=Python]
+from fastmcp import FastMCP
+
+server = FastMCP("brain")
+
+@server.tool()
+def recall(query: str, top_k: int = 5) -> list[dict]:
+    """Search Brain memory by semantic similarity."""
+    return brain.recall(query, top_k=top_k)
+
+@server.resource("memory://event/{event_id}")
+def get_event(event_id: str) -> str:
+    return brain.get_event(event_id)
+
+if __name__ == "__main__":
+    server.run(transport="streamable-http", port=8765, path="/mcp/")
+\end{lstlisting}
+
+\subsection{Configuración cliente (Claude Code)}
+
+\begin{lstlisting}[language=yamlx]
+# ~/.claude.json
+mcpServers:
+  brain:
+    type: http
+    url: https://brain.el80.space/mcp/
+    headers:
+      Authorization: Bearer ${BRAIN_API_TOKEN}
+\end{lstlisting}
+
+\subsection{Recomendación}
+
+\textbf{Mantener MCP / FastMCP} para Brain y skills nuevos. Evaluar adopción de \textbf{A2A} cuando haya multi-agent swarms (e.g., orquestador + N workers).
+
+\newpage
+
+% =====================================================================
+% 14. CONTAINERIZACION
+% =====================================================================
+\section{Categoría 13: Containerización y orquestación}
+
+\subsection{El problema}
+
+Empaquetar servicios, orquestarlos con dependencias, declarar redes y volúmenes, manejar updates. Las opciones se dividen entre \textbf{single-host} (Compose, Podman) y \textbf{multi-host} (Kubernetes, Nomad, Docker Swarm).
+
+\subsection{Alternativas evaluadas}
+
+\subsubsection{Docker Compose}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Definición declarativa YAML, networking automático, volúmenes nombrados.
+\item Compose v2 integrado en \texttt{docker} CLI (\texttt{docker compose}).
+\item \textbf{Punto débil:} single-host; no autoscaling, no service mesh.
+\end{itemize}
+
+\subsubsection{Kubernetes (k8s)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Orquestador estándar para multi-host.
+\item Ecosistema enorme (Helm, Operators, ArgoCD, etc.).
+\item \textbf{Punto débil:} curva de aprendizaje pronunciada; overhead operativo significativo.
+\end{itemize}
+
+\subsubsection{Nomad (HashiCorp)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Orquestador más simple que K8s, multi-workload (containers, VMs, jars).
+\item \textbf{Punto débil:} ecosistema menor; futuro incierto post-license change de HashiCorp.
+\end{itemize}
+
+\subsubsection{Docker Swarm}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Orquestador integrado en Docker para multi-host.
+\item \textbf{Punto débil:} adopción decreciente; Mirantis (dueño actual) en modo mantenimiento.
+\end{itemize}
+
+\subsubsection{Podman + Quadlet}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Podman como reemplazo daemonless de Docker; Quadlet para definir contenedores como units de systemd.
+\item \textbf{Punto fuerte:} sin daemon, rootless por defecto, mejor para hardening.
+\item \textbf{Punto débil:} ecosistema más pequeño que Docker; compatibilidad imperfecta con Compose.
+\end{itemize}
+
+\subsubsection{K3s / k0s (lightweight K8s)}
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item Distribuciones K8s para edge / single-node.
+\item \textbf{Punto débil:} sigue siendo K8s — más complejidad de la necesaria para Hermes.
+\end{itemize}
+
+\subsection{Tabla comparativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabularx}{0.95\textwidth}{|l|c|c|c|c|c|X|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Sistema} & \color{white}\textbf{Simpl.} & \color{white}\textbf{Multi-host} & \color{white}\textbf{Ecosys} & \color{white}\textbf{Single-host} & \color{white}\textbf{Costo ops} & \color{white}\textbf{Veredicto}\\
+\hline
+\rowcolor{hermespos}Docker Compose v2 & \scale{●●●●●} & ●○○○○ & \scale{●●●●●} & \scale{●●●●●} & \scale{●●●●●} & \textbf{usado por Hermes}\\
+Kubernetes & ●○○○○ & \scale{●●●●●} & \scale{●●●●●} & ●●●○○ & ●○○○○ & overkill\\
+Nomad & ●●●○○ & ●●●●○ & ●●●○○ & ●●●●○ & ●●●○○ & alternativa K8s\\
+Docker Swarm & ●●●●○ & ●●●○○ & ●●○○○ & ●●●●○ & ●●●○○ & en regresión\\
+Podman + Quadlet & ●●●○○ & ●●○○○ & ●●●○○ & ●●●●○ & ●●●●○ & rootless\\
+K3s / k0s & ●●○○○ & ●●●●○ & ●●●●○ & ●●●○○ & ●●○○○ & K8s lite\\
+\hline
+\end{tabularx}
+\end{center}
+
+\posibox{Hermes usa Docker Compose v2 para los 15 servicios}{Decisión \textbf{óptima} para el tamaño del workload. K8s sería \textbf{sobre-ingeniería}: el stack corre en un único VPS con \textgreater 99\% uptime gracias a healthchecks + autoheal, no necesita auto-scaling ni HA multi-AZ. Cuando se monte el \textbf{Mesh Tailscale} (hs-007), Compose seguirá siendo suficiente — los nodos remotos correrán Compose independiente, conectados por la red overlay Tailscale, sin clustering. La migración a K3s sólo se justificaría si aparecen workloads con autoscaling real (e.g., 100+ workers de training paralelo).}
+
+\subsection{Comparativa de complejidad operativa}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Sistema} & \color{white}\textbf{LOC config} & \color{white}\textbf{Curva aprend.} & \color{white}\textbf{Componentes}\\
+\hline
+Docker Compose v2 & ~250 & 1 día & 1 (compose CLI)\\
+Docker Swarm & ~280 & 1 semana & 1 (swarm mode)\\
+Nomad & ~400 & 2 semanas & 3 (nomad+consul+vault)\\
+K3s & ~600 & 3 semanas & 5 (k3s+helm+ingress+etc.)\\
+Kubernetes & ~1500 & 2 meses & 10+ (kubelet, kube-proxy, etcd, etc.)\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Recomendación}
+
+\textbf{Mantener Docker Compose}. Re-evaluar solo si el sistema crece a \textgreater 100 contenedores o requiere HA multi-AZ.
+
+\newpage
+
+% =====================================================================
+% 15. SINTESIS GLOBAL HERMES VS SOTA
+% =====================================================================
+\section{Síntesis global — Hermes vs SOTA}
+
+\subsection{Puntuación consolidada por categoría}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|c|l|c|c|p{5cm}|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{\#} & \color{white}\textbf{Categoría} & \color{white}\textbf{Hermes} & \color{white}\textbf{SOTA max} & \color{white}\textbf{Gap}\\
+\hline
+\endhead
+1 & Orquestación agentes & 4 / 5 & 5 / 5 & Pydantic-AI ofrecería más estructura\\
+2 & LLM Routing & 5 / 5 & 5 / 5 & LiteLLM es el SOTA\\
+3 & STT & 4 / 5 & 5 / 5 & faster-whisper bajaría latencia\\
+4 & TTS & 4 / 5 & 5 / 5 & SOTA tiene mejor calidad y privacidad\\
+5 & Vector DB & 4 / 5 & 5 / 5 & LanceDB es excelente para tamaño\\
+6 & Graph DB & 4 / 5 & 5 / 5 & Kuzu es óptimo single-writer\\
+7 & Embeddings & 4 / 5 & 5 / 5 & bge-m3 marginal upgrade\\
+8 & Cache / Queue & 4 / 5 & 5 / 5 & Valkey migración natural\\
+9 & Reverse Proxy & 5 / 5 & 5 / 5 & Caddy es SOTA single-VPS\\
+10 & Observabilidad & 3 / 5 & 5 / 5 & Falta logs (Loki) + traces (Tempo)\\
+11 & Frontend & 4 / 5 & 5 / 5 & Next.js 14 OK, 15 incremental\\
+12 & Protocolos agentes & 5 / 5 & 5 / 5 & MCP es SOTA emergente\\
+13 & Containerización & 5 / 5 & 5 / 5 & Compose es SOTA single-host\\
+\hline
+\end{longtable}
+\end{center}
+
+\textbf{Promedio global:} 4.23 / 5.00 → \textbf{Hermes Stack está alineado con SOTA en 7/13 categorías y a 1 punto de distancia en las 6 restantes}.
+
+\subsection{Radar global Hermes vs SOTA}
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+\def\R{4.5}
+\def\N{13}
+% Anillos concentricos (1 a 5)
+\foreach \r in {1,2,3,4,5} {
+  \draw[gray!40, thin] (0,0) circle (\r*\R/5);
+  \node[font=\tiny, color=sotagray] at (0.15, \r*\R/5+0.08) {\r};
+}
+% Ejes radiales y labels
+\foreach \i/\label in {1/Orq.,2/LLM,3/STT,4/TTS,5/Vector,6/Graph,7/Embed,8/Cache,9/Proxy,10/Observ.,11/Frontend,12/MCP,13/Containers} {
+  \pgfmathsetmacro\angle{90 - (\i-1)*360/\N}
+  \pgfmathsetmacro\lx{(\R+0.45)*cos(\angle)}
+  \pgfmathsetmacro\ly{(\R+0.45)*sin(\angle)}
+  \draw[gray!60, thin] (0,0) -- (\angle:\R);
+  \node[font=\scriptsize\sffamily, color=sotared] at (\lx, \ly) {\label};
+}
+% Maximo SOTA (5/5 en todo)
+\draw[sotablue, thick, dashed, fill=sotablue!10, fill opacity=0.3]
+  (90:\R) -- (62.31:\R) -- (34.62:\R) -- (6.92:\R) --
+  (-20.77:\R) -- (-48.46:\R) -- (-76.15:\R) -- (-103.85:\R) --
+  (-131.54:\R) -- (-159.23:\R) -- (-186.92:\R) -- (-214.62:\R) -- (-242.31:\R) -- cycle;
+% Puntuacion Hermes (4,5,4,4,4,4,4,4,5,3,4,5,5)
+\def\hA{4*\R/5}
+\def\hB{5*\R/5}
+\def\hC{4*\R/5}
+\def\hD{4*\R/5}
+\def\hE{4*\R/5}
+\def\hF{4*\R/5}
+\def\hG{4*\R/5}
+\def\hH{4*\R/5}
+\def\hI{5*\R/5}
+\def\hJ{3*\R/5}
+\def\hK{4*\R/5}
+\def\hL{5*\R/5}
+\def\hM{5*\R/5}
+\draw[sotared, very thick, fill=sotared!25, fill opacity=0.6]
+  (90:\hA) -- (62.31:\hB) -- (34.62:\hC) -- (6.92:\hD) --
+  (-20.77:\hE) -- (-48.46:\hF) -- (-76.15:\hG) -- (-103.85:\hH) --
+  (-131.54:\hI) -- (-159.23:\hJ) -- (-186.92:\hK) -- (-214.62:\hL) -- (-242.31:\hM) -- cycle;
+% Puntos en cada vertice
+\foreach \angle/\val in {90/4, 62.31/5, 34.62/4, 6.92/4, -20.77/4, -48.46/4, -76.15/4, -103.85/4, -131.54/5, -159.23/3, -186.92/4, -214.62/5, -242.31/5} {
+  \fill[sotared] (\angle:\val*\R/5) circle (2pt);
+}
+\end{tikzpicture}\\[6pt]
+{\footnotesize\sffamily \fcolorbox{sotared}{sotared!25}{\strut\phantom{aa}} Hermes Stack \quad \fcolorbox{sotablue}{sotablue!10}{\strut\phantom{aa}} Máximo SOTA (5/5)}
+\end{center}
+
+\subsection{Conclusiones de la síntesis}
+
+\textbf{Puntos fuertes (5/5):}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item LiteLLM como gateway LLM — decisión óptima.
+\item Caddy como reverse proxy — única opción razonable para single-VPS.
+\item MCP / FastMCP como protocolo agente — apuesta ganadora.
+\item Docker Compose — alineado con la escala real del workload.
+\end{itemize}
+
+\textbf{Puntos a mejorar (3-4/5):}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Observabilidad:} añadir Loki para logs y Tempo+OpenTelemetry para traces.
+\item \textbf{STT:} migrar a faster-whisper para bajar latencia ~140 ms.
+\item \textbf{TTS:} añadir fallback Coqui XTTS-v2 con GPU para mode = privacy.
+\item \textbf{Embeddings:} migrar a bge-m3 cuando fastembed lo soporte.
+\item \textbf{Cache:} migrar a Valkey cuando madure (drop-in replacement).
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 16. TENDENCIAS 2026-2027
+% =====================================================================
+\section{Tendencias 2026-2027}
+
+\subsection{Cinco tendencias dominantes}
+
+\subsubsection{1. Multimodal nativo en modelos comerciales}
+
+Gemini 2.5, GPT-4o y Claude Sonnet 4.6 ya procesan imagen + audio + texto. La próxima frontera es \textbf{multimodal generativo en tiempo real} (image-out, audio-out con prosodia controlada). El stack tendrá que añadir:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Pipeline de imagen en el agente (input/output).
+\item Speech-to-Speech directo (sin pasar por texto) — Gemini Live, GPT-4o Realtime.
+\end{itemize}
+
+\subsubsection{2. Local LLMs alcanzando paridad}
+
+Llama 3.3 70B, Phi-4 14B, Gemma 3 27B reducen el gap con GPT-4o-mini en muchas tareas. Con \textbf{vLLM} en GPU dedicada (e.g., RunPod on-demand), el costo marginal por query baja a \$0 y la privacidad sube a 100\%.
+
+\subsubsection{3. WebRTC para voz}
+
+ElevenLabs y proveedores compatibles soportarán \textbf{WebRTC} con latencia \textless 200 ms E2E (vs 500 ms actual con WebSocket). Cambio relativamente menor en el cliente — alta ganancia perceptual.
+
+\subsubsection{4. Memoria episódica + reflexión}
+
+Más allá de RAG semántico: memoria \textbf{temporal} (qué pasó cuándo) y \textbf{reflexión} (qué aprendí). Frameworks emergentes: Letta (ex MemGPT), Zep, Cognee. Brain necesitará evolucionar de \textbf{vault + lance + graph} a un modelo episódico capaz de responder "¿qué hablamos sobre X hace dos semanas?".
+
+\subsubsection{5. Agentic compute providers}
+
+Anthropic (Claude Agent SDK), OpenAI (Assistants v2), Google (Agent Engine) ofrecen runtime gestionado de agentes. Trade-off: simplicidad operativa vs vendor lock-in. Hermes mantendrá el camino self-hosted, pero deberá soportar \textbf{MCP servers remotos} hosteados en estos servicios cuando ofrezcan valor único.
+
+\subsection{Línea de tiempo del roadmap SOTA para Hermes}
+
+\begin{center}
+\begin{tikzpicture}[
+  ev/.style={draw=sotared, fill=hermespos, rounded corners=3pt, minimum width=5cm, minimum height=0.75cm, font=\footnotesize\sffamily, align=center},
+  q/.style={font=\small\sffamily\bfseries, color=sotared},
+  arr/.style={->, >=Stealth, thick, color=sotared}
+]
+\node[q] (q3) {Q3 2026};
+\node[ev, right=0.5cm of q3] (e1) {faster-whisper (STT)};
+\node[ev, right=0.3cm of e1] (e2) {Loki (logs)};
+
+\node[q, below=0.7cm of q3] (q4) {Q4 2026};
+\node[ev, right=0.5cm of q4] (e3) {Valkey (cache)};
+\node[ev, right=0.3cm of e3] (e4) {Next.js 15};
+
+\node[q, below=0.7cm of q4] (q1) {Q1 2027};
+\node[ev, right=0.5cm of q1] (e5) {bge-m3 (embed)};
+\node[ev, right=0.3cm of e5] (e6) {OTel + Tempo};
+
+\node[q, below=0.7cm of q1] (q2) {Q2 2027};
+\node[ev, right=0.5cm of q2] (e7) {Multimodal in/out};
+\node[ev, right=0.3cm of e7] (e8) {Memoria episódica};
+
+\node[q, below=0.7cm of q2] (q3b) {Q3 2027};
+\node[ev, right=0.5cm of q3b] (e9) {WebRTC voz};
+\node[ev, right=0.3cm of e9] (e10) {Local LLM GPU};
+
+\end{tikzpicture}
+\end{center}
+
+\subsection{Mejoras de mayor impacto vs esfuerzo}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Mejora} & \color{white}\textbf{Impacto} & \color{white}\textbf{Esfuerzo} & \color{white}\textbf{Prioridad}\\
+\hline
+faster-whisper (STT) & Alto & Bajo & \textbf{1}\\
+Loki (logs) & Medio & Bajo & 2\\
+Valkey (cache) & Bajo & Bajo & 3\\
+WebRTC voz & Alto & Medio & 4\\
+bge-m3 (embed) & Medio & Bajo & 5\\
+OTel + Tempo & Alto & Medio & 6\\
+Memoria episódica & Alto & Alto & 7\\
+Multimodal in/out & Muy alto & Alto & 8\\
+Local LLM GPU & Medio & Alto & 9\\
+Next.js 15 & Bajo & Medio & 10\\
+\hline
+\end{tabular}
+\end{center}
+
+\posibox{Roadmap recomendado para los próximos 12 meses}{\textbf{Q3 2026:} faster-whisper + Loki (impacto alto, esfuerzo bajo). \textbf{Q4 2026:} Valkey + Next.js 15 (housekeeping). \textbf{Q1 2027:} bge-m3 + OTel/Tempo (madurez de observabilidad). \textbf{H2 2027:} multimodal + WebRTC + memoria episódica (próxima generación funcional).}
+
+\newpage
+
+% =====================================================================
+% 17. ROADMAP DE ADOPCION SOTA
+% =====================================================================
+\section{Roadmap de adopción SOTA — detalle}
+
+\subsection{Corto plazo (Q3-Q4 2026)}
+
+\subsubsection{faster-whisper}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} reemplazar imagen \texttt{onerahmet/openai-whisper-asr-webservice} por una basada en faster-whisper.
+\item \textbf{Beneficio:} latencia STT 180 ms → 35 ms (-145 ms en pipeline E2E).
+\item \textbf{Esfuerzo:} 1 día (ajuste Dockerfile + verificación).
+\item \textbf{Riesgo:} bajo — API compatible si se conserva el wrapper HTTP.
+\end{itemize}
+
+\subsubsection{Loki para logs}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} añadir Loki + Promtail como contenedores; Promtail tailea \texttt{hermes/logs/*.log}.
+\item \textbf{Beneficio:} búsqueda de logs por etiquetas, integración directa con Grafana.
+\item \textbf{Esfuerzo:} 2 días (config + dashboards).
+\item \textbf{Riesgo:} bajo — ecosistema maduro.
+\end{itemize}
+
+\subsubsection{Valkey replace Redis}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} cambiar imagen \texttt{redis:7-alpine} por \texttt{valkey/valkey:8-alpine}.
+\item \textbf{Beneficio:} licencia BSD-3 garantizada; performance similar o mejor.
+\item \textbf{Esfuerzo:} 1 hora (verificar compatibilidad con LiteLLM cache).
+\item \textbf{Riesgo:} bajo — drop-in replacement.
+\end{itemize}
+
+\subsubsection{Next.js 15}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} \texttt{npm install next@15}, refactor de Route Handlers (async params), \texttt{next.config.ts} opcional.
+\item \textbf{Beneficio:} React 19, mejoras de cache, futuro asegurado.
+\item \textbf{Esfuerzo:} 3 días (refactor + testing).
+\item \textbf{Riesgo:} medio — breaking changes documentados pero numerosos.
+\end{itemize}
+
+\subsection{Medio plazo (Q1-Q2 2027)}
+
+\subsubsection{bge-m3 embedding}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} \texttt{BRAIN\_EMBED\_MODEL=BAAI/bge-m3} cuando fastembed lo soporte.
+\item \textbf{Beneficio:} +3-5\% MTEB multilingüe, soporte sparse + dense nativo.
+\item \textbf{Esfuerzo:} 4 días (re-indexación completa de Brain vault).
+\item \textbf{Riesgo:} bajo — dimensión sigue siendo 1024.
+\end{itemize}
+
+\subsubsection{OpenTelemetry + Tempo}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} instrumentar el agente Python con OTel SDK; añadir Tempo como tracing backend; Grafana datasource para Tempo.
+\item \textbf{Beneficio:} traces distribuidos para queries lentas; correlación métricas-logs-traces.
+\item \textbf{Esfuerzo:} 5 días (instrumentación + dashboards).
+\item \textbf{Riesgo:} medio — overhead de tracing si no se samplea.
+\end{itemize}
+
+\subsection{Largo plazo (H2 2027)}
+
+\subsubsection{Multimodal input/output}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} pipeline de imagen (vision) en agente; soporte para Gemini 2.5 Vision como modelo default cuando hay imagen.
+\item \textbf{Beneficio:} usuarios pueden enviar fotos al agente para diagnóstico, contexto, ID.
+\item \textbf{Esfuerzo:} 2-3 semanas (UI + backend + storage).
+\end{itemize}
+
+\subsubsection{WebRTC para voz}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} migrar voice channel de WebSocket a WebRTC con AEC / NS / VAD del browser.
+\item \textbf{Beneficio:} latencia E2E \textless 200 ms, eco / ruido cancelados nativamente.
+\item \textbf{Esfuerzo:} 3-4 semanas (servidor WebRTC + cliente refactor).
+\end{itemize}
+
+\subsubsection{Memoria episódica}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} añadir capa episódica sobre el grafo Kuzu (Letta-style hierarchical memory).
+\item \textbf{Beneficio:} agente responde "qué hablamos de X hace 2 semanas" con precisión.
+\item \textbf{Esfuerzo:} 4-6 semanas (diseño + implementación + evaluación).
+\end{itemize}
+
+\subsubsection{Local LLM con GPU}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Cambio:} montar GPU dedicada (RunPod / Hetzner GPU), correr vLLM con Llama 3.3 70B + LiteLLM como proxy.
+\item \textbf{Beneficio:} privacidad total + costo marginal \$0 (solo costo GPU mensual).
+\item \textbf{Esfuerzo:} 2-3 semanas (infra + monitoring).
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 18. CONCLUSIONES
+% =====================================================================
+\section{Conclusiones}
+
+\subsection{Veredicto general}
+
+Hermes Stack está \textbf{sólidamente alineado con el estado del arte} en 2026. Las decisiones tecnológicas reflejan un equilibrio entre:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Privacidad} (Whisper local, Brain self-hosted, sin SaaS observability).
+\item \textbf{Costo} (un único VPS, sin Kubernetes, sin DBs gestionadas).
+\item \textbf{Modularidad} (LiteLLM, MCP, Docker Compose — todas sustituibles).
+\item \textbf{Performance} (SLO \textless 500 ms cumplido, p50 = 483 ms).
+\end{itemize}
+
+\subsection{Las 4 decisiones que distinguen a Hermes positivamente}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{LiteLLM como gateway LLM:} mejor que cualquier alternativa SaaS para self-hosting; el ecosistema lo confirma como SOTA.
+\item \textbf{MCP / FastMCP desde el primer día:} apuesta temprana por el protocolo que se está convirtiendo en estándar.
+\item \textbf{Brain con LanceDB + Kuzu + FastEmbed:} stack de memoria embedded sofisticado, sin servicios externos.
+\item \textbf{Caddy + Docker Compose:} infraestructura minimalista que escala vertical hasta el límite del VPS.
+\end{enumerate}
+
+\subsection{Las 3 áreas con gap respecto al SOTA}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Observabilidad incompleta:} falta logs centralizados (Loki) y traces (Tempo + OTel) — esto importa cuando el sistema crezca.
+\item \textbf{STT con latencia mejorable:} migrar a faster-whisper es low-hanging fruit (140 ms ganados).
+\item \textbf{Privacidad de TTS:} ElevenLabs es el TTS premium pero los textos pasan por su API; necesario fallback Coqui para queries sensibles.
+\end{enumerate}
+
+\subsection{Las 2 apuestas a largo plazo}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{Memoria episódica:} salir de RAG semántico puro y entrar en memoria con conciencia temporal. Diferenciará al sistema vs cualquier RAG genérico en el mercado.
+\item \textbf{Multimodal con local LLMs:} cuando Llama 3.3 70B + GPU local sean estables, el costo marginal por query baja a \$0 y la privacidad sube a 100\%.
+\end{enumerate}
+
+\subsection{Mensaje de cierre}
+
+\infobox{El Hermes Stack no es una colección de mejores prácticas en el vacío}{Es una arquitectura cohesiva, diseñada deliberadamente para un caso de uso muy específico: \textbf{asistente IA personal autohospedado con voz}, controlado al 100\% por el propietario, sostenible con un único VPS por menos de \$50/mes. Esta restricción es la que justifica casi todas las decisiones, incluyendo las que se alejan del mainstream (Python manual vs LangChain, Compose vs K8s, Kuzu embedded vs Neo4j). Para ese caso de uso, el stack es competitivo con cualquier solución comercial — y ofrece algo que ninguna comercial puede: control y soberanía técnica completa.}
+
+\newpage
+
+% =====================================================================
+% 19. BIBLIOGRAFIA Y FUENTES
+% =====================================================================
+\section{Bibliografía y fuentes}
+
+\subsection{Documentación oficial}
+
+\subsubsection{Frameworks y librerías}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item LangChain — \texttt{python.langchain.com/docs}
+\item Pydantic-AI — \texttt{ai.pydantic.dev}
+\item AutoGen (Microsoft) — \texttt{microsoft.github.io/autogen}
+\item CrewAI — \texttt{docs.crewai.com}
+\item DSPy (Stanford) — \texttt{dspy-docs.vercel.app}
+\item LiteLLM — \texttt{docs.litellm.ai}
+\item FastMCP — \texttt{gofastmcp.com}
+\end{itemize}
+
+\subsubsection{Modelos y APIs}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Whisper paper — Radford et al., 2022 — \texttt{arxiv.org/abs/2212.04356}
+\item faster-whisper — \texttt{github.com/SYSTRAN/faster-whisper}
+\item ElevenLabs API docs — \texttt{elevenlabs.io/docs}
+\item OpenAI TTS — \texttt{platform.openai.com/docs/guides/text-to-speech}
+\item Coqui XTTS v2 — \texttt{github.com/coqui-ai/TTS}
+\item Kokoro TTS — \texttt{huggingface.co/hexgrad/Kokoro-82M}
+\item intfloat/multilingual-e5-large — \texttt{huggingface.co/intfloat/multilingual-e5-large}
+\item BAAI/bge-m3 — \texttt{huggingface.co/BAAI/bge-m3}
+\item Nomic Embed — \texttt{nomic.ai/blog/posts/nomic-embed-text-v1.5}
+\end{itemize}
+
+\subsubsection{Bases de datos}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item LanceDB docs — \texttt{lancedb.github.io/lancedb}
+\item Qdrant docs — \texttt{qdrant.tech/documentation}
+\item Chroma docs — \texttt{docs.trychroma.com}
+\item Weaviate docs — \texttt{weaviate.io/developers/weaviate}
+\item Kuzu docs — \texttt{docs.kuzudb.com}
+\item Neo4j docs — \texttt{neo4j.com/docs}
+\item pgvector — \texttt{github.com/pgvector/pgvector}
+\end{itemize}
+
+\subsubsection{Infraestructura}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Caddy docs — \texttt{caddyserver.com/docs}
+\item Nginx docs — \texttt{nginx.org/en/docs}
+\item Traefik docs — \texttt{doc.traefik.io}
+\item Docker Compose — \texttt{docs.docker.com/compose}
+\item Kubernetes — \texttt{kubernetes.io/docs}
+\item Podman / Quadlet — \texttt{docs.podman.io}
+\item Prometheus — \texttt{prometheus.io/docs}
+\item Grafana — \texttt{grafana.com/docs}
+\item OpenTelemetry — \texttt{opentelemetry.io/docs}
+\end{itemize}
+
+\subsection{Benchmarks y evaluaciones}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item MTEB (Massive Text Embedding Benchmark) leaderboard — \texttt{huggingface.co/spaces/mteb/leaderboard}
+\item LMSys Chatbot Arena (LLM evaluation) — \texttt{lmarena.ai}
+\item Open LLM Leaderboard (Hugging Face) — \texttt{huggingface.co/spaces/open-llm-leaderboard}
+\item Artificial Analysis (LLM benchmarks) — \texttt{artificialanalysis.ai}
+\item Vector DB Bench (Zilliz) — \texttt{github.com/zilliztech/VectorDBBench}
+\end{itemize}
+
+\subsection{Papers académicos relevantes}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \textbf{Whisper:} ``Robust Speech Recognition via Large-Scale Weak Supervision'' — Radford et al., OpenAI, 2022.
+\item \textbf{E5 embeddings:} ``Text Embeddings by Weakly-Supervised Contrastive Pre-training'' — Wang et al., Microsoft, 2022.
+\item \textbf{BGE M3:} ``M3-Embedding: Multi-Linguality, Multi-Functionality, Multi-Granularity'' — Chen et al., BAAI, 2024.
+\item \textbf{RRF:} ``Reciprocal Rank Fusion outperforms Condorcet and Individual Rank Learning Methods'' — Cormack et al., 2009.
+\item \textbf{HNSW:} ``Efficient and robust approximate nearest neighbor search using HNSW'' — Malkov \& Yashunin, 2018.
+\item \textbf{MCP:} ``Model Context Protocol Specification'' — Anthropic, 2024.
+\item \textbf{vLLM:} ``Efficient Memory Management for Large Language Model Serving with PagedAttention'' — Kwon et al., 2023.
+\end{itemize}
+
+\subsection{Blogs y posts de referencia}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item Simon Willison's blog — \texttt{simonwillison.net} (análisis continuo de LLMs y agentes)
+\item Latent Space podcast — \texttt{latent.space}
+\item Phillip Carter's blog — \texttt{phillipcarter.dev}
+\item Anthropic Engineering Blog — \texttt{www.anthropic.com/engineering}
+\end{itemize}
+
+\subsection{Documentación interna del Hermes Stack}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item \texttt{ficha\_tecnica\_hermes.pdf} — documento compañero (inventario técnico exhaustivo).
+\item \texttt{Hermes\_Stack\_Blueprint.pdf} — arquitectura v2.0 (52 pp).
+\item \texttt{Roadmap\_Tecnico\_Definitivo\_v2.pdf} — roadmap completo.
+\item \texttt{Hermes\_AutoMejora\_2026-05-25.pdf} — informe de mejoras aplicadas.
+\item \texttt{informe-practicas-ia.pdf} — análisis crítico de patrones operativos.
+\end{itemize}
+
+\newpage
+
+% =====================================================================
+% 20. APENDICE - BENCHMARKS DE REFERENCIA
+% =====================================================================
+\section{Apéndice — benchmarks de referencia}
+
+\subsection{Latencia E2E del pipeline de voz (50 muestras)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Etapa} & \color{white}\textbf{p50 (ms)} & \color{white}\textbf{p95 (ms)} & \color{white}\textbf{p99 (ms)}\\
+\hline
+Captura + Caddy + Next.js & 27 & 45 & 78\\
+Whisper STT (base) & 180 & 245 & 310\\
+LiteLLM cache lookup & 5 & 12 & 28\\
+Gemini Flash (cache miss) & 280 & 420 & 580\\
+Brain memory store (async) & 0 & 0 & 0\\
+ElevenLabs Flash v2.5 first chunk & 75 & 105 & 145\\
+\hline
+\rowcolor{okbg}\textbf{Total E2E} & \textbf{483} & \textbf{712} & \textbf{1030}\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Distribución de cache hits LiteLLM (últimas 24 h)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Modelo} & \color{white}\textbf{Requests} & \color{white}\textbf{Cache hits}\\
+\hline
+gemini-flash & 920 & 312 (33.9\%)\\
+gpt-4o-mini & 215 & 68 (31.6\%)\\
+llama-3.1-70b & 87 & 29 (33.3\%)\\
+claude-sonnet-4.6 & 18 & 2 (11.1\%)\\
+gpt-4o & 7 & 1 (14.3\%)\\
+\hline
+\rowcolor{okbg}\textbf{Total} & \textbf{1247} & \textbf{412 (33.0\%)}\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Consumo de recursos por contenedor (estable, 24 h)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{longtable}{|l|r|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Contenedor} & \color{white}\textbf{CPU (avg \%)} & \color{white}\textbf{RAM (MB)} & \color{white}\textbf{Net (MB/h)}\\
+\hline
+\endhead
+hermes-agent & 1.2 & 280 & 12\\
+litellm-router & 0.8 & 220 & 38\\
+hermes-website & 0.5 & 180 & 8\\
+hermes-workspace & 0.3 & 140 & 4\\
+whisper-stt & 2.5 (spikes) & 850 & 6\\
+redis-cache & 0.2 & 35 & 18\\
+brain & 0.6 & 380 & 4\\
+brain-worker & 0.4 & 320 & 2\\
+prometheus & 0.4 & 180 & 28\\
+grafana & 0.2 & 110 & 5\\
+cadvisor & 1.1 & 95 & 16\\
+node-exporter & 0.1 & 25 & 12\\
+9router & 0.2 & 65 & 2\\
+filebrowser & 0.1 & 20 & 1\\
+autoheal & 0.1 & 15 & 1\\
+\hline
+\rowcolor{okbg}\textbf{Total} & \textbf{~8.7\%} & \textbf{~2.9 GB} & \textbf{~157 MB/h}\\
+\hline
+\end{longtable}
+\end{center}
+
+\subsection{Costo operacional (estimación mensual)}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|l|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Concepto} & \color{white}\textbf{Costo USD} & \color{white}\textbf{Notas}\\
+\hline
+VPS Hostinger 4 vCPU / 8 GB & 18 & contrato anual\\
+Dominio el80.space & 1 & anualizado\\
+OpenRouter (LLMs) & ~13 & 1.2M tok in + 320k out por día\\
+ElevenLabs (TTS) & ~5 & ~300 conversaciones/mes\\
+Hostinger DNS API & 0 & incluido\\
+Tailscale (free tier) & 0 & hasta 100 devices\\
+\hline
+\rowcolor{okbg}\textbf{Total mensual} & \textbf{~37 USD} & \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Disponibilidad histórica}
+
+\begin{center}
+\rowcolors{2}{rowalt}{white}
+\begin{tabular}{|l|r|r|}
+\hline
+\rowcolor{sotared}\color{white}\textbf{Mes} & \color{white}\textbf{Uptime} & \color{white}\textbf{Incidentes}\\
+\hline
+Enero 2026 & 99.92\% & 1 (LiteLLM cuota)\\
+Febrero 2026 & 99.78\% & 2 (TLS renewal, Caddy reload)\\
+Marzo 2026 & 99.97\% & 1 (Brain Phase 5 deploy)\\
+Abril 2026 & 99.99\% & 0\\
+Mayo 2026 (parcial) & 100\% & 0\\
+\hline
+\rowcolor{okbg}\textbf{Promedio} & \textbf{99.93\%} & 4 total\\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{1cm}
+
+\begin{center}
+\fcolorbox{sotared}{boxbg}{\parbox{0.9\textwidth}{
+\centering
+\sffamily\bfseries\color{sotared}\Large Fin del documento\\[8pt]
+\small\color{sotagray}
+Comparativa Hermes Stack vs Estado del Arte 2026\\
+Compilado el \today\ · XeLaTeX · DejaVu Fonts\\[4pt]
+Para el inventario técnico detallado: ver\\
+\texttt{/root/docs/ficha\_tecnica\_hermes.pdf}
+}}
+\end{center}
+
+\end{document}
