@@ -24,12 +24,14 @@ async def health(request: Request) -> JSONResponse:
     lance_ok = False
     lance_chunks = 0
     lance_nodes = 0
+    lance_memories = 0
     lance_err: str | None = None
     try:
         lance = getattr(state, "lance", None)
         if lance is not None:
             lance_chunks = lance.count_chunks()
             lance_nodes = lance.count_nodes()
+            lance_memories = lance.count_memories()
             lance_ok = True
     except Exception as exc:
         lance_err = str(exc)
@@ -44,6 +46,7 @@ async def health(request: Request) -> JSONResponse:
             "ok": lance_ok,
             "chunks": lance_chunks,
             "nodes": lance_nodes,
+            "memories": lance_memories,
             "error": lance_err,
         },
         "phase": 3,

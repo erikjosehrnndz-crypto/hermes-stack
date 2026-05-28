@@ -1,10 +1,10 @@
-"""LanceDB store — Phase 2 retrieval.
+"""LanceDB store — Phase 3 retrieval.
 
-Dos tablas:
+Tres tablas:
 
-- `chunks`: granularidad de búsqueda dense + FTS (BM25 vía tantivy).
-- `nodes`:  resumen por nodo (título, tags, vector del título, body_path).
-            Útil para boost por título y para mostrar metadatos sin abrir el .md.
+- `chunks`:   granularidad de búsqueda dense + FTS (BM25 vía tantivy).
+- `nodes`:    resumen por nodo (título, tags, vector del título, body_path).
+- `memories`: memorias de usuario — texto libre, vector dense, creadas via MCP.
 
 Convención: el cliente es responsable de borrar (`delete_node`) antes de
 reinsertar para mantener idempotencia. Ahorra implementar upsert real
@@ -61,6 +61,19 @@ def _nodes_schema(dim: int) -> pa.Schema:
     )
 
 
+def _memories_schema(dim: int) -> pa.Schema:
+    return pa.schema(
+        [
+            pa.field("memory_id", pa.string(), nullable=False),
+            pa.field("user_id", pa.string(), nullable=False),
+            pa.field("text", pa.string(), nullable=False),
+            pa.field("vector", pa.list_(pa.float32(), dim), nullable=False),
+            pa.field("created_at", pa.string(), nullable=False),
+            pa.field("source", pa.string(), nullable=True),
+        ]
+    )
+
+
 class LanceStore:
     def __init__(self, root: str | Path, *, dim: int = 1024):
         self.root = Path(root)
@@ -75,6 +88,8 @@ class LanceStore:
             self._db.create_table("chunks", schema=_chunks_schema(self.dim))
         if "nodes" not in names:
             self._db.create_table("nodes", schema=_nodes_schema(self.dim))
+        if "memories" not in names:
+            self._db.create_table("memories", schema=_memories_schema(self.dim))
 
     @property
     def chunks(self):
@@ -83,6 +98,10 @@ class LanceStore:
     @property
     def nodes(self):
         return self._db.open_table("nodes")
+
+    @property
+    def memories(self):
+        return self._db.open_table("memories")
 
     # ----- Mutaciones --------------------------------------------------
 
@@ -299,6 +318,70 @@ class LanceStore:
 
         return out
 
+    # ----- Memorias ----------------------------------------------------
+
+    def remember(
+        self,
+        text: str,
+        *,
+        vector,
+        user_id: str,
+        memory_id: str,
+        source: str = "mcp",
+        created_at: str,
+    ) -> str:
+        """Guarda una memoria. Retorna memory_id."""
+        row = {
+            "memory_id": memory_id,
+            "user_id": user_id,
+            "text": text,
+            "vector": list(vector),
+            "created_at": created_at,
+            "source": source,
+        }
+        with _LOCK:
+            self.memories.add([row])
+        return memory_id
+
+    def forget(self, memory_id: str) -> bool:
+        """Borra una memoria por ID. Retorna True si existía."""
+        mid_safe = memory_id.replace("'", "''")
+        with _LOCK:
+            before = self.count_memories()
+            self.memories.delete(f"memory_id = '{mid_safe}'")
+            after = self.count_memories()
+        return after < before
+
+    def search_memories(
+        self,
+        query_vec,
+        *,
+        k: int = 5,
+        user_id: str | None = None,
+        threshold: float = 0.65,
+    ) -> list[dict]:
+        """Busca memorias relevantes por similitud cosine."""
+        qvec = query_vec.tolist() if hasattr(query_vec, "tolist") else list(query_vec)
+        q = self.memories.search(qvec).limit(k)
+        if user_id:
+            q = q.where(f"user_id = '{user_id}'", prefilter=True)
+        rows = q.to_list()
+        hits = []
+        for r in rows:
+            dist = float(r.get("_distance", 0.0))
+            sim = max(0.0, 1.0 - dist / 2.0)
+            if sim >= threshold:
+                hits.append(
+                    {
+                        "memory_id": r.get("memory_id"),
+                        "text": r.get("text"),
+                        "score": round(sim, 4),
+                        "created_at": r.get("created_at"),
+                        "source": r.get("source"),
+                    }
+                )
+        return hits
+
     # ----- Utilidades --------------------------------------------------
 
     def count_chunks(self) -> int:
@@ -310,5 +393,11 @@ class LanceStore:
     def count_nodes(self) -> int:
         try:
             return int(self.nodes.count_rows())
+        except Exception:
+            return 0
+
+    def count_memories(self) -> int:
+        try:
+            return int(self.memories.count_rows())
         except Exception:
             return 0
