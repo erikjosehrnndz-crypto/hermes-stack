@@ -11,7 +11,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-005 | hermes-agent | 🔵 mejora | ✅ done | Rebuild aplicado en commit 8b2dc10 |
 | hs-006 | infra | 🔵 mejora | ✅ done | Merge + push main c218fe2; CI/CD activado |
 | hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
-| hs-008 | brain | 🟢 nueva | phase-3-done | Brain Phase 3 done: Jina v2 reranker + SQLite graph (32 nodos, 14 aristas) + memory layer. Arrancar Phase 4 (9router MCP integration). |
+| hs-008 | brain | 🟢 nueva | phase-4-done | Brain Phase 4 done: MCP conectado a Claude Code (brain.el80.space/mcp/). 4 tools activos. Siguiente: Phase 5 (ingesta enriquecida). |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
@@ -55,4 +55,4 @@ Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
 ---
 
-*Actualizado: 2026-05-28 · Estado formal: `/root/PENDIENTES.json`*
+*Actualizado: 2026-05-28 (Phase 4 done) · Estado formal: `/root/PENDIENTES.json`*

@@ -84,7 +84,7 @@
     "depends_on": [],
     "status": "done",
     "verification": "BRAIN_API_TOKEN=$(grep ^BRAIN_API_TOKEN /root/.env | cut -d= -f2) && curl -f http://127.0.0.1:8765/health | python3 -c \"import sys,json; d=json.load(sys.stdin); assert d['phase']==3 and d['lance']['chunks']>0 and d.get('graph',{}).get('nodes',0)>0\" && curl -fsS -X POST http://127.0.0.1:8765/api/v1/search -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -H 'Content-Type: application/json' -d '{\"q\":\"litellm router prometheus\",\"k\":3,\"mode\":\"hybrid\",\"rerank\":true}' | python3 -c \"import sys,json; hits=json.load(sys.stdin)['hits']; assert any(h['score']>0.4 for h in hits[:3])\"",
-    "evidence": "Phase 3 completada 2026-05-28. commits 6d30828+5fa9847+f2c29bc. Jina v2 reranker (sigmoid norm, 3x mejor separación) + SQLite WAL graph (32 nodos, 14 aristas, wikilinks) + memory layer LanceDB (remember/forget, score=0.86). Phase 4 pendiente (9router MCP integration).",
-    "notes": "Kuzu descartado (single-proceso); SQLite WAL multi-proceso safe. mem0ai descartado (requiere LLM para consolidar); impl propia sobre LanceDB. Siguiente: Phase 4. Ver SESSION_HANDOFF.md."
+    "evidence": "Phase 4 completada 2026-05-28. ~/.claude.json mcpServers.brain configurado (https://brain.el80.space/mcp/). 9router mcpServers entry añadida. Acceptance: brain_search(rerank=True) score=0.80, brain_remember→mem-8742f7f73ee9, brain_capture→kn-d5d8f731. 4 MCP tools activos en Claude Code: mcp__brain__brain_{search,capture,remember,forget}.",
+    "notes": "Kuzu descartado (single-proceso); SQLite WAL multi-proceso safe. mem0ai descartado (requiere LLM para consolidar); impl propia sobre LanceDB. Phase 5 pendiente: ingesta enriquecida (Crawl4ai, RQ scheduled jobs)."
   }
 ]
