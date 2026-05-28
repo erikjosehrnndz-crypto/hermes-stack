@@ -75,5 +75,16 @@
     "verification": "tailscale ping 100.85.146.98 && tailscale ping <DO_TAILSCALE_IP> && tailscale status | grep -c 'active'",
     "evidence": "",
     "notes": "DO droplet tiene Tailscale instalado pero 'Logged out'. URL de auth generada en sesión 2026-05-26. Android offline hace 2d — abrir app Tailscale en Xiaomi 14T Pro."
+  },
+  {
+    "id": "hs-008",
+    "service": "brain",
+    "priority": "improvement",
+    "purpose": "Brain — Segundo Cerebro: PKM unificado (journal + knowledge + memoria conversacional) con MCP HTTP Streamable, hybrid retrieval (LanceDB+BGE-M3+Kuzu+LightRAG), captura multi-surface (voz, Telegram, email, web, móvil, CLI, MCP, Hermes).",
+    "depends_on": [],
+    "status": "phase-0-done",
+    "verification": "curl -f https://brain.el80.space/health && curl -X POST https://brain.el80.space/api/v1/ingest/text -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -d '{\"text\":\"test\",\"tags\":[\"smoke\"]}' && ls /data/vault/notes/",
+    "evidence": "Phase 0 (research + arquitectura) completada 2026-05-28. Plan en /root/.claude/plans/quiero-que-cres-un-humming-journal.md. Handoff en /root/SESSION_HANDOFF.md.",
+    "notes": "Phase 1 = Skeleton + MCP vivo (1-2d). Phases: 1) skeleton MCP, 2) LanceDB+BGE-M3, 3) captura multi-surface, 4) KG + LightRAG, 5) Mem0, 6) auth+obs. Puerto 8765, Caddy brain.el80.space, network backend. Reusa OverCR para audit/lifecycle, wiki schema para frontmatter."
   }
 ]
