@@ -34,6 +34,7 @@ hermes_bp/
 integrations/hermes-workspace/
 integrations/overcr/
 integrations/hermes-agent-advanced-skills/
+integrations/livesync-bridge/
 integrations/auto_repair.log
 
 # Directorios del sistema / sync

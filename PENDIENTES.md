@@ -14,6 +14,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-008 | brain | 🟢 nueva | ✅ done | Brain Phase 6 done: 7 MCP tools, crons, memoria conversacional (Hermes + Claude Code). Commits cef0166 + 9387800. |
 | hs-010 | portafolio | 🔴 crítico | ✅ done | Portafolio sintetizado ante teardown: 3 tiers (repo curado + bundle estado cifrado + opcionales). Ver PORTFOLIO.md / RECONSTRUCCION.md. Bundle: backups/hermes-portfolio-state-*.tar.gz.gpg (passphrase entregada aparte). |
 | hs-009 | integraciones | 🟢 nueva | ✅ done | codegraph (MCP) + Understand-Anything (plugin) + Twenty CRM en crm.el80.space. Warp descartado. Commit a698386. Drift Caddyfile repo↔/etc pendiente. |
+| hs-011 | obsidian-sync | 🟢 nueva | ✅ done | LiveSync revivido (NO dormido): couchdb-obsidian + livesync-bridge. Móvil Android ↔ DB el80vault ↔ carpeta brain/ del vault del brain. Bidireccional verificado (create/change/delete). Manual: docs/manual-obsidian-movil.md. |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
@@ -57,4 +58,14 @@ Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
 ---
 
-*Actualizado: 2026-05-29 (hs-010 — portafolio sintetizado para teardown) · Estado formal: `/root/PENDIENTES.json`*
+**hs-011 — Obsidian LiveSync móvil ↔ brain**
+- Infra LiveSync revivida desde estado "dormido" + pieza nueva `livesync-bridge` (repo vrtmrz, headless, Deno).
+- Arquitectura: móvil Android (plugin Self-hosted LiveSync) → CouchDB `el80vault` (`https://livesync.el80.space`) → bridge sincroniza solo `brain/` ↔ volumen `root_brain_vault`.
+- E2EE OFF en v1 (transporte TLS + auth CouchDB). Activable después con passphrase en plugin + `dat/config.json`.
+- **Verificación:** 42 notas del brain subidas a CouchDB; create/change/delete propagan filesystem→CouchDB (tombstone `deleted:true` correcto). Falta confirmar leg CouchDB→filesystem al conectar el móvil.
+- **Evidencia:** `docker logs livesync-bridge` → "Database is now ready."; `curl -u obsidian:$PW https://livesync.el80.space/el80vault` OK.
+- **Pendiente del usuario:** seguir `docs/manual-obsidian-movil.md` Parte 1 en el móvil.
+
+---
+
+*Actualizado: 2026-05-29 (hs-011 — Obsidian LiveSync móvil↔brain revivido) · Estado formal: `/root/PENDIENTES.json`*

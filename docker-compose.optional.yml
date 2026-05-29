@@ -18,6 +18,10 @@
 
 volumes:
   couchdb_data:
+  livesync_bridge_deno:
+  brain_vault:
+    external: true
+    name: root_brain_vault
 
 services:
   hermes-workspace:
@@ -66,3 +70,24 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+
+  # livesync-bridge : puente headless CouchDB ↔ filesystem.
+  #   Sincroniza la subcarpeta brain/ del vault LiveSync (DB el80vault) con el
+  #   volumen brain_vault que leen brain/brain-worker. Fuente: repo clonado en
+  #   integrations/livesync-bridge (vendored, no versionado; ver docs/manual-obsidian-movil.md).
+  livesync-bridge:
+    build: ./integrations/livesync-bridge
+    container_name: livesync-bridge
+    restart: unless-stopped
+    depends_on:
+      - couchdb-obsidian
+    environment:
+      DENO_DIR: /deno-dir
+    volumes:
+      - ./integrations/livesync-bridge/dat:/app/dat
+      - brain_vault:/data/vault
+      - livesync_bridge_deno:/deno-dir
+    networks:
+      - backend
+    labels:
+      autoheal.enabled: "true"

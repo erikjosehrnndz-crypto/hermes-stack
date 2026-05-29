@@ -31,4 +31,4 @@ curl -f http://127.0.0.1:8080/health
 
 Siempre verificar antes de declarar un deploy exitoso.
 
-> Nota: `couchdb-obsidian`/`livesync` quedó como infra dormida tras migrar a Obsidian Sync. Pendiente de teardown según decisión del usuario.
+> Nota: `couchdb-obsidian`/`livesync` está **activo** (Obsidian Self-hosted LiveSync móvil↔brain, vía `livesync-bridge`). Servicios Tier-3 en `docker-compose.optional.yml`. Detalle: `docs/manual-obsidian-movil.md`.
