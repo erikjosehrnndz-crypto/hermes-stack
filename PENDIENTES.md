@@ -12,6 +12,7 @@ Estado formal en `PENDIENTES.json`. Esta tabla es la vista rápida.
 | hs-006 | infra | 🔵 mejora | ✅ done | Merge + push main c218fe2; CI/CD activado |
 | hs-007 | infra | 🔵 mejora | not-started | Completar mesh Tailscale: auth DO droplet + verificar Android |
 | hs-008 | brain | 🟢 nueva | ✅ done | Brain Phase 6 done: 7 MCP tools, crons, memoria conversacional (Hermes + Claude Code). Commits cef0166 + 9387800. |
+| hs-009 | integraciones | 🟢 nueva | ✅ done | codegraph (MCP) + Understand-Anything (plugin) + Twenty CRM en crm.el80.space. Warp descartado. Commit a698386. Drift Caddyfile repo↔/etc pendiente. |
 
 Ver estado detallado y comandos de verificación en `PENDIENTES.json`.
 
