@@ -93,10 +93,10 @@ build-check:
 health-check:
 	@echo "→ Health checks"
 	@set -a; source /root/.env 2>/dev/null; set +a; \
-	curl -sf http://127.0.0.1:8080/health > /dev/null && echo "  hermes OK" || echo "  hermes DOWN"; \
-	curl -sf -H "Authorization: Bearer $$LITELLM_MASTER_KEY" http://127.0.0.1:4000/health \
+	curl -sf -m 5 --retry 1 --retry-delay 2 http://127.0.0.1:8080/health > /dev/null && echo "  hermes OK" || echo "  hermes DOWN"; \
+	curl -sf -m 5 --retry 1 --retry-delay 2 -H "Authorization: Bearer $$LITELLM_MASTER_KEY" http://127.0.0.1:4000/health \
 	  > /dev/null && echo "  litellm OK" || echo "  litellm DOWN"; \
-	curl -sf -u obsidian:$$COUCHDB_PASSWORD http://127.0.0.1:5984/ > /dev/null \
+	curl -sf -m 5 --retry 1 --retry-delay 2 -u obsidian:$$COUCHDB_PASSWORD http://127.0.0.1:5984/ > /dev/null \
 	  && echo "  couchdb OK" || echo "  couchdb DOWN"
 
 lint-check:
