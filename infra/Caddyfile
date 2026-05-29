@@ -40,6 +40,11 @@ router.el80.space {
 	reverse_proxy 127.0.0.1:20128
 }
 
+# Twenty CRM (twentyhq/twenty) — alta de contactos/empresas
+crm.el80.space {
+	reverse_proxy 127.0.0.1:3005
+}
+
 # Endpoint de federación Prometheus — solo accesible con auth
 # Usado por el control center (Droplet DO) para agregar métricas
 metrics.el80.space {
