@@ -89,7 +89,12 @@ async def _capture_to_brain(app, query: str, response: str) -> None:
         text = f"Usuario: {query}\nHermes: {response}"
         await session.post(
             f"{brain_url}/api/v1/ingest/text",
-            json={"text": text, "type": "memory", "tags": ["hermes", "conversation"], "source": "hermes"},
+            json={
+                "text": text,
+                "type": "memory",
+                "tags": ["hermes", "conversation"],
+                "source": "hermes",
+            },
             headers={"Authorization": f"Bearer {brain_token}"},
             timeout=aiohttp.ClientTimeout(total=5),
         )

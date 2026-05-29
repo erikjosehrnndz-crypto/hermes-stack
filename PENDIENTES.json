@@ -88,5 +88,16 @@
     "verification": "BRAIN_API_TOKEN=$(grep ^BRAIN_API_TOKEN /root/.env | cut -d= -f2) && curl -f http://127.0.0.1:8765/health | python3 -c \"import sys,json; d=json.load(sys.stdin); assert d['phase']==3 and d['lance']['chunks']>0 and d.get('graph',{}).get('nodes',0)>0\" && curl -fsS -X POST http://127.0.0.1:8765/api/v1/search -H \"Authorization: Bearer $BRAIN_API_TOKEN\" -H 'Content-Type: application/json' -d '{\"q\":\"litellm router prometheus\",\"k\":3,\"mode\":\"hybrid\",\"rerank\":true}' | python3 -c \"import sys,json; hits=json.load(sys.stdin)['hits']; assert any(h['score']>0.4 for h in hits[:3])\"",
     "evidence": "Phase 6 completada 2026-05-28. 6 phases done: MCP (4 tools→7 tools), retrieval híbrido LanceDB+BGE-M3+Kuzu, ingesta URL+trafilatura, crons daily_summary/vault_sync, memoria conversacional (Hermes fire-and-forget + Stop hook Claude Code + extract_memories job). Commits: cef0166 (Phase 5) + 9387800 (Phase 6).",
     "notes": "Kuzu single-proceso resuelto usando SQLite WAL multi-proceso. mem0ai descartado: impl propia sobre LanceDB. Phase 6 done: brain_recall + brain_conversation tools + extract_memories."
+  },
+  {
+    "id": "hs-009",
+    "service": "integraciones",
+    "priority": "improvement",
+    "purpose": "Integrar 3 proyectos: codegraph (MCP code-graph para Claude Code), Understand-Anything (plugin Claude Code con comandos /understand*), Twenty CRM (self-hosted en crm.el80.space). Warp descartado (terminal de escritorio GUI sin headless/self-host).",
+    "depends_on": [],
+    "status": "done",
+    "verification": "curl -fsS -o /dev/null -w '%{http_code}' https://crm.el80.space/healthz | grep -q 200 && cd /root && codegraph status | grep -q 'Files:' && claude plugin list | grep -q understand-anything && claude mcp list | grep -q 'codegraph.*Connected'",
+    "evidence": "commit a698386. codegraph: índice /root 1096 archivos/21104 nodos/46260 aristas, MCP Connected. understand-anything: plugin instalado scope user. twenty: v2.8.3, 4 contenedores healthy, crm.el80.space->3005 (TLS 200).",
+    "notes": "Twenty puerto 3005 (3000=grafana, 3002=workspace ocupados). Tag Docker v2.8.3 (el tag GitHub v2.8.0 no existe en Docker Hub). Caddyfile repo estaba desincronizado con /etc/caddy/Caddyfile — editados ambos. Drift Caddyfile pendiente de reconciliar."
   }
 ]
