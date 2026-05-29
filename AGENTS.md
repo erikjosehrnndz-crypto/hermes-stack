@@ -1,6 +1,6 @@
 # AGENTS.md — Hermes Stack (entry compacto)
 
-Reglas operativas del sistema integrado. Detalle completo en `CLAUDE.md`. Este archivo es el **entry rápido** para agentes nuevos o contexto recién comprimido.
+Reglas operativas del sistema integrado. `CLAUDE.md` es el **router**: reglas universales + tabla que enruta a `docs/rules/*.md` (detalle por dominio, cargado bajo demanda). Este archivo es el **entry rápido** para agentes nuevos o contexto recién comprimido.
 
 ---
 
@@ -36,7 +36,7 @@ Redes: `backend` (servicios) · `monitoring` (métricas).
 - L5: `curl -X POST` externo, `mail/sendmail`, webhooks
 - L6: escritura en `AGENTS.md`, `CLAUDE.md`, `soul.md`
 
-**Git (resumen — detalle en CLAUDE.md):**
+**Git (resumen — detalle en `docs/rules/git.md`):**
 - Nunca commitear `.env`, `*.db`, `node_modules/`, `.next/`, `*.log`, `backups/`
 - `git add` siempre desde `/root` (no desde subdirectorio)
 - Push HTTPS con token incrustado, restaurar URL limpia después
@@ -94,4 +94,4 @@ Pendientes operativos conocidos:
 
 ---
 
-*Para detalle de cualquier sección → `CLAUDE.md`. Spike report integración: `/root/.hermes/plans/spike-report.md`.*
+*Para detalle por dominio → `docs/rules/*.md` (router/índice en `CLAUDE.md`). Spike report integración: `/root/.hermes/plans/spike-report.md`.*
