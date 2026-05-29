@@ -13,39 +13,12 @@ echo "==> 3. Instalando Caddy..."
 apt-get update
 apt-get install -y caddy
 
-echo "==> 4. Configurando Caddyfile para el80.space..."
-cat > /etc/caddy/Caddyfile <<'EOF'
-{
-    email erikjosehernandez@gmail.com
-}
-
-# Configuración de subdominios para el80.space
-# Caddy gestionará los certificados SSL (HTTPS) automáticamente con Let's Encrypt
-
-hermes.el80.space {
-    reverse_proxy 127.0.0.1:8080
-}
-
-litellm.el80.space {
-    reverse_proxy 127.0.0.1:4000
-}
-
-grafana.el80.space {
-    reverse_proxy 127.0.0.1:3000
-}
-
-docs.el80.space {
-    reverse_proxy 127.0.0.1:3001
-}
-
-syncthing.el80.space {
-    reverse_proxy 127.0.0.1:8384
-}
-
-files.el80.space {
-    reverse_proxy 127.0.0.1:8095
-}
-EOF
+echo "==> 4. Desplegando el Caddyfile canónico del repo (infra/Caddyfile)..."
+# Fuente de verdad única: infra/Caddyfile (incluye hermes, litellm, grafana, docs,
+# router, files, livesync, crm y el endpoint de métricas con basic_auth).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cp "$SCRIPT_DIR/Caddyfile" /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 echo "==> 5. Habilitando puertos 80 y 443 en el cortafuegos..."
 ufw allow 80/tcp
