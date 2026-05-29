@@ -1,0 +1,1727 @@
+--- PAGE 1 ---
+HermesStack—BlueprintTécnicoDefinitivo
+Arquitectura,PipelineeIntegraciónMóvilAndroid
+ErikJoséHernández
+2026-05-23
+
+--- PAGE 2 ---
+Índice
+1 Resumen Ejecutivo 4
+1.1 ProblemayContexto . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.2 SoluciónyPropuestadeValor . . . . . . . . . . . . . . . . . . . . . . . 5
+1.3 MétricasObjetivo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.4 TablaResumendelStack . . . . . . . . . . . . . . . . . . . . . . . . . 6
+2 Visión General de la Arquitectura 7
+2.1 DiagramaGeneraldelSistema . . . . . . . . . . . . . . . . . . . . . . 7
+2.2 PrincipiosArquitectónicos . . . . . . . . . . . . . . . . . . . . . . . . . 7
+3 Topología de Red y Seguridad Perimetral 9
+3.1 DiagramadeRedesDocker . . . . . . . . . . . . . . . . . . . . . . . . 9
+3.2 AislamientodeRed:PrincipiosClave . . . . . . . . . . . . . . . . . . . 9
+3.3 TabladeSubdominiosyBackends . . . . . . . . . . . . . . . . . . . . . 10
+3.4 HardeningdeSeguridadenContenedores . . . . . . . . . . . . . . . . 10
+4 Pipeline End-to-End de Voz e Inteligencia 11
+4.1 DiagramadeSecuenciaCompleto . . . . . . . . . . . . . . . . . . . . . 11
+4.2 LatenciasporEtapayObjetivoTotal . . . . . . . . . . . . . . . . . . . . 11
+4.3 OptimizacionesdeLatencia . . . . . . . . . . . . . . . . . . . . . . . . 12
+4.4 PolíticadeFallbackenLiteLLM . . . . . . . . . . . . . . . . . . . . . . . 12
+5 Inventario Detallado de Servicios 13
+5.1 LiteLLMRouter . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+5.2 HermesAgent . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+5.3 WhisperSTT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+5.4 RedisCache . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+5.5 HermesWebsite . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+5.6 Prometheus . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+5.7 Grafana . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+5.8 cAdvisor . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+5.9 NodeExporter . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+5.10Autoheal . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+6 Frontend del Stack — Sitio Hermes (docs.el80.space) 21
+6.1 StackTecnológico . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+6.2 ArquitecturaSPA+ExpressHíbrido . . . . . . . . . . . . . . . . . . . . 21
+6.3 EndpointsdelBackendExpress . . . . . . . . . . . . . . . . . . . . . . 22
+6.3.1 GET/api/tree . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+6.3.2 GET/health . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+6.3.3 GET*(fallback) . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+6.4 SistemadeDiseño . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+1
+
+--- PAGE 3 ---
+ÍNDICE 2
+6.5 DiagramadeFlujodeRequest . . . . . . . . . . . . . . . . . . . . . . . 23
+6.6 ConsideracionesdeSeguridaddelFrontend . . . . . . . . . . . . . . . . 23
+7 Pipeline CI/CD (GitHub Actions → VPS) 24
+7.1 DiagramadelPipeline . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+7.2 EtapasdelWorkflow . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+7.2.1 Etapa1—LintyValidación(siempreejecuta) . . . . . . . . . . . 24
+7.2.2 Etapa2—DesplieguealVPS(solopushamain) . . . . . . . . . . 24
+7.3 SecretosRequeridos . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+7.3.1 GitHubActionsSecrets(Settings→Secretsandvariables→Actions) 26
+7.3.2 Variablesen /root/.env delVPS(nosalendelservidor) . . . . . . 26
+7.4 LimitacionesConocidasyMejorasPropuestas . . . . . . . . . . . . . . . 26
+8 Observabilidad y Auto-Curación 28
+8.1 Prometheus:ConfiguracióndeScrape . . . . . . . . . . . . . . . . . . . 28
+8.2 ReglasdeAlertaConfiguradas . . . . . . . . . . . . . . . . . . . . . . . 28
+8.3 GrafanaDashboards . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+8.4 LoopdeAuto-Curación . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+8.5 TiemposdeRecuperación . . . . . . . . . . . . . . . . . . . . . . . . . 29
+9 Configuración Caddy y TLS 31
+9.1 BloqueGlobalyConfiguraciónACME . . . . . . . . . . . . . . . . . . . 31
+9.2 ProcesodeObtenciónyRenovaciónTLS . . . . . . . . . . . . . . . . . 31
+9.3 RequisitosdeFirewall . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+9.4 InstalacióndeCaddy(setup-caddy.sh) . . . . . . . . . . . . . . . . . . 32
+9.5 VerificacióndelEstadodeCaddy . . . . . . . . . . . . . . . . . . . . . 32
+10Aplicación Nativa Android (Google AI Studio) — BLUEPRINT 34
+10.1PropósitoyAlcance . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34
+10.2StackTecnológicoRecomendado . . . . . . . . . . . . . . . . . . . . . 34
+10.3ArquitecturaInterna . . . . . . . . . . . . . . . . . . . . . . . . . . . . 35
+10.4MódulosdelProyecto . . . . . . . . . . . . . . . . . . . . . . . . . . . 35
+10.5IntegraciónconelHermesStack . . . . . . . . . . . . . . . . . . . . . 36
+10.5.1Autenticación . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+10.5.2WebSocketBidireccionalconHermes . . . . . . . . . . . . . . . . 36
+10.5.3LlamadasRESTaLiteLLM . . . . . . . . . . . . . . . . . . . . . . 37
+10.5.4PulldeHealthdesdedocs.el80.space . . . . . . . . . . . . . . . . 37
+10.6SecuenciadeVozenlaAppAndroid . . . . . . . . . . . . . . . . . . . . 37
+10.7UI/UX. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 37
+10.8PipelinedeBuildAndroid . . . . . . . . . . . . . . . . . . . . . . . . . 38
+10.9SeguridadMóvil . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+10.10 RoadmapMobile . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+11Operación y Runbook 41
+11.1DespliegueManualdeEmergencia . . . . . . . . . . . . . . . . . . . . 41
+11.2RotacióndeClaves . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+11.2.1RotacióndeLITELLM_MASTER_KEY . . . . . . . . . . . . . . . . . 41
+11.2.2RenovacióndeCertificadosCaddy . . . . . . . . . . . . . . . . . 42
+11.3ProcedimientodeRollback . . . . . . . . . . . . . . . . . . . . . . . . . 42
+11.3.1RollbackAutomático(CI/CD) . . . . . . . . . . . . . . . . . . . . 42
+11.3.2RollbackManual . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+11.4AlertasyEscalación . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+11.5LimpiezayBackups . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+11.5.1LimpiezadeImágenesDockerAntiguas . . . . . . . . . . . . . . 43
+
+--- PAGE 4 ---
+ÍNDICE 3
+11.5.2BackupdeVolúmenesCríticos . . . . . . . . . . . . . . . . . . . 43
+11.5.3RotacióndeLogs . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+12Roadmap del Portafolio 45
+12.1EstadoActualenProducción . . . . . . . . . . . . . . . . . . . . . . . . 45
+12.2PróximosHitos . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 45
+12.2.1CortoPlazo(Q32026) . . . . . . . . . . . . . . . . . . . . . . . . 45
+12.2.2MedianoPlazo(Q42026) . . . . . . . . . . . . . . . . . . . . . . 46
+12.2.3Visióna12Meses(2027) . . . . . . . . . . . . . . . . . . . . . . 46
+13Glosario y Referencias 47
+13.1Glosario . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 47
+13.2ReferenciasaDocumentaciónOficial . . . . . . . . . . . . . . . . . . . 50
+
+--- PAGE 5 ---
+Capítulo 1
+Resumen Ejecutivo
+4
+
+--- PAGE 6 ---
+CAPÍTULO 1. RESUMEN EJECUTIVO 5
+1.1 Problema y Contexto
+Lossistemasdeasistenciaconversacionalporvozrequierencoordinaciónprecisaentre
+múltiplescapastecnológicas:reconocimientodevoz,razonamientoconmodelosde
+lenguaje de gran escala, síntesis de audio y entrega al usuario final. Cada frontera
+entrecapasagregalatenciaperceptible.Laarquitecturaconvencionaldeintegrarcada
+uno de estos servicios como llamadas REST encadenadas produce latencias end-to-
+endde1500msa3000ms,unumbralquedegradacompletamentelaexperiencia
+conversacional.
+El Hermes Stack resuelve este problema mediante una topología de microservicios
+orquestadosenunúnicoVPSconDockerCompose,unbusdecomunicaciónporWeb-
+SockethaciaElevenLabs,unrouterdemodelosLLMconestrategiadelatenciamínima
+yunagenteautónomo(Hermes)queactúacomoorquestadorcentral.
+1.2 Solución y Propuesta de Valor
+“Laversiónmejoradaincorporamejorassustancialesderivadasdeinvestiga-
+ciónexhaustivasobreelestadodelarteenenrutamientodeLLMs,seguridad
+decontenedores,pipelinesCI/CDyoptimizacióndelatenciaensíntesisde
+voz.”—RoadmapTécnicoDefinitivov2.0
+Lasoluciónseestructuraencincopilares:
+1.Latencia ultra-baja —ElevenLabsFlashv2.5con auto_mode: true (~75msde
+inferenciaTTS),Whisperlocal(eliminaround-tripaAPIexterna,reducción~60%),
+enrutamientoporlatenciaenLiteLLM.Objetivototal:<500msvoz-a-voz.
+2.Auto-curación en 30 s —Autoheal+watchdogsystemd+healthchecksdecla-
+rativosencadacontenedorcrítico.
+3.Despliegue zero-downtime —GitHubActions→SSH→ docker compose up -d
+--buildconrollbackautomáticoaHEAD~1siloshealthchecksfallan.
+4.Observabilidad nativa —Prometheus,Grafana,cAdvisoryNodeExporterdesde
+elprimerdía.
+5.Defense-in-depth —Caddycomoúnicopuntodeentradapúblico,serviciosvin-
+culados a loopback, iptables DOCKER-USER, Tailscale VPN para administración,
+contenedoressinrootconcapabilitiesdroppedas.
+1.3 Métricas Objetivo
+Métrica Objetivo Mecanismo
+Latenciavoz-a-voz
+(end-to-end)<500ms ElevenLabsFlashv2.5+
+Whisperlocal+LiteLLM
+latency-based
+Tiempodeauto-curación <30s autoheal(intervalo30s)
+Tiempoderollbacktras
+deployfallido<60s gitcheckoutHEAD~1+
+rebuild
+Disponibilidadobjetivo 99,5%mensual restart:unless-stopped+
+watchdog
+Tiempoderecuperación
+antecaídadeDocker
+daemon<60s docker-watchdog.sh+
+systemdrestart
+
+--- PAGE 7 ---
+CAPÍTULO 1. RESUMEN EJECUTIVO 6
+1.4 Tabla Resumen del Stack
+Servicio PropósitoPrincipal DominioPúblico PuertoInterno
+hermes-agent Agenteautónomo
+IA,orquestadorhermes.el80.space 8080
+litellm-router Routerunificado
+paraLLMslitellm.el80.space 4000
+whisper-stt TranscripciónSTT
+local(voz→texto)—(interno) 9000
+redis-cache Cachéde
+respuestasLLM—(interno) 6379
+hermes-website Dashboardy
+documentación
+(SPAReact)docs.el80.space 3001(host)→3000
+(container)
+prometheus Recolecciónde
+métricas
+time-series—(interno) 9090
+grafana Visualizaciónde
+métricasy
+dashboardsgrafana.el80.space 3000
+cadvisor Métricasde
+contenedores
+(cgroups)—(interno) 8080(interno)
+node-exporter Métricasdelhost
+(CPU,mem,disco)—(interno) 9100(interno)
+autoheal Reinicioautomático
+decontenedores
+unhealthy—(interno) —
+
+--- PAGE 8 ---
+Capítulo 2
+Visión General de la Arquitectura
+2.1 Diagrama General del Sistema
+Figura2.1:Diagrama1
+2.2 Principios Arquitectónicos
+Microservicios loosely-coupled. Cadaserviciotieneunasolaresponsabilidadyse
+comunicaconlosdemásporHTTP/WebSocketinterno.UnfalloenWhispernotiraal
+agentesiestepuedemanejarelerror;unfalloenLiteLLMactivaelfallbackantesde
+llegaralagente.
+Observabilidad nativa desde el día uno. Prometheusscrapeamétricasdetodos
+losservicioscada15s.cAdvisorexponemétricasdecontenedor(CPU,memoria,I/O,
+red).NodeExporterexponemétricasdelhost.Grafanaconsolidatodoendashboards.
+Noexistecomponentedesplegadoquenoseaobservable.
+Defense-in-depth. Lasuperficiedeataquepúblicasereducealospuertos80y443
+deCaddy.Todoslosserviciosescuchanúnicamenteen 127.0.0.1.LacadenaDOCKER-
+USERdeiptablesrechazatráficoentranteporinterfacespúblicas(eth0,ens+,enp+).
+ElaccesoadministrativorequiereTailscaleVPN.
+Infrastructure as Code. El estado completo del sistema está descrito en docker-
+compose.yml ,config/litellm.yaml ,config/prometheus.yml yconfig/alerts.yml .
+Ungit clone+.env+docker compose up -d reproduceelentornoíntegramente.
+7
+
+--- PAGE 9 ---
+CAPÍTULO 2. VISIÓN GENERAL DE LA ARQUITECTURA 8
+Autonomía operacional. ElpipelineCI/CDdespliegasinintervenciónhumana.Auto-
+healyelwatchdogrecuperanelsistemasinintervenciónhumana.LoscertificadosTLS
+serenuevansinintervenciónhumana.Laintervenciónmanualeslaexcepción,nola
+norma.
+
+--- PAGE 10 ---
+Capítulo 3
+Topología de Red y Seguridad
+Perimetral
+3.1 Diagrama de Redes Docker
+Figura3.1:Diagrama2
+3.2 Aislamiento de Red: Principios Clave
+Todoslosserviciosdelstacksevinculanexclusivamentea 127.0.0.1enelhost.Esto
+significaqueningúnservicioesalcanzabledesdeInternetdirectamente,inclusosiel
+firewallUFWtuvieseunareglapermisiva.Laprotecciónoperaendosniveles:
+1.Nivel de bind address —Elcampo portsendocker-composesiempretienela
+forma "127.0.0.1:HOST_PORT:CONTAINER_PORT" .
+2.Nivel de iptables —Lacadena DOCKER-USER rechazaexplícitamentepaquetes
+deinterfacespúblicashacialaredDocker,anulandoelcomportamientoporde-
+fectodeDockerdeabrirreglaseniptables.
+Elserviciohermes-agentperteneceadosredessimultáneamente( backendymonito-
+ring)paraquePrometheuspuedascrapearsuendpoint /metricssinnecesidadde
+9
+
+--- PAGE 11 ---
+CAPÍTULO 3. TOPOLOGÍA DE RED Y SEGURIDAD PERIMETRAL 10
+exponerunpuertoadicionalalhost.
+3.3 Tabla de Subdominios y Backends
+SubdominioBackend
+interno Puertohost Servicio TLS
+hermes.el80.space 127.0.0.1:8080 8080 hermes-agent Let’sEncrypt
+automático
+litellm.el80.space127.0.0.1:4000 4000 litellm-router Let’sEncrypt
+automático
+grafana.el80.space 127.0.0.1:3000 3000 grafana Let’sEncrypt
+automático
+docs.el80.space 127.0.0.1:3001 3001 hermes-
+websiteLet’sEncrypt
+automático
+3.4 Hardening de Seguridad en Contenedores
+Lassiguientesdirectivasdeseguridadaplicanalstackdeproducción:
+Directiva Serviciosafectados Efecto
+security_opt:
+no-new-privileges:truehermes,litellm,
+prometheus,grafanaPrevieneescaladade
+privilegiosvia
+setuid/setgid
+cap_drop: ALL hermes,redis EliminatodaslasLinux
+capabilities
+cap_add: [CHOWN,
+SETGID, SETUID]redis Solocapacidadesmínimas
+paracambiodeUID
+user: "5000:5000" hermes Correcomousuariono-root
+dedicado(hermesgrp)
+user: "472:472" grafana UIDoficialdelproyecto
+Grafana
+tmpfs:
+/app/tmp:size=64M,noexec,nosuidhermes Directoriotemporalsin
+ejecucióndebinarios
+restart:
+unless-stoppedtodoslosservicios Auto-restartexcepto
+cuandosedetiene
+manualmente
+
+--- PAGE 12 ---
+Capítulo 4
+Pipeline End-to-End de Voz e
+Inteligencia
+4.1 Diagrama de Secuencia Completo
+"ElevenLabs WS\nFlash v2.5" "OpenRouter / Gemini\n(externo)" Redis "LiteLLM Router\n:4000" "Whisper STT\n:9000" "Hermes Agent\n:8080" Caddy"ElevenLabs WS\nFlash v2.5" "OpenRouter / Gemini\n(externo)" Redis "LiteLLM Router\n:4000" "Whisper STT\n:9000" "Hermes Agent\n:8080" Caddy
+Modelo base ~1.4 GB\nInferencia local
+alt[Cache hit]
+[Cache miss]Usuario
+WebSocket WSS (audio stream)1
+WS forward (127.0.0.1:8080)2
+POST /asr (audio bytes multipart)3
+JSON {text: "texto transcrito"}4
+POST /v1/chat/completions\nAuthorization: Bearer LITELLM_MASTER_KEY5
+GET cache(hash(prompt))6
+respuesta cacheada7
+routing latency-based (OpenRouter/Gemini)8
+completion tokens9
+SET cache(hash, respuesta, TTL=30m)10
+JSON completion11
+_sanitize_for_tts(text)12
+WS connect wss://api.elevenlabs.io\nxi-api-key: ELEVENLABS_API_KEY13
+send {text: chunk, model_id: eleven_flash_v2_5,\nauto_mode: true, output_format: pcm_24000}14
+audio PCM chunks (streaming)15
+audio stream forward16
+audio TLS (reproduccion en tiempo real)17
+Usuario
+Figura4.1:Diagrama3
+4.2 Latencias por Etapa y Objetivo Total
+Etapa Componente LatenciaobjetivoOptimizaciones
+aplicadas
+1.Capturay
+transmisiónde
+audioCliente+Caddy
+TLS~20ms TLS1.3,HTTP/2
+2.STT—audioa
+textoWhisperlocal
+(modelobase)<200ms Localelimina
+round-tripexterno
+(~60%)
+3.RoutingLLM LiteLLM
+latency-based<10ms Rediscache,
+latency-based-
+routing
+11
+
+--- PAGE 13 ---
+CAPÍTULO 4. PIPELINE END-TO-END DE VOZ E INTELIGENCIA 12
+Etapa Componente LatenciaobjetivoOptimizaciones
+aplicadas
+4.InferenciaLLM OpenRouter/LLM
+provider<300ms(TTFB) CacheRedis(90%
+enhit),modelos
+fasttier
+5.Sanitizaciónpara
+TTSHermes
+_sanitize_for_tts<2ms Procesamientoen
+memoria,sinI/O
+6.TTS—textoa
+audioElevenLabsFlash
+v2.5~75ms auto_mode:true,
+outputpcm_24000
+Total end-to-end < 500 ms Todaslas
+optimizaciones
+combinadas
+4.3 Optimizaciones de Latencia
+Elparámetro auto_mode: true enlaAPIWebSocketdeElevenLabseslaoptimización
+mássignificativadelaversión2.0.Alhabilitarlo,ElevenLabsdeshabilitaelchunksche-
+duleytodoslosbuffersinternos,generandoaudiodeformainmediataalrecibirtexto
+completodefrasesosentencias.Estorepresentaunareducciónadicionaldel30%res-
+pecto a la configuración anterior con optimize_streaming_latency: 2 (parámetro
+deprecadoenlaAPIactual).
+ElmodeloFlashv2.5ofrece~75msdelatenciadeinferenciafrentea~150msdel
+Turbov2.5,representandounamejoradel40%enlaetapaTTS.
+LacompresiónWebSocketestádesactivada( compression=None )paraminimizarlaten-
+ciadeserializaciónenelenlaceconElevenLabs.
+4.4 Política de Fallback en LiteLLM
+router_settings :
+routing_strategy :latency-based-routing
+allowed_fails :2
+cooldown_time :60
+Siunproveedoracumula2fallosconsecutivos,LiteLLMloponeenperiododeenfria-
+mientode60sydirigelaspeticionesalsiguientemodeloenlacadena.Lacadenade
+fallbackimplementadaes:
+1.llama-3.1-70b víaOpenRouter(RPM1000,timeout10s)—tiereconómicopri-
+mario
+2.gpt-4o-mini víaOpenRouter(RPM500,timeout15s)—tiereconómicosecunda-
+rio
+3.gpt-4ovíaOpenRouter(RPM200,timeout30s)—tierpremium
+4.claude-sonnet víaOpenRouter(RPM150,timeout30s)—tierpremiumalterna-
+tivo
+
+--- PAGE 14 ---
+Capítulo 5
+Inventario Detallado de Servicios
+5.1 LiteLLM Router
+Rol funcional. GatewayunificadocompatibleconlaAPIdeOpenAIparamásde100
+proveedoresLLM.ActúacomoproxyentreelagenteHermesylosproveedoresexternos
+(OpenRouter,Gemini).Implementaenrutamientoporlatencia,cachéRedis,virtualkeys
+ycontroldepresupuesto.
+Atributo Valor
+Imagen ghcr.io/berriai/litellm:main-
+latest
+Buildcontext Imagenpública(nobuildlocal)
+Puertohost 127.0.0.1:4000
+Puertocontenedor 4000
+Redes backend
+Volúmenes litellm_data:/app/data:rw ,./con-
+fig/litellm.yaml:/app/config.yaml:ro
+Persistencia litellm_data (SQLite+cachéde
+respuestas)
+Variables de entorno:
+LITELLM_MASTER_KEY # Clave maestra para autenticar requests (requerida en header Bearer)
+REDIS_HOST # Hostname del servicio Redis (valor: redis)
+OPENROUTER_API_KEY # API key para modelos vía OpenRouter
+GEMINI_API_KEY # API key para embeddings vía Google Gemini
+Healthcheck:
+test :["CMD" ,"python3" ,"-c" ,
+"import urllib.request, os; req = urllib.request.Request('http://localhost:4000/health');
+key = os.environ.get('LITELLM_MASTER_KEY', '');
+req.add_header('Authorization', f'Bearer {key}') if key else None;
+urllib.request.urlopen(req)" ]
+interval :30s
+timeout :5s
+retries :3
+start_period :15s
+13
+
+--- PAGE 15 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 14
+ElhealthcheckincluyeautenticaciónBearerporqueLiteLLMrequierelamasterkeyin-
+clusoparaelendpoint /health.Sifalla3veces,autohealreiniciaelcontenedor.
+Aspecto Estado
+Accesopúblico Sí(víaCaddylitellm.el80.space)
+Accesointerno Sí(hermes→litellm:4000)
+Estadopersistente Sí(litellm_data)
+Notas operacionales. Elarchivo config/litellm.yaml esinmutableentiempode
+ejecución(montado :ro).Cambiosdemodelooroutingrequiereneditarelarchivoy
+hacer docker compose restart litellm .Laestrategia latency-based-routing mide
+continuamentelalatenciadecadaproveedor;losdatosdelatenciasealmacenanen
+memoria(nopersistenentrereinicios).
+5.2 Hermes Agent
+Rol funcional. AgenteautónomoenPythonqueorquestaelpipelinecompletodevoze
+inteligencia.Recibeaudiodelusuario,llamaaWhisperparatranscripción,envíaeltexto
+a LiteLLM para inferencia, post-procesa la respuesta para TTS y abre un WebSocket
+bidireccional con ElevenLabs para la síntesis de audio. Expone /healthy/metrics
+paramonitoreo.ImplementaladirectivaZero-PR:puedeauto-modificarsusskillssin
+aprobaciónmanual.
+Atributo Valor
+Imagen Buildlocal ./hermes/Dockerfile →
+hermes-agent:latest
+Baseimage python:3.12-slim
+Puertohost 127.0.0.1:8080
+Puertocontenedor 8080
+Redes backend,monitoring (dual)
+Volúmenes ./hermes/skills:/app/skills:rw ,
+./hermes/data:/app/data:rw ,
+./hermes/logs:/app/logs:rw
+Persistencia ./hermes/data (estado), ./hermes/logs
+(logs), ./hermes/skills (plugins)
+Variables de entorno:
+LITELLM_URL # URL interna del router (http://litellm:4000)
+LITELLM_KEY # Token de auth hacia LiteLLM (${LITELLM_MASTER_KEY})
+ELEVENLABS_API_KEY # API key para síntesis de voz ElevenLabs
+ELEVENLABS_VOICE_ID # ID de voz (ej: 21m00Tcm4TlvDq8ikWAM = Rachel)
+Healthcheck:
+test :["CMD" ,"curl" ,"-f" ,"http://localhost:8080/health" ]
+interval :30s
+timeout :5s
+retries :3
+start_period :15s
+
+--- PAGE 16 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 15
+Elendpoint /health(implementadoen api/health.py )verifica:conectividadconLi-
+teLLM, conectividad con ElevenLabs, espacio en disco > 1 GB y presencia de skills
+críticas.
+Aspecto Estado
+Accesopúblico Sí(víaCaddyhermes.el80.space)
+Accesointerno Sí(comoclientedelitellm,whisper,ElevenLabs)
+Estadopersistente Sí(skills,data,logsenbindmounts)
+Notas operacionales. Eldirectorio ./hermes/skills semontaenmodo rwparaque
+elagentepuedaescribirnuevasskillsencaliente.Eltmpfs /app/tmpconflags noe-
+xec,nosuid previenelaejecucióndebinariosdesdeeldirectoriotemporal.Elproceso
+correcomousuario hermes:hermesgrp (UID/GID5000).
+5.3 Whisper STT
+Rol funcional. Serviciodetranscripciónvoz-a-textobasadoenelmodeloWhisperde
+OpenAIejecutadolocalmente.EliminaladependenciadeAPIsexternasdeSTT,redu-
+ciendolalatenciaen~60%respectoallamadasremotasygarantizandoprivacidad
+delosdatosdeaudio.
+Atributo Valor
+Imagen onerahmet/openai-whisper-asr-
+webservice:latest
+Puertohost 127.0.0.1:9000
+Puertocontenedor 9000
+Redes backend
+Volúmenes whisper_cache:/root/.cache/whisper
+(modelos,~1,4GBparamodelobase)
+Variables de entorno:
+ASR_MODEL # Modelo de Whisper: base | small | medium | large (producción: base)
+ASR_ENGINE # Engine de ASR (valor: openai_whisper)
+Healthcheck:
+test :["CMD" ,"curl" ,"-f" ,"http://localhost:9000/docs" ]
+interval :30s
+timeout :10s
+retries :3
+start_period :30s
+Elstart_period: 30s esnecesarioporqueelserviciodescargaelmodeloenelprimer
+arranque si whisper_cache está vacío (~1,4 GB). Los arranques subsecuentes con
+cachéllenasonsignificativamentemásrápidos.
+Aspecto Estado
+Accesopúblico No(soloaccesointerno)
+Accesointerno Sí(hermes→whisper:9000)
+
+--- PAGE 17 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 16
+Aspecto Estado
+Estadopersistente Sí(whisper_cache—modelosdescargados)
+Notas operacionales. Elmodelo baseofreceelmejorbalancelatencia/precisiónpara
+español conversacional. Para casos de uso que requieran mayor precisión, cambiar
+asmallomediumen la variable ASR_MODELcon el entendido de que la latencia de
+transcripciónaumentaráproporcionalmente.
+5.4 Redis Cache
+Rol funcional. AlmacénenmemoriaparacachéderespuestasLLMenLiteLLM.Reduce
+latencia al 10 % en cache hits (respuestas repetidas). TTL por defecto: 30 minutos.
+Tambiénpuedeusarsecomobackenddeestadoparasesionesfuturasdelagente.
+Atributo Valor
+Imagen redis:7-alpine
+Puertohost Ninguno(soloaccesointernoentrecontenedores)
+Redes backend
+Volúmenes Ninguno(estadoin-memory,nopersistentepordiseño)
+Dependencias Ninguna
+Seguridad:
+cap_drop :[ALL]
+cap_add :[CHOWN ,SETGID ,SETUID ]
+Noexponeningúnpuertoalhost.SoloesaccesibledesdelaredDocker backendpor
+nombredeservicio( redis).
+Aspecto Estado
+Accesopúblico No
+Accesointerno Sí(litellm→redis:6379)
+Estadopersistente No(in-memory,sepierdeenreinicio)
+Notas operacionales. LaausenciadepersistenciaenRedisesintencional:elcaché
+deLLMtienevalorsoloenlasesiónactual.AnteunreiniciodeRedis,LiteLLMregenerará
+elcachéautomáticamenteconlasprimerasllamadas.Noserequierebackup.
+5.5 Hermes Website
+Rol funcional. DashboardSPA(SinglePageApplication)enReact18+Vite+Tailwind
+CSS,servidaporunservidorExpress.Muestraelestadodelstack,árboldearchivos
+delrepositorioyenlaceatodoslosserviciospúblicos.ImplementaunbackendExpress
+mínimoconendpoint /api/treey/health.
+
+--- PAGE 18 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 17
+Atributo Valor
+Imagen Buildlocal ./website/Dockerfile
+(multi-stage)
+Puertohost 127.0.0.1:3001
+Puertocontenedor 3000
+Redes backend
+Volúmenes /root:/host-root:ro (árboldearchivos
+delhost,sololectura)
+Healthcheck:
+test :["CMD" ,"curl" ,"-f" ,"http://localhost:3000/health" ]
+interval :30s
+timeout :5s
+retries :3
+start_period :10s
+Aspecto Estado
+Accesopúblico Sí(víaCaddydocs.el80.space)
+Accesointerno No(noesconsumidoporotrosservicios)
+Estadopersistente No(SPAestático,sinbasededatos)
+Notas operacionales. El volumen /root:/host-root:ro permite al endpoint
+/api/treenavegarlaestructuradelrepositorio.Elmodoread-onlygarantizaqueel
+contenedor nunca modifique el host. La función walk()de Express filtra dotfiles y
+limitalaprofundidada3niveles.
+5.6 Prometheus
+Rol funcional. Basededatosdeseriestemporalesparamétricasdelsistema.Scra-
+peatargetscada15s,evalúareglasdealertayeseldatasourceprimariodeGrafana.
+Retenciónconfiguradaen7días.
+Atributo Valor
+Imagen prom/prometheus:v2.52.0
+Puertohost 127.0.0.1:9090
+Redes monitoring,backend(dual)
+Volúmenes prometheus_data:/prometheus:rw ,
+./config/prometheus.yml:ro ,
+./config/alerts.yml:ro
+Targets de scrape (prometheus.yml):
+Job Target Métricas
+prometheus localhost:9090 Auto-métricasdePrometheus
+cadvisor cadvisor:8080 CPU,memoria,red,I/Oporcontenedor
+hermes hermes:8080/metrics Métricasdeaplicacióndelagente
+
+--- PAGE 19 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 18
+Job Target Métricas
+litellm litellm:4000/metrics LlamadasLLM,latencias,fallbacks
+node node-exporter:9100 CPU,memoria,disco,reddelhost
+Aspecto Estado
+Accesopúblico No(solointerno)
+Accesointerno Sí(Grafana→prometheus:9090,scrapedetargets)
+Estadopersistente Sí(prometheus_data,7díasderetención)
+5.7 Grafana
+Rol funcional. Plataformadevisualizaciónydashboardsparatodaslasmétricasreco-
+lectadasporPrometheus.ExpuestapúblicamentevíaCaddyen grafana.el80.space .
+Permitecrearalertasvisuales,explorarlogsycorrelacionareventos.
+Atributo Valor
+Imagen grafana/grafana:11.0.0
+Puertohost 127.0.0.1:3000
+Redes monitoring
+Volúmenes grafana_data:/var/lib/grafana:rw
+(dashboards,datasources,usuarios)
+Usuario 472:472(UIDoficialdeGrafana)
+Variables de entorno:
+(Sin variables explícitas en docker-compose de producción)
+(Grafana usa defaults: usuario admin, contraseña admin por defecto)
+Aspecto Estado
+Accesopúblico Sí(víaCaddygrafana.el80.space)
+Accesointerno Sí(consultaprometheus:9090comodatasource)
+Estadopersistente Sí(grafana_data—dashboardsyconfiguración)
+Notas operacionales. La contraseña por defecto admin/admin debe cambiarse en
+elprimeracceso.Serecomiendaconfigurarlavariable GF_SECURITY_ADMIN_PASSWORD
+enel .envdelVPSparacontraseñanointeractiva.
+5.8 cAdvisor
+Rol funcional. HerramientadeGoogleparaexportarmétricasdecontenedoresDocker
+aniveldecgroupsdelkernel:CPU,memoria,I/Odedisco,tráficoderedporcontenedor.
+Eseltarget cadvisorenPrometheus.
+
+--- PAGE 20 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 19
+Atributo Valor
+Imagen gcr.io/cadvisor/cadvisor:v0.49.1
+Puertohost Ninguno(soloredmonitoringinterna)
+Redes monitoring
+Volúmenes /:/rootfs:ro ,/var/run:/var/run:ro ,
+/sys:/sys:ro ,
+/var/lib/docker/:/var/lib/docker:ro ,
+/dev/disk/:/dev/disk:ro ,/dev/kmsg
+(device)
+Modoprivilegiado privileged: true (requeridopara
+accesoacgroups)
+Aspecto Estado
+Accesopúblico No
+Accesointerno Sí(Prometheusscrapeacadvisor:8080)
+Estadopersistente No
+Notas operacionales. Elmodo privileged: true esunrequisitodelfuncionamien-
+todecAdvisor(necesitaleercgroupsdelkernel).Setratadeunriesgodeseguridad
+conocidoyaceptadoparaunserviciodesololecturademétricas,sinconectividadala
+redbackend.
+5.9 Node Exporter
+Rol funcional. Exportamétricasdelhostfísico/virtual:CPU,memoria,disco,interfaces
+dered,procesos,estadísticasdelsistemadearchivos.Eseltarget nodeenPrometheus.
+Atributo Valor
+Imagen prom/node-exporter:v1.8.1
+Puertohost Ninguno(soloredmonitoringinterna)
+Redes monitoring
+Volúmenes /proc:/host/proc:ro ,
+/sys:/host/sys:ro ,/:/rootfs:ro
+El comando incluye --path.procfs=/host/proc --path.sysfs=/host/sys --
+collector.filesystem.mount-points-exclude=... paraapuntaralosmontajesdel
+host,nodelcontenedor.
+Aspecto Estado
+Accesopúblico No
+Accesointerno Sí(Prometheusscrapeanode-exporter:9100)
+Estadopersistente No
+
+--- PAGE 21 ---
+CAPÍTULO 5. INVENTARIO DETALLADO DE SERVICIOS 20
+5.10 Autoheal
+Rol funcional. Supervisorquemonitoreaelestadodesaluddeloscontenedoresme-
+diantesuetiqueta autoheal.enabled: "true" ylosreiniciaautomáticamentecuando
+entranenestado unhealthy.Operacada30ssinintervenciónmanual.
+Atributo Valor
+Imagen willfarrell/autoheal:1.2.0
+Puertohost Ninguno
+Redes backend
+Volúmenes /var/run/docker.sock:/var/run/docker.sock:ro
+Variables de entorno:
+AUTOHEAL_CONTAINER_LABEL # Etiqueta de filtro: autoheal.enabled=true
+AUTOHEAL_INTERVAL # Intervalo de chequeo: 30 (segundos)
+AUTOHEAL_START_PERIOD # Espera antes de iniciar: 60 (segundos)
+AUTOHEAL_DEFAULT_STOP_TIMEOUT # Timeout graceful shutdown: 10 (segundos)
+AUTOHEAL_ONLY_MONITOR_RUNNING # Solo monitorea contenedores activos: true
+Contenedores monitoreados por autoheal:
+Contenedor Label
+litellm-router autoheal.enabled: "true"
+whisper-stt autoheal.enabled: "true"
+hermes-agent autoheal.enabled: "true"
+hermes-website autoheal.enabled: "true"
+Redis,Prometheus,Grafana,cAdvisoryNodeExporternotienenhealthcheckdeclarado
+ynosonmonitoreadosporautoheal.
+Aspecto Estado
+Accesopúblico No
+Accesointerno VíaDockersocket(controldecontenedores)
+Estadopersistente No
+
+--- PAGE 22 ---
+Capítulo 6
+Frontend del Stack — Sitio
+Hermes (docs.el80.space)
+6.1 Stack Tecnológico
+Capa Tecnología Versión Función
+FrameworkUI React 18.3.0 Renderizadode
+componentes,
+estadoreactivo
+Lenguaje TypeScript 5.5.2 Typesafetyen
+tiempode
+desarrollo
+Bundler Vite 5.3.1 Compilación,HMR,
+codesplitting
+Estilos TailwindCSS 3.4.1 UtilidadesCSS,
+sistemadediseño
+Animaciones FramerMotion 11.5.5 Transiciones
+declarativascon
+WAAPI
+Servidor Express 4.19.2 Staticserver,API
+REST,fallbackSPA
+Iconos @heroicons/react 2.1.3 SVGinlinizado(Sun,
+Moon)
+Fuentes Inter+JetBrains
+Mono(GoogleFonts) TipografíaUIy
+código
+6.2 Arquitectura SPA + Express Híbrido
+ElsitiocombinaunaSPAdeReact(compiladaporVite)conunservidorExpressque
+actúacomo:
+1.Servidor de archivos estáticos —Sirve dist/index.html ydist/assets/ .
+2.API backend mínima —Endpoint /api/treequerecorreelsistemadearchivos
+delhost(montadocomo /host-root:ro )yretornaunárbolJSONdelaestructura
+delrepositorio.
+3.Fallback SPA —Cualquierrutanocoincidenteretorna dist/index.html ,habili-
+tandoelroutingclient-sidedeReact.
+21
+
+--- PAGE 23 ---
+CAPÍTULO 6. FRONTEND DEL STACK — SITIO HERMES (DOCS.EL80.SPACE) 22
+Elbuildmulti-stagedeDockerseparalacompilación(Stage1:node:22-alpinecondev-
+Dependencies)delruntime(Stage2:solo dist/,node_modules deproduccióny ser-
+ver.js),reduciendolaimagenfinalen~50%.
+6.3 Endpoints del Backend Express
+6.3.1 GET /api/tree
+Retornalaestructuradedirectoriosde /host-root (equivalentea /rootenelhost)
+comoárbolJSONdetipo TreeNode[].
+type TreeNode ={
+name :string ;
+type :'file' |'directory' ;
+children ?:TreeNode[] ;
+};
+Laimplementacióninternausalafunción walk(dir, depth) :
+•Profundidadmáxima:3niveles( depth > 3retorna []).
+•Filtradotfiles:cualquierentradacuyonombrecomiencecon .esomitida(protege
+.env,.git,.gemini).
+•Manejo silencioso de errores de permisos: un bloque try/catchretorna []en
+casode EACCES.
+6.3.2 GET /health
+Retorna {"status": "ok", "timestamp": <epoch_ms>} conHTTP200.Usadoporel
+healthcheckdeclaradoendocker-composeyporelpipelineCI/CD.
+6.3.3 GET * (fallback)
+Retorna dist/index.html paratodaslasrutasnocoincidentes.Habilitanavegación
+client-sidesinrecargadepágina.
+6.4 Sistema de Diseño
+Paleta de colores (modo oscuro por defecto):
+VariableCSS Valorhex Uso
+--bg-primary #09090b Fondoprincipal
+--bg-secondary #111113 Fondodetarjetas
+--bg-elevated #18181b Hoverstates
+--border #27272a Bordesestándar
+--text-primary #fafafa Textoprincipal
+--text-secondary #a1a1aa Textosecundario
+--accent #3b82f6 CTAazulprimario
+--success #22c55e Statusindicadorverde
+Tipografía: Inter300–700(cuerpoyUI),JetBrainsMono400–500(bloquesdecódigo
+ynombresdeservicio).AmbasdesdeGoogleFonts.
+
+--- PAGE 24 ---
+CAPÍTULO 6. FRONTEND DEL STACK — SITIO HERMES (DOCS.EL80.SPACE) 23
+Animaciones Framer Motion: Variante fadeUpconopacity: 0→1 yy: 16→0en0,4
+s.Lastarjetasdeserviciosusan whileInView (IntersectionObserver)constaggerde
+0,05s×índice.
+6.5 Diagrama de Flujo de Request
+Figura6.1:Diagrama4
+6.6 Consideraciones de Seguridad del Frontend
+Riesgo Impacto Mitigaciónimplementada
+Exposicióndeestructura
+de/rootDivulgacióndeinformación Profundidadmáxima3
+niveles+filtrodotfiles
+Lecturade .envoclaves
+SSHExposicióndesecretos Filtro startsWith('.')
+bloqueadotfiles
+Pathtraversal
+(../../etc/passwd )Accesonoautorizado fs.readdirSync nosigue
+symlinks;noacepta
+parámetrosderutadel
+usuario
+DoSporárbolmuy
+profundoCPUspike Límitedeprofundidad
+(depth > 3retorna [])
+Escrituraenelhostdesde
+elcontenedorModificaciónaccidentaldel
+hostVolumenmontadoconflag
+:ro
+
+--- PAGE 25 ---
+Capítulo 7
+Pipeline CI/CD (GitHub Actions →
+VPS)
+7.1 Diagrama del Pipeline
+7.2 Etapas del Workflow
+7.2.1 Etapa 1 — Lint y Validación (siempre ejecuta)
+Correen ubuntu-24.04 .InstalaPython3.12, ruff,blackymypyconcachépip.Ejecuta:
+ruff check ./hermes # Lint estático rápido
+black --check ./hermes # Verificación de formato
+mypy ./hermes --ignore-missing-imports # Type checking
+EstaetapacorretantoenPullRequestscomoenpusha main.UnPRquefallelintno
+puedefusionarse.
+7.2.2 Etapa 2 — Despliegue al VPS (solo push a main)
+Condición: needs: [lint-and-test] && github.ref == 'refs/heads/main' &&
+github.event_name == 'push' .
+Pasos:1.Checkoutdelcódigocon actions/checkout@v4 .2.Cargade VPS_SSH_KEY
+enssh-agentcon webfactory/ssh-agent@v0.9.0 .3.AdicióndelfingerprintdelVPSa
+~/.ssh/known_hosts viassh-keyscan .4.ConexiónSSHalVPSyejecucióndelscript
+dedespliegueinline:
+cd /root
+git pull origin main
+docker compose up -d--build
+echo 'Esperando arranque de servicios...'
+sleep 15
+(source .env &&curl -f-H"Authorization: Bearer $LITELLM_MASTER_KEY "\
+http://127.0.0.1:4000/health )||(
+echo 'LiteLLM no saludable! Deshaciendo cambios...'
+git checkout HEAD~1
+docker compose up -d--build
+exit 1
+)
+24
+
+--- PAGE 26 ---
+CAPÍTULO 7. PIPELINE CI/CD (GITHUB ACTIONS → VPS) 25
+Figura7.1:Diagrama5
+
+--- PAGE 27 ---
+CAPÍTULO 7. PIPELINE CI/CD (GITHUB ACTIONS → VPS) 26
+curl -fhttp://127.0.0.1:8080/health ||(
+echo 'Hermes no saludable! Deshaciendo cambios...'
+git checkout HEAD~1
+docker compose up -d--build
+exit 1
+)
+echo 'Despliegue exitoso sin downtime.'
+7.3 Secretos Requeridos
+7.3.1 GitHub Actions Secrets (Settings → Secrets and variables → Ac-
+tions)
+Secreto Descripción Ejemplo
+VPS_SSH_KEY ClaveprivadaEd25519
+paraautenticaciónSSHal
+VPS-----BEGIN OPENSSH
+PRIVATE KEY-----\n...
+VPS_HOST IPodominiodelservidor
+VPS203.0.113.42
+VPS_USER UsuarioSSHdelVPS root
+VPS_PORT PuertoSSH(default:22) 22
+7.3.2 Variables en /root/.env del VPS (no salen del servidor)
+Variable Descripción Consumidor
+LITELLM_MASTER_KEY Clavemaestraparaauth
+enLiteLLMlitellm,hermes,deploy
+healthcheck
+OPENROUTER_API_KEY APIkeydeOpenRouter litellm
+GEMINI_API_KEY APIkeydeGoogleGemini
+(embeddings)litellm
+ELEVENLABS_API_KEY APIkeydeElevenLabs hermes
+ELEVENLABS_VOICE_ID IDdevozenElevenLabs hermes
+SLACK_WEBHOOK_URL WebhookdeSlackpara
+alertasdocker-watchdog.sh
+7.4 Limitaciones Conocidas y Mejoras Propuestas
+Limitación Impacto Mejorapropuesta
+RollbacksoloaHEAD~1 Solorevierteuncommit,
+nomúltiplesImplementarblue-green
+deploymentcondos
+instanciasalternadas
+sleep 15sfijopara
+arranqueServicioslentospueden
+fallarsitardan>15sReemplazarconretryloop
+conbackoffexponencial
+SecretosdelVPSen .env
+enplaintextCompromisodelVPS
+exponetodoslossecretosMigraraHashiCorpVaulto
+AWSSecretsManager
+
+--- PAGE 28 ---
+CAPÍTULO 7. PIPELINE CI/CD (GITHUB ACTIONS → VPS) 27
+Limitación Impacto Mejorapropuesta
+Sindry-runpre-despliegue Erroresdeconfiguración
+YAMLpuedenpasarAgregar docker compose
+config --resolve-
+image-digests comostep
+previo
+Sincanarydeployment 100%deltráficovaal
+nuevocódigo
+instantáneamenteCaddyweightedload
+balancingentreversiones
+SinratelimitingenCaddy DDoSpuedesaturar
+serviciosMódulo rate_limit de
+CaddyoWAFfrontal
+/healthdeHermessin
+autenticaciónPosibledivulgaciónde
+estadointernoAgregarauthbásicao
+tokenenelendpoint
+
+--- PAGE 29 ---
+Capítulo 8
+Observabilidad y Auto-Curación
+8.1 Prometheus: Configuración de Scrape
+global :
+scrape_interval :15s
+evaluation_interval :15s
+external_labels :
+monitor :'hermes-stack'
+scrape_configs :
+-job_name :'prometheus'
+static_configs :
+-targets :['localhost:9090' ]
+-job_name :'cadvisor'
+static_configs :
+-targets :['cadvisor:8080' ]
+metric_relabel_configs :
+-source_labels :[__name__ ]
+regex :'container_(cpu|memory|network|fs)_.+'
+action :keep
+-job_name :'litellm'
+static_configs :
+-targets :['litellm:4000' ]
+metrics_path :'/metrics'
+-job_name :'hermes'
+static_configs :
+-targets :['hermes:8080' ]
+metrics_path :'/metrics'
+-job_name :'node'
+static_configs :
+-targets :['node-exporter:9100' ]
+8.2 Reglas de Alerta Configuradas
+28
+
+--- PAGE 30 ---
+CAPÍTULO 8. OBSERVABILIDAD Y AUTO-CURACIÓN 29
+AlertaExpresión
+PromQL Umbral SeveridadAcción
+esperada
+ContainerDown up == 0 1min CRITICAL Reinicio
+automáticovia
+autoheal
+HighCPUUsage rate(container_cpu_user_seconds_total[5m])
+> 0.85min WARNING Escalado
+horizontal
+manual
+HighMemoryUsage container_memory_usage_bytes
+/ contai-
+ner_spec_memory_limit_bytes
+> 0.95min CRITICAL Intervención
+requerida,
+OOMKill
+inminente
+DiskSpaceLow (node_filesystem_avail_bytes
+/ no-
+de_filesystem_size_bytes)
+< 0.15min WARNING Limpiezade
+volúmenesy
+logs
+LiteLLMFallbackActivated increase(litellm_fallback_count[5m])
+> 0inmediato WARNING Proveedor
+principal
+degradado
+8.3 Grafana Dashboards
+LosdashboardsdeGrafanasepersistenenelvolumen grafana_data ysobrevivenre-
+iniciosdelcontenedor.Eldatasourceprimarioes http://prometheus:9090 (accesible
+enlared monitoring).
+Dashboardsrecomendadosparaimportar(IDsdeGrafana.com):
+•Node Exporter Full (ID:1860)—métricascompletasdelhost.
+•Docker and System Monitoring (ID:893)—cAdvisorintegrado.
+•LiteLLM Performance —métricasdellamadasLLM,latenciapormodelo,fall-
+backs.
+8.4 Loop de Auto-Curación
+8.5 Tiempos de Recuperación
+Escenario Tiempoestimado Automático
+ContenedorHermesmuere(exit!=0) 30s(autohealpoll) Sí
+ContenedorLiteLLMfallahealthcheck 90s(3retries×30s) Sí
+Dockerdaemoncae <60s(watchdog+systemdrestart) Sí
+Deploydecódigofallido <60s(rollbackHEAD~1+rebuild) Sí
+CertificadoTLSexpira 0s(Caddyauto-renewal30díasantes) Sí
+VPSreinicia ~2min(restart:unless-stopped) Sí
+
+--- PAGE 31 ---
+CAPÍTULO 8. OBSERVABILIDAD Y AUTO-CURACIÓN 30
+Figura8.1:Diagrama6
+
+--- PAGE 32 ---
+Capítulo 9
+Configuración Caddy y TLS
+9.1 Bloque Global y Configuración ACME
+El bloque global del Caddyfile incluye el email requerido para el registro de cuenta
+ACME con Let’s Encrypt. Este email es el punto de contacto para notificaciones de
+renovacióndecertificadosyavisosdelaautoridadcertificadora.
+{
+email erikjosehernandez@gmail.com
+}
+# ============================================================
+# Subdominios el80.space — Hermes Stack
+# ============================================================
+hermes.el80.space {
+reverse_proxy 127.0.0.1:8080
+}
+litellm.el80.space {
+reverse_proxy 127.0.0.1:4000
+}
+grafana.el80.space {
+reverse_proxy 127.0.0.1:3000
+}
+docs.el80.space {
+reverse_proxy 127.0.0.1:3001
+}
+9.2 Proceso de Obtención y Renovación TLS
+Caddygestionaelciclodevidacompletodeloscertificadossinintervenciónmanual:
+1.Detección automática —AlleerelCaddyfile,Caddydetectalosdominiosconfi-
+guradosyverificasiexistencertificadosválidos.
+2.Solicitud ACME —CaddycontactaaLet’sEncryptyrealizaelchallengeHTTP-01
+31
+
+--- PAGE 33 ---
+CAPÍTULO 9. CONFIGURACIÓN CADDY Y TLS 32
+(levantando temporalmente un servidor en el path /.well-known/acme-
+challenge/ porelpuerto80).
+3.Emisión—Let’sEncryptvalidaelcontrolDNSdeldominioyemitecertificados
+convalidezde90días.
+4.Almacenamiento —Certificadosyclavesprivadasseguardanen /etc/caddy/certificates/
+(manejadoporelprocesocaddydelsistema,fueradeDocker).
+5.Renovación automática —Caddyiniciaelprocesoderenovacióncuandoelcer-
+tificadotienemenosde30díasdevidarestante,sindowntime(gracefulreload).
+9.3 Requisitos de Firewall
+ufw allow 80/tcp # ACME HTTP-01 challenge + redirección HTTP→HTTPS
+ufw allow 443/tcp # HTTPS (producción)
+CaddymanejaautomáticamentelaredireccióndeHTTP(puerto80)aHTTPS(puerto
+443)paratodoslosdominiosconfigurados.
+9.4 Instalación de Caddy (setup-caddy.sh)
+# 1. Dependencias del repositorio
+apt-get install -ydebian-keyring debian-archive-keyring apt-transport-https curl
+# 2. GPG key de Cloudsmith (repositorio oficial de Caddy)
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' |\
+gpg --dearmor --yes -o/usr/share/keyrings/caddy-stable-archive-keyring.gpg
+# 3. Agregar repositorio
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' |\
+tee /etc/apt/sources.list.d/caddy-stable.list
+# 4. Instalar
+apt-get update &&apt-get install -ycaddy
+# 5. Escribir Caddyfile (ver bloque arriba)
+# 6. Firewall
+ufw allow 80/tcp &&ufw allow 443/tcp
+# 7. Habilitar y arrancar
+systemctl daemon-reload
+systemctl enable caddy
+systemctl restart caddy
+9.5 Verificación del Estado de Caddy
+systemctl status caddy
+journalctl -ucaddy -f
+caddy validate --config /etc/caddy/Caddyfile
+
+--- PAGE 34 ---
+CAPÍTULO 9. CONFIGURACIÓN CADDY Y TLS 33
+ls/etc/caddy/certificates/
+
+--- PAGE 35 ---
+Capítulo 10
+Aplicación Nativa Android
+(Google AI Studio) — BLUEPRINT
+EstaseccióndescribeeldiseñoprospectivodeunaaplicaciónAndroidnativaqueac-
+túacomoclienteoficialdelHermesStack.Laappnoexisteaúnenproducción;este
+blueprintdefinelaarquitecturarecomendadaparasudesarrollo,integrandolascapa-
+cidadesdelstackconlasAPIsdeGoogleAIStudio.
+10.1 Propósito y Alcance
+LaaplicaciónAndroideselclientemóviloficialdelHermesStack.Susresponsabilidades
+principalesson:
+•Voz en tiempo real —Capturadeaudiodesdeelmicrófonodeldispositivo,strea-
+minghaciaWhisperSTTyreproduccióndelarespuestasintetizadaporElevenLabs.
+Alternativalocal:GeminiLiveAPIparainferenciaon-device.
+•Chat conversacional —InterfaztextualparainteracciónconelagenteHermes.
+•Observabilidad móvil —Dashboarddemétricasenvivo(CPU,latencia,modelos
+activos)víaWebViewquecargaGrafanaembebido.
+•Control del stack —Inicio/paradadeservicios,visualizacióndelogsyestadode
+healthchecks.
+•Configuración —Gestióndeendpoints,tokensdeautenticaciónypreferencias
+devoz.
+10.2 Stack Tecnológico Recomendado
+Capa Tecnología Justificación
+Lenguaje Kotlin2.x SoporteoficialAndroid,
+coroutines,nullsafety
+UI JetpackCompose+
+Material3UIdeclarativa,tema
+dinámico,accesibilidad
+nativa
+Inferencialocal GeminiLiveAPI(GoogleAI
+Studio)Bajalatenciaen
+dispositivo,sinround-tripa
+servidor
+34
+
+--- PAGE 36 ---
+CAPÍTULO 10. APLICACIÓN NATIVA ANDROID (GOOGLE AI STUDIO) — BLUEPRINT 35
+Capa Tecnología Justificación
+WebSocket OkHttp(Ktorcomo
+alternativa)Bidireccional,manejode
+reconexión,interceptores
+REST Retrofit+OkHttp Type-safe,coroutines
+support,interceptoresde
+auth
+Persistencialocal DataStore(Proto) Type-safe,async,
+reemplaza
+SharedPreferences
+Inyeccióndedependencias Hilt Integraciónoficialcon
+ViewModel,testinglimpio
+Asincronía Coroutines+Flow Streamsreactivos,
+backpressure,UIupdates
+Navegación NavigationCompose Tiposeguro,deeplinks,
+backstackgestionado
+10.3 Arquitectura Interna
+Figura10.1:Diagrama7
+10.4 Módulos del Proyecto
+LaaplicaciónseestructuraenmódulosGradleindependientessiguiendolaarquitectura
+multi-módulodeAndroid:
+Módulo Tipo Responsabilidad
+:app application Entrypoint,Hiltapplication
+setup,navegaciónraíz
+
+--- PAGE 37 ---
+CAPÍTULO 10. APLICACIÓN NATIVA ANDROID (GOOGLE AI STUDIO) — BLUEPRINT 36
+Módulo Tipo Responsabilidad
+:feature-voice feature Capturadeaudio,
+streamingWebSocketa
+Hermes/ElevenLabs,
+visualizacióndeformade
+onda
+:feature-chat feature UIconversacional(listade
+mensajes,input,estadode
+escritura)
+:feature-tools feature Paneldeherramientasdel
+agente(skillsdisponibles,
+ejecuciónmanual)
+:feature-observability feature Dashboardsembebidosde
+GrafanavíaWebViewcon
+SSLpinning
+:feature-settings feature Configuraciónde
+endpoints,tokens,
+preferenciasdevoz,
+biométrico
+:core-network library OkHttpclientsingleton,
+interceptores,WebSocket
+manager,Retrofit
+instances
+:core-design-system library TokensdediseñoMaterial
+3,tipografía,colores,
+componentescompartidos
+:core-data library Repositoriosbase,
+DataStoreschemas,
+mappersderedadominio
+10.5 Integración con el Hermes Stack
+10.5.1 Autenticación
+Laappnoexpone LITELLM_MASTER_KEY directamentealcliente.Ensulugar,elservidor
+Hermesemitetokensderivadosconvidalimitadatrasunaautenticacióninicial:
+App → POST hermes.el80.space/auth {biometric_token o credentials}
+← {access_token: "ey...", expires_in: 3600}
+App → WS hermes.el80.space/ws?token=ey...
+Eltokenderivadotienepermisosreducidosrespectoalamasterkey:solopuedeinter-
+actuarconelagente,noconlaAPIadministrativadeLiteLLM.LaopciónmTLS(certifi-
+cadosdecliente)estáprevistacomomejoraenQ42026.
+10.5.2 WebSocket Bidireccional con Hermes
+// Ejemplo conceptual (:core-network)
+class HermesWebSocketClient (
+private val okHttpClient :OkHttpClient ,
+private val tokenProvider :TokenProvider
+
+--- PAGE 38 ---
+CAPÍTULO 10. APLICACIÓN NATIVA ANDROID (GOOGLE AI STUDIO) — BLUEPRINT 37
+){
+private var webSocket :WebSocket ?=null
+fun connect (endpoint :String ):Flow <HermesEvent >=callbackFlow {
+val request =Request .Builder ()
+.url("wss:// $endpoint /ws" )
+.addHeader ("Authorization" ,"Bearer ${tokenProvider .getToken ()}")
+.build ()
+webSocket =okHttpClient .newWebSocket (request ,object :WebSocketListener (){
+override fun onMessage (ws:WebSocket ,text :String ){
+trySend (HermesEvent .Message (text ))
+}
+override fun onFailure (ws:WebSocket ,t:Throwable ,res:Response ?){
+close (t)
+}
+})
+awaitClose {webSocket ?.close (1000 ,"closed" )}
+}
+fun sendAudioChunk (pcmBytes :ByteArray ){
+webSocket ?.send (pcmBytes .toByteString ())
+}
+}
+10.5.3 Llamadas REST a LiteLLM
+Laappllamaa litellm.el80.space usandoeltokenderivado(nolamasterkey).El
+endpointcompatibleconOpenAIpermitereutilizarSDKsestándar:
+interface LiteLLMApi {
+@POST ("v1/chat/completions" )
+suspend fun chat (
+@Header ("Authorization ")token :String ,
+@Body request :ChatRequest
+):ChatResponse
+}
+10.5.4 Pull de Health desde docs.el80.space
+La app realiza un GET periódico a https://docs.el80.space/health para verificar
+queelsitio(yporextensiónelcontenedorwebsite)estáenlínea.Elestadosemuestra
+enlapantalladeobservabilidad.
+10.6 Secuencia de Voz en la App Android
+10.7 UI/UX
+Pantalla principal — Voice Screen. Botóncircularcentraldegrantamañocondise-
+ñotipo“press-to-talk”.Almantenerpresionado,elbotónpulsaconunaanimaciónde
+onda(waveformradial)sincronizadaconelniveldeaudiodelmicrófono.Alrededordel
+
+--- PAGE 39 ---
+CAPÍTULO 10. APLICACIÓN NATIVA ANDROID (GOOGLE AI STUDIO) — BLUEPRINT 38
+"Speaker Android" "ElevenLabs\nFlash v2.5" "Hermes Agent" "WebSocket\nhermes.el80.space" "App Android\n(VoiceViewModel)" "Gemini Live API\n(on-device)" "Microfono Android""Speaker Android" "ElevenLabs\nFlash v2.5" "Hermes Agent" "WebSocket\nhermes.el80.space" "App Android\n(VoiceViewModel)" "Gemini Live API\n(on-device)" "Microfono Android"
+Transcripcion on-device\n(fallback si WS latency alta)
+alt[Respuesta TTS desde ElevenLabs]
+[Respuesta TTS local (Gemini Live)]Usuario
+Habla (mantener presionado)1
+PCM audio stream (AudioRecord)2
+stream audio (local inference)3
+texto transcrito4
+send {type:"voice", text:"...", token:"ey..."}5
+forward message6
+procesa (LiteLLM + tools)7
+{type:"audio_url"} o {type:"text"}8
+response JSON9
+POST text (via Hermes proxy o directo)10
+audio PCM chunks (streaming)11
+synthesize(text)12
+audio PCM13
+reproducir audio14
+respuesta de voz 15
+Usuario
+Figura10.2:Diagrama8
+botón,unindicadordelatenciaentiemporeal(ms)paradarfeedbackdelacalidadde
+conexión.
+Historial conversacional — Chat Screen. Listadeburbujasdemensajecondife-
+renciaciónvisualentremensajesdelusuario(alineadosaladerecha,coloraccent)y
+respuestasdeHermes(alineadosalaizquierda,colorsuperficie).Cadamensajemues-
+traeltimestampyelmodeloLLMusado(porejemplo:“llama-3.1-70b·230ms”).
+Panel de métricas — Observability Screen. WebViewquecargaeldashboardde
+GrafanaembebidoconSSLpinning.Paneldeslizabledesdeelbordeinferiorcontres
+métricasclaveentiemporeal:CPUdelVPS(%),latenciapromediodeLLM(ms)ynú-
+merodecontenedoresactivos/total.Losdatosseactualizancada5svíaRESTalaAPI
+dePrometheus.
+Pantalla de configuración — Settings Screen. CamposeditablesparabaseURL
+deHermes,URLdeLiteLLMytokendeautenticación.Opciónparaactivarautentica-
+ciónbiométrica(huelladigital/FaceID)paradesbloquearlaappalreentrar.Togglede
+dark/lightmodesincronizadoconelsistema.
+Dark/Light mode. Siguelapreferenciadelsistema(MaterialYou dynamicColor )pero
+conlaposibilidaddesobreescribirsemanualmente.Lapaletadecoloresoscurausalos
+mismostokensdediseñoqueelsitioweb( --bg-primary: #09090b ).
+10.8 Pipeline de Build Android
+Figura10.3:Diagrama9
+Secretos de GitHub requeridos para el workflow Android:
+Secreto Descripción
+KEYSTORE_FILE Keystorebase64-encodedparafirmade
+release
+KEYSTORE_PASSWORD Contraseñadelkeystore
+
+--- PAGE 40 ---
+CAPÍTULO 10. APLICACIÓN NATIVA ANDROID (GOOGLE AI STUDIO) — BLUEPRINT 39
+Secreto Descripción
+KEY_ALIAS Aliasdelaclavedentrodelkeystore
+KEY_PASSWORD Contraseñadelaclaveindividual
+PLAY_STORE_JSON_KEY JSONdecuentadeservicioparaGoogle
+PlayAPI
+10.9 Seguridad Móvil
+Network Security Config. Archivo res/xml/network_security_config.xml quede-
+niegatodotráficocleartext(HTTPsinTLS).SolosepermitenconexionesHTTPS/WSSa
+dominios *.el80.space .
+<?xml version= "1.0" encoding= "utf-8" ?>
+<network-security-config >
+<base-config cleartextTrafficPermitted= "false" >
+<trust-anchors >
+<certificates src= "system" />
+</trust-anchors >
+</base-config >
+<domain-config >
+<domain includeSubdomains= "true" >el80.space</ domain >
+<pin-set expiration= "2027-01-01" >
+<!-- Pinning del certificado Let's Encrypt ISRG Root X1 -->
+<pin digest= "SHA-256" >C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</ pin>
+</pin-set >
+</domain-config >
+</network-security-config >
+Certificate Pinning. SehacepinningsobreelcertificadoraízdeISRG(Let’sEncrypt)
+para el80.space.Elcampo expiration debeactualizarseantecambiosdecertificado
+raíz.
+EncryptedSharedPreferences. Eltokendeautenticaciónycualquiersecretolocalse
+almacenausando EncryptedSharedPreferences (JetpackSecurity),respaldadoporel
+AndroidKeystoreSystemquenoexportalasclavesfueradeldispositivo.
+Biometric Prompt. Pantalladereentrada(cuandolaappvuelvealprimerplanotras
+>5minutosenbackground)solicitahuelladigitaloreconocimientofacialvía Biome-
+tricPrompt.LacaracterísticaesopcionalyconfigurableenSettingsScreen.
+10.10 Roadmap Mobile
+Hito Período Contenido
+MVP Q32026 Voicescreenfuncional,
+chatbásico,autenticación
+token,buildAndroiddebug
+ReleasePúblico(Play
+Store)Q42026 Observabilityscreen,
+certificatepinning,
+biometricprompt,release
+AABfirmado
+
+--- PAGE 41 ---
+CAPÍTULO 10. APLICACIÓN NATIVA ANDROID (GOOGLE AI STUDIO) — BLUEPRINT 40
+Hito Período Contenido
+WidgetsyCompanion Q1–Q22027 Widgetdeestadoen
+pantalladeinicio,WearOS
+companionappparavoz
+ensmartwatch
+Multilenguaje Q32027 Soporteparainglés,
+portugués;STT
+multilenguajeenWhisper
+
+--- PAGE 42 ---
+Capítulo 11
+Operación y Runbook
+11.1 Despliegue Manual de Emergencia
+EncasodequeelpipelineCI/CDfalleonoestédisponible,eldesplieguemanualse
+realizavíaSSHatravésdeTailscale:
+# 1. Conectarse al VPS vía Tailscale
+ssh root@ <tailscale_ip_del_vps >
+# 2. Situarse en el directorio del stack
+cd /root
+# 3. Obtener últimos cambios
+git pull origin main
+# 4. Reconstruir y arrancar todos los servicios
+docker compose up -d--build
+# 5. Verificar estado
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.State.Health.Status}}"
+# 6. Ver logs del agente
+docker logs -f--tail 100 hermes-agent
+# 7. Verificar healthchecks manualmente
+source .env
+curl -f-H"Authorization: Bearer $LITELLM_MASTER_KEY "http://127.0.0.1:4000/health
+curl -fhttp://127.0.0.1:8080/health
+curl -fhttp://127.0.0.1:3001/health
+11.2 Rotación de Claves
+11.2.1 Rotación de LITELLM_MASTER_KEY
+# 1. Generar nueva clave
+NEW_KEY =$(openssl rand -hex 32)
+# 2. Editar .env (vim o nano)
+41
+
+--- PAGE 43 ---
+CAPÍTULO 11. OPERACIÓN Y RUNBOOK 42
+vim /root/.env # Cambiar LITELLM_MASTER_KEY=nuevo_valor
+# 3. Reiniciar servicios afectados
+docker compose restart litellm hermes
+# 4. Verificar healthcheck con nueva clave
+source /root/.env
+curl -f-H"Authorization: Bearer $LITELLM_MASTER_KEY "http://127.0.0.1:4000/health
+11.2.2 Renovación de Certificados Caddy
+Loscertificadosserenuevanautomáticamente.Paraforzarunarenovaciónmanual:
+systemctl reload caddy
+# Caddy revalida los certificados y solicita renovación si es necesario
+journalctl -ucaddy -f # Verificar logs de renovación
+11.3 Procedimiento de Rollback
+11.3.1 Rollback Automático (CI/CD)
+Elpipelineejecuta git checkout HEAD~1 && docker compose up -d --build auto-
+máticamentesielhealthcheckdeLiteLLMoHermesfalladespuésdeldespliegue.El
+jobdeGitHubActionsterminacon exit 1(visibleenlaUIdeActions).
+11.3.2 Rollback Manual
+# En el VPS
+cd /root
+# Verificar historial reciente
+git log --oneline -5
+# Revertir a un commit específico
+git checkout <COMMIT_HASH >
+docker compose up -d--build
+# Verificar que los servicios están sanos
+docker ps
+source .env &&curl -f-H"Authorization: Bearer $LITELLM_MASTER_KEY "http://127.0.0.1:4000/health
+11.4 Alertas y Escalación
+Nivel Trigger CanalTiempomáximode
+respuesta
+INFO Deployexitoso Slack(opcional) N/A
+WARNING CPU>80%por5
+min,disco<10%Prometheusalert→
+Slack4h
+
+--- PAGE 44 ---
+CAPÍTULO 11. OPERACIÓN Y RUNBOOK 43
+Nivel Trigger CanalTiempomáximode
+respuesta
+CRITICAL ContainerDown,
+memoria>90%Prometheusalert→
+Slack+docker-
+watchdog.sh30min
+EMERGENCIA Dockerdaemonno
+respondedocker-
+watchdog.sh→
+Slack15min
+ParaconfigurarlasnotificacionesSlackdelwatchdog,asegurarsedeque SLACK_WEBHOOK_URL
+estádefinidoen /root/.env.
+11.5 Limpieza y Backups
+11.5.1 Limpieza de Imágenes Docker Antiguas
+# Eliminar imágenes no referenciadas y capas huérfanas
+docker system prune -f
+# Eliminar imágenes con más de 72 horas
+docker image prune -f--filter "until=72h"
+# Ver espacio usado por Docker
+docker system df
+11.5.2 Backup de Volúmenes Críticos
+# Backup de datos de Grafana (dashboards, datasources)
+docker run --rm -vgrafana_data:/data -v/backups:/out \
+busybox tar czf /out/grafana- $(date +%Y%m%d ).tar.gz /data
+# Backup de datos de LiteLLM
+docker run --rm -vlitellm_data:/data -v/backups:/out \
+busybox tar czf /out/litellm- $(date +%Y%m%d ).tar.gz /data
+# Backup de skills y datos de Hermes
+tar czf /backups/hermes- $(date +%Y%m%d ).tar.gz /root/hermes/skills /root/hermes/data
+Serecomiendaconfiguraruncronjobparaejecutarestosbackupsdiariamenteysin-
+cronizar /backups/aunalmacenamientoexterno(S3,BackblazeB2,etc.).
+11.5.3 Rotación de Logs
+Docker está configurado con rotación automática ( log-driver: json-file ,max-
+size: 10m,max-file: 3 ). Los logs de docker-watchdog.sh se acumulan en
+/var/log/docker-watchdog.log ;unareglalogrotateesrecomendable:
+# /etc/logrotate.d/docker-watchdog
+/var/log/docker-watchdog.log {
+daily
+
+--- PAGE 45 ---
+CAPÍTULO 11. OPERACIÓN Y RUNBOOK 44
+rotate 7
+compress
+missingok
+notifempty
+}
+
+--- PAGE 46 ---
+Capítulo 12
+Roadmap del Portafolio
+12.1 Estado Actual en Producción
+Los siguientes componentes están en producción activa en el VPS con dominio
+el80.space:
+Componente Estado Versión
+hermes-agent Produccion Python3.12,buildlocal
+litellm-router Produccion ghcr.io/berriai/litellm:main-
+latest
+whisper-stt Produccion onerahmet/openai-whisper-
+asr-webservice:latest
+redis-cache Produccion redis:7-alpine
+hermes-website Produccion BuildlocalNode.js22,
+React18
+prometheus Produccion v2.52.0
+grafana Produccion 11.0.0
+cadvisor Produccion v0.49.1
+node-exporter Produccion v1.8.1
+autoheal Produccion willfarrell/autoheal:1.2.0
+Caddy+TLS Produccion Caddyv2(apt),4
+subdominios
+CI/CDGitHubActions Produccion deploy.yml,lint+deploy+
+rollback
+docker-watchdog.sh Produccion Systemdservice
+12.2 Próximos Hitos
+LossiguienteshitossederivandelRoadmapTécnicoDefinitivov2.0ydelosrequeri-
+mientosdelblueprintAndroid:
+12.2.1 Corto Plazo (Q3 2026)
+•Aplicación Android MVP —Voicescreenfuncional,autenticacióntoken,build
+debugdistribuidointernamenteviaPlayConsoleinternaltrack.
+•Dashboard Grafana productivo —ImportdedashboardsNodeExporterFull(ID
+1860)ycAdvisor.ConfiguracióndecontraseñadeGrafanavíavariabledeentorno.
+45
+
+--- PAGE 47 ---
+CAPÍTULO 12. ROADMAP DEL PORTAFOLIO 46
+•Alertmanager — Integración de Alertmanager para routing de alertas Pro-
+metheusaSlack/PagerDutyconcooldownyagrupación.
+•Rate limiting en Caddy —Módulo rate_limit paraprotecciónanteDDoSen
+lossubdominiospúblicos.
+12.2.2 Mediano Plazo (Q4 2026)
+•Aplicación Android release público —Certificatepinning,biometricprompt,
+ObservabilityscreenembebidoconGrafanaWebView.
+•mTLS inter-servicios — Certificados de cliente entre Hermes y LiteLLM para
+autenticaciónmutua.
+•Blue-green deployment — Dos instancias del stack (blue/green) con Caddy
+weightedloadbalancingparadesplieguessindowntimereal.
+•Secrets management —Migraciónde .envplaintextaHashiCorpVaultointe-
+graciónconunproveedordesecretosgestionados.
+•PostgreSQL para persistencia de diálogos —Reemplazarelestadoenme-
+moriadeHermesporpersistenciarelacionalparahistorialdeconversaciones.
+12.2.3 Visión a 12 Meses (2027)
+“Elcumplimientorigurosodelprincipiodelatenciamínimaencadacompo-
+nentepermitealcanzarelobjetivode<500msdelatenciapercibidaend-to-
+endenescenariosconversacionalesreales.”—RoadmapTécnicoDefinitivo
+v2.0
+•Multitenancy —SoporteparamúltiplesusuariosconvirtualkeysdeLiteLLMy
+aislamientodehistorialporusuario.
+•Fine-tuning local —Integracióndemodelosopen-source(Llama3,Mistral)eje-
+cutadoslocalmenteenhardwarededicadooGPUVPS,eliminandodependencia
+deOpenRouterparaeltiereconómico.
+•Expansión de canales de voz — Integración con Twilio para voz telefónica,
+WhatsAppBusinessAPIparamensajeríadevoz,ycanalWebRTCnativoenlaapp
+Android.
+•Widgets y Wear OS —Companionappparasmartwatchconbotóndevozdirecto
+alstack.
+•Observabilidad avanzada —Jaeger distributed tracing, OpenTelemetrycomo
+estándardeinstrumentación,correlacióndetrazasLLMconmétricasPrometheus.
+•CDN y multi-región —ReplicacióndelstackendosVPSenregionesgeográficas
+distintasconAnycastDNSparareducirlatenciageográfica.
+
+--- PAGE 48 ---
+Capítulo 13
+Glosario y Referencias
+13.1 Glosario
+Término Definición
+ACL AccessControlList.Listadereglasque
+determinanquétráficoderedestá
+permitidoodenegado.Reemplazadopor
+Grantsenversionesrecientesde
+Tailscale.
+ACME AutomaticCertificateManagement
+Environment.Protocoloestándar(RFC
+8555)paralaobtenciónyrenovación
+automáticadecertificadosTLS.Usado
+porCaddyconLet’sEncrypt.
+auto_mode ParámetrodelaAPIWebSocketde
+ElevenLabsquedeshabilitabuffers
+internosdechunking,generandoaudio
+deformainmediata.Reducelatencia~30
+%respectoaconfiguracionescon
+bufferingexplícito.
+autoheal Contenedorsupervisor
+(willfarrell/autoheal )quemonitorea
+elestadodesaluddeotroscontenedores
+ylosreiniciacuandoentranenestado
+unhealthy.
+cAdvisor ContainerAdvisor.Herramientade
+Googlequeexportamétricasanivelde
+contenedor(CPU,memoria,I/O,red)
+leyendoloscgroupsdelkernelLinux.
+cap_drop DirectivaDockerCompose/ docker run
+queeliminaLinuxcapabilitiesdeun
+contenedor,reduciendolasuperficiede
+ataque.
+Caddy ServidorwebyreverseproxyconHTTPS
+automáticoviaACME/Let’sEncrypt.
+Gestionaelciclodevidacompletode
+certificadosTLSsinconfiguraciónmanual.
+47
+
+--- PAGE 49 ---
+CAPÍTULO 13. GLOSARIO Y REFERENCIAS 48
+Término Definición
+DataStore APIdepersistenciadeJetpack(Android)
+quereemplazaSharedPreferences.
+Almacenadatosestructuradosdeforma
+asíncronaconsoportedeProtoBuffers.
+DirectivaZero-PR PrincipiodelagenteHermes:puede
+integrarcambiosensusskillssinrequerir
+aprobaciónmanual(PullRequest),
+manteniendounlogdeauditoríay
+capacidadderollback.
+Dockerbridgenetwork Redvirtualqueconectacontenedores
+dentrodelmismohost.Loscontenedores
+enlamismaredbridgesecomunicanpor
+nombredeservicio(DNSinternode
+Docker).
+ElevenLabsFlashv2.5 ModelodeText-to-SpeechdeElevenLabs
+optimizadoparabajalatencia
+conversacional.Latenciadeinferencia
+~75ms.ReemplazaalTurbov2.5enla
+versión2.0delstack.
+Flow(Kotlin) TipodedatosreactivodeCoroutinesde
+Kotlinparastreamsasíncronos.
+EquivalenteaRxJavaObservablepero
+nativodellenguaje.
+Grafana Plataformaopen-sourcedevisualización
+ydashboards.Consumemétricasde
+Prometheusypermitecrearalertas
+visuales.
+Grants(Tailscale) SuperconjuntodelasACLstradicionales
+deTailscaledisponibledesdemediados
+de2025.Ofrecesintaxismejoraday
+capacidadesdeaplicacióndepolíticas
+másexpresivas.
+Healthcheck Verificaciónperiódicadelestadodesalud
+deuncontenedorenDocker.Ejecutaun
+comandoymarcaelcontenedorcomo
+healthyounhealthysegúnelcódigode
+salida.
+Hilt Frameworkdeinyeccióndedependencias
+paraAndroid,basadoenDagger2con
+integraciónoficialdeJetpack(ViewModel,
+WorkManager,Navigation).
+ISRGRootX1 CertificadoraízdeInternetSecurity
+ResearchGroup(ISRG),autoridad
+certificadoraqueoperaLet’sEncrypt.
+Usadocomopinenelcertificatepinning
+delaappAndroid.
+JetpackCompose FrameworkdeclarativodeUIpara
+AndroiddeGoogle.Reemplazalasvistas
+XMLporfuncionesKotlincomponibles.
+
+--- PAGE 50 ---
+CAPÍTULO 13. GLOSARIO Y REFERENCIAS 49
+Término Definición
+Let’sEncrypt Autoridadcertificadoragratuita,
+automatizadayabiertaoperadaporISRG.
+EmitecertificadosTLSconvalidezde90
+días.
+LiteLLM Gatewayopen-sourcecompatibleconla
+APIdeOpenAIquesoportamásde100
+proveedoresLLM.Implementaroutingpor
+latencia,cachéRedis,virtualkeysy
+controldepresupuesto.
+Loopback/localhost Interfazdered 127.0.0.1quesolo
+aceptaconexionesdesdeelmismohost.
+Losserviciosdelstacksevinculanaesta
+interfazparaevitarexposiciónpública
+directa.
+mTLS MutualTLS.VariantedeTLSdondetanto
+elservidorcomoelclientepresentan
+certificadosparaautenticaciónmutua.
+PCM Pulse-CodeModulation.Formatodeaudio
+digitalsincompresión. pcm_24000indica
+muestrasPCMa24kHz,elformatode
+menorlatenciaenElevenLabs.
+Prometheus Sistemademonitoreoyalerta
+open-source.Recolectamétricasvia
+scrapeHTTPylasalmacenacomoseries
+temporalesenunabasededatoslocal.
+Retrofit BibliotecadeHTTPtype-safepara
+AndroidyJava.ConvierteinterfacesKotlin
+anotadasenllamadasHTTP.
+STT Speech-To-Text.Procesodeconvertir
+audiodevozentexto.Implementadoen
+elstackporWhisperlocal.
+Tailscale VPNdemalla(meshVPN)basadaen
+WireGuard.Permitecomunicacióncifrada
+entredispositivossinservidor
+centralizado.Usadoparaacceso
+administrativoseguroalVPS.
+TTS Text-To-Speech.Procesodeconvertir
+textoenaudiodevoz.Implementadoen
+elstackporElevenLabsFlashv2.5.
+TTFB TimetoFirstByte.Latenciadesdequese
+envíaunasolicitudhastaqueserecibeel
+primerbytedelarespuesta.Métricaclave
+paraevaluarlareactividaddelsistema.
+UFW UncomplicatedFirewall.Frontendde
+iptablesenUbuntu/Debian.Gestiona
+reglasdefirewalldelhost.
+VirtualKeys(LiteLLM) ClavesdeAPIderivadasdelamasterkey
+deLiteLLMconpermisosypresupuestos
+granulares.Permitendaraccesolimitado
+asubequiposoclientessinexponerla
+masterkey.
+
+--- PAGE 51 ---
+CAPÍTULO 13. GLOSARIO Y REFERENCIAS 50
+Término Definición
+Whisper ModelodeSTTdeOpenAIdecódigo
+abierto.Elstackusalaimagen
+onerahmet/openai-whisper-asr-
+webservice queexponeWhispercomo
+APIREST/WebSocket.
+WebSocket Protocolodecomunicaciónbidireccional
+persistentesobreTCP(RFC6455).Usado
+enelstackparaelcanaldevoz(Hermes
+↔ElevenLabs)yelcanalde
+comunicaciónappAndroid↔Hermes.
+WireGuard ProtocoloVPNmodernodealto
+rendimiento.BasesobrelaqueTailscale
+construyesureddemalla.
+13.2 Referencias a Documentación Oficial
+Tecnología Documentación URL
+DockerCompose DockerDocumentation:
+Composespecificationhttps://docs.docker.com/compose/compose-
+file/
+DockerSecurity DockerSecurityBest
+Practiceshttps://docs.docker.com/develop/dev-
+best-practices/
+Caddy CaddyDocumentation:
+GettingStartedhttps://caddyserver.com/docs/
+LiteLLM LiteLLMProxy
+Documentationhttps://docs.litellm.ai/docs/
+LiteLLMRouter RoutingStrategies https://docs.litellm.ai/docs/routing
+Whisper OpenAIWhisper(GitHub) https://github.com/openai/whisper
+ElevenLabsWS WebSocketAPI—Textto
+Speechhttps://elevenlabs.io/docs/api-
+reference/text-to-speech-
+voice-id-stream-input
+ElevenLabsLatency LatencyOptimization
+Guidehttps://elevenlabs.io/docs/eleven-
+api/guides/how-to-best-
+practices-latency-
+optimization
+Prometheus Prometheus
+Documentationhttps://prometheus.io/docs/introduction/overview/
+Grafana GrafanaDocumentation https://grafana.com/docs/grafana/latest/
+cAdvisor GooglecAdvisor(GitHub) https://github.com/google/cadvisor
+NodeExporter PrometheusNodeExporter
+(GitHub)https://github.com/prometheus/node_exporter
+GoogleAIStudio GoogleAIStudio
+Documentationhttps://ai.google.dev/gemini-
+api/docs
+GeminiLiveAPI GeminiLiveAPIReference https://ai.google.dev/gemini-
+api/docs/live
+JetpackCompose AndroidJetpackCompose
+Documentationhttps://developer.android.com/develop/ui/compose/documentation
+Material3 MaterialDesign3for
+Androidhttps://m3.material.io/develop/android/jetpack-
+compose
+
+--- PAGE 52 ---
+CAPÍTULO 13. GLOSARIO Y REFERENCIAS 51
+Tecnología Documentación URL
+Hilt HiltDependencyInjection https://developer.android.com/training/dependency-
+injection/hilt-android
+KotlinCoroutines KotlinCoroutinesGuide https://kotlinlang.org/docs/coroutines-
+overview.html
+OkHttpWebSocket OkHttpWebSocketsGuide https://square.github.io/okhttp/recipes/#web-
+socket
+AndroidNetworkSecurity NetworkSecurity
+Configurationhttps://developer.android.com/privacy-
+and-security/security-
+config
+AndroidBiometric BiometricPromptAPI https://developer.android.com/reference/androidx/biometric/BiometricPrompt
+GitHubActions GitHubActions
+Documentationhttps://docs.github.com/en/actions
+TailscaleGrants TailscaleGrants:Unified
+AccessControlshttps://tailscale.com/blog/june-
+25-product-update
+systemd.service systemdServiceUnit
+Referencehttps://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+Let’sEncrypt Let’sEncrypt
+Documentationhttps://letsencrypt.org/docs/
+ACMEProtocol RFC8555—ACMEProtocol https://datatracker.ietf.org/doc/html/rfc8555
+

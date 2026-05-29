@@ -10,9 +10,42 @@
 
 # Ignore custom archives and backups
 *.tar.gz
+*.tar.gz.gpg
+*.zip
 *.bin
 9router_backup
 extract_pdf.py
+backups/
+
+# Bases de datos runtime — nunca al repo (van al bundle de estado Tier 2)
+*.db
+
+# Artefactos de compilación LaTeX (regenerables desde .tex)
+*.aux
+*.toc
+*.out
+*.lot
+*.synctex.gz
+
+# Integraciones externas — son repos propios; se clonan en el rebuild (ver PORTFOLIO.md)
+hermes-deploy/
+hermes_bp/
+integrations/hermes-workspace/
+integrations/overcr/
+integrations/hermes-agent-advanced-skills/
+integrations/auto_repair.log
+
+# Directorios del sistema / sync
+Sync/
+snap/
+
+# Archivos personales no relacionados con el stack
+2017-buick-enclave-balatas.pdf
+brake-diagram.excalidraw
+brake-pad-*.md
+
+# Credenciales Oracle — van cifradas en el bundle Tier 2, nunca en git
+Wallet_NEXUSMEMORY*
 
 # Ignore node_modules, cache, logs
 node_modules/

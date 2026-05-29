@@ -1,0 +1,68 @@
+# ============================================================
+# Hermes Stack — Servicios OPCIONALES (Tier 3, revivibles)
+# ============================================================
+# Estos servicios NO forman parte del stack ideal por defecto
+# (decisión de portafolio 2026-05-29: máxima eficiencia).
+# Su config y datos se preservan; se levantan bajo demanda con:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.optional.yml up -d
+#
+# - hermes-workspace : panel de control web (imagen pull, red host).
+# - couchdb-obsidian : backend Obsidian LiveSync (sync móvil del vault).
+#                      Restaurar datos: vol root_couchdb_data desde el bundle
+#                      Tier 2 (solo si se hizo backup de couchdb_data).
+#
+# Twenty CRM tiene su propio stack: twenty/docker-compose.yml
+# 9remote (control remoto) vive en .9remote/ (daemon host, fuera de compose).
+# ============================================================
+
+volumes:
+  couchdb_data:
+
+services:
+  hermes-workspace:
+    image: ghcr.io/outsourc-e/hermes-workspace:latest
+    container_name: hermes-workspace
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PORT: "3002"
+      HOST: "127.0.0.1"
+      NODE_ENV: "production"
+      HERMES_API_URL: "http://127.0.0.1:8642"
+      HERMES_DASHBOARD_URL: "http://127.0.0.1:9119"
+      HERMES_ALLOW_INSECURE_REMOTE: "1"
+      COOKIE_SECURE: "0"
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  couchdb-obsidian:
+    image: couchdb:3.3
+    container_name: couchdb-obsidian
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      COUCHDB_USER: obsidian
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./config/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
+    ports:
+      - "127.0.0.1:5984:5984"
+    networks:
+      - backend
+    labels:
+      autoheal.enabled: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u obsidian:$$COUCHDB_PASSWORD http://127.0.0.1:5984/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

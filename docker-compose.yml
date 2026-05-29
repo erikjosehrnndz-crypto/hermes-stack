@@ -16,7 +16,6 @@ volumes:
   brain_lance:
   brain_models:
   brain_graph:
-  couchdb_data:
 
 services:
   # ============================================
@@ -376,65 +375,6 @@ services:
       retries: 3
       start_period: 15s
 
-  # ============================================
-  # HERMES WORKSPACE - Panel de Control Web
-  # Conecta a hermes gateway en el host (:8642)
-  # Dashboard enhanced features en host (:9119)
-  # ============================================
-  hermes-workspace:
-    image: ghcr.io/outsourc-e/hermes-workspace:latest
-    container_name: hermes-workspace
-    restart: unless-stopped
-    # network_mode: host — usa la red del host directamente para alcanzar
-    # 127.0.0.1:8642 (gateway) y 127.0.0.1:9119 (dashboard) sin Docker bridge.
-    # Caddy en el host maneja el acceso externo y TLS.
-    network_mode: host
-    environment:
-      PORT: "3002"
-      HOST: "127.0.0.1"
-      NODE_ENV: "production"
-      # Gateway API local (api_server.py de hermes-agent)
-      HERMES_API_URL: "http://127.0.0.1:8642"
-      # Dashboard de hermes-agent
-      HERMES_DASHBOARD_URL: "http://127.0.0.1:9119"
-      # Sin password — acceso solo desde loopback
-      HERMES_ALLOW_INSECURE_REMOTE: "1"
-      COOKIE_SECURE: "0"
-    labels:
-      autoheal.enabled: "true"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3002/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # ============================================
-  # COUCHDB - Backend de Obsidian Self-hosted LiveSync
-  # Expuesto en livesync.el80.space via Caddy
-  # Sin esto, sync móvil bidireccional no funciona
-  # ============================================
-  couchdb-obsidian:
-    image: couchdb:3.3
-    container_name: couchdb-obsidian
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    environment:
-      COUCHDB_USER: obsidian
-      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
-    volumes:
-      - couchdb_data:/opt/couchdb/data
-      - ./config/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
-    ports:
-      - "127.0.0.1:5984:5984"
-    networks:
-      - backend
-    labels:
-      autoheal.enabled: "true"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -u obsidian:$$COUCHDB_PASSWORD http://127.0.0.1:5984/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+  # ── Servicios opcionales (hermes-workspace, couchdb-obsidian) ──
+  # Movidos a docker-compose.optional.yml (Tier 3, revivibles).
+  # Levantar con: docker compose -f docker-compose.yml -f docker-compose.optional.yml up -d
